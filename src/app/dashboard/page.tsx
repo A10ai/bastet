@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { StatCard } from "@/components/dashboard/widgets/stat-card";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,32 +12,69 @@ import {
   PlaneLanding,
   Wrench,
   Sparkles,
+  Loader2,
 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
-// Mock data — will be replaced with real API calls
-const MOCK_STATS = {
-  occupancy: 72,
-  occupancyTrend: 5.2,
-  revenueToday: 4250,
-  revenueWeek: 28400,
-  arrivalsToday: 8,
-  departuresToday: 5,
-  openMaintenance: 3,
-  urgentMaintenance: 1,
-  housekeepingClean: 180,
-  housekeepingDirty: 15,
-  housekeepingInProgress: 5,
-};
-
-const RECENT_BOOKINGS = [
-  { ref: "BAS-HRG-260001", guest: "James Wilson", apt: "A301", status: "checked_in", nights: 14 },
-  { ref: "BAS-HRG-260002", guest: "Sarah Mueller", apt: "B205", status: "confirmed", nights: 7 },
-  { ref: "BAS-HRG-260003", guest: "Ahmed Hassan", apt: "C102", status: "pending", nights: 3 },
-  { ref: "BAS-HRG-260004", guest: "Elena Petrova", apt: "A505", status: "checked_in", nights: 28 },
-  { ref: "BAS-HRG-260005", guest: "Tom Richards", apt: "B402", status: "confirmed", nights: 10 },
-];
+interface DashboardStats {
+  occupancy_percentage: number;
+  occupancy_trend: number;
+  revenue_today_gbp: number;
+  arrivals_today: number;
+  departures_today: number;
+  open_maintenance: number;
+  urgent_maintenance: number;
+  housekeeping_clean: number;
+  housekeeping_dirty: number;
+  housekeeping_in_progress: number;
+  total_apartments: number;
+  recent_bookings: {
+    id: string;
+    reference: string;
+    status: string;
+    nights: number;
+    guest?: { first_name: string; last_name: string } | null;
+    apartment?: { number: string } | null;
+  }[];
+}
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/v1/dashboard/stats");
+        const json = await res.json();
+        setStats(json.data);
+      } catch {
+        // Silently handle
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-text-secondary">Failed to load dashboard data</p>
+      </div>
+    );
+  }
+
+  const totalRooms = stats.total_apartments || 200;
+
   return (
     <div className="space-y-6">
       <div>
@@ -51,38 +90,38 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Occupancy"
-          value={`${MOCK_STATS.occupancy}%`}
-          trend={MOCK_STATS.occupancyTrend}
+          value={`${stats.occupancy_percentage}%`}
+          trend={stats.occupancy_trend}
           subtitle="vs last week"
           icon={<Building2 className="w-5 h-5" />}
         />
         <StatCard
           title="Revenue Today"
-          value={`£${MOCK_STATS.revenueToday.toLocaleString()}`}
+          value={formatCurrency(stats.revenue_today_gbp)}
           subtitle="GBP"
           icon={<Wallet className="w-5 h-5" />}
         />
         <StatCard
           title="Arrivals Today"
-          value={String(MOCK_STATS.arrivalsToday)}
+          value={String(stats.arrivals_today)}
           subtitle="guests checking in"
           icon={<PlaneTakeoff className="w-5 h-5" />}
         />
         <StatCard
           title="Departures Today"
-          value={String(MOCK_STATS.departuresToday)}
+          value={String(stats.departures_today)}
           subtitle="guests checking out"
           icon={<PlaneLanding className="w-5 h-5" />}
         />
         <StatCard
           title="Maintenance"
-          value={String(MOCK_STATS.openMaintenance)}
-          subtitle={`${MOCK_STATS.urgentMaintenance} urgent`}
+          value={String(stats.open_maintenance)}
+          subtitle={`${stats.urgent_maintenance} urgent`}
           icon={<Wrench className="w-5 h-5" />}
         />
         <StatCard
           title="Housekeeping"
-          value={String(MOCK_STATS.housekeepingDirty)}
+          value={String(stats.housekeeping_dirty)}
           subtitle="rooms to clean"
           icon={<Sparkles className="w-5 h-5" />}
         />
@@ -92,10 +131,16 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Bookings */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <h3 className="text-lg font-semibold text-text-primary">
               Recent Bookings
             </h3>
+            <Link
+              href="/dashboard/bookings"
+              className="text-xs text-bastet-gold hover:underline"
+            >
+              View all
+            </Link>
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full">
@@ -119,19 +164,23 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {RECENT_BOOKINGS.map((booking) => (
+                {stats.recent_bookings.map((booking) => (
                   <tr
-                    key={booking.ref}
+                    key={booking.id}
                     className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
                   >
                     <td className="px-6 py-3 text-sm font-mono text-bastet-gold">
-                      {booking.ref}
+                      <Link href={`/dashboard/bookings/${booking.id}`} className="hover:underline">
+                        {booking.reference}
+                      </Link>
                     </td>
                     <td className="px-6 py-3 text-sm text-text-primary">
-                      {booking.guest}
+                      {booking.guest
+                        ? `${booking.guest.first_name} ${booking.guest.last_name}`
+                        : "—"}
                     </td>
                     <td className="px-6 py-3 text-sm text-text-secondary">
-                      {booking.apt}
+                      {booking.apartment?.number || "—"}
                     </td>
                     <td className="px-6 py-3 text-sm font-mono text-text-secondary">
                       {booking.nights}
@@ -141,6 +190,13 @@ export default function DashboardPage() {
                     </td>
                   </tr>
                 ))}
+                {stats.recent_bookings.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-text-muted">
+                      No recent bookings
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </CardContent>
@@ -161,12 +217,12 @@ export default function DashboardPage() {
                   <div
                     className="h-full bg-status-success rounded-full"
                     style={{
-                      width: `${(MOCK_STATS.housekeepingClean / 200) * 100}%`,
+                      width: `${(stats.housekeeping_clean / totalRooms) * 100}%`,
                     }}
                   />
                 </div>
                 <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {MOCK_STATS.housekeepingClean}
+                  {stats.housekeeping_clean}
                 </span>
               </div>
             </div>
@@ -177,12 +233,12 @@ export default function DashboardPage() {
                   <div
                     className="h-full bg-status-warning rounded-full"
                     style={{
-                      width: `${(MOCK_STATS.housekeepingDirty / 200) * 100}%`,
+                      width: `${(stats.housekeeping_dirty / totalRooms) * 100}%`,
                     }}
                   />
                 </div>
                 <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {MOCK_STATS.housekeepingDirty}
+                  {stats.housekeeping_dirty}
                 </span>
               </div>
             </div>
@@ -193,12 +249,12 @@ export default function DashboardPage() {
                   <div
                     className="h-full bg-bastet-gold rounded-full"
                     style={{
-                      width: `${(MOCK_STATS.housekeepingInProgress / 200) * 100}%`,
+                      width: `${(stats.housekeeping_in_progress / totalRooms) * 100}%`,
                     }}
                   />
                 </div>
                 <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {MOCK_STATS.housekeepingInProgress}
+                  {stats.housekeeping_in_progress}
                 </span>
               </div>
             </div>
@@ -207,19 +263,19 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-mono font-bold text-status-success">
-                    {MOCK_STATS.housekeepingClean}
+                    {stats.housekeeping_clean}
                   </p>
                   <p className="text-xs text-text-muted mt-1">Clean</p>
                 </div>
                 <div>
                   <p className="text-2xl font-mono font-bold text-status-warning">
-                    {MOCK_STATS.housekeepingDirty}
+                    {stats.housekeeping_dirty}
                   </p>
                   <p className="text-xs text-text-muted mt-1">To Clean</p>
                 </div>
                 <div>
                   <p className="text-2xl font-mono font-bold text-bastet-gold">
-                    {MOCK_STATS.housekeepingInProgress}
+                    {stats.housekeeping_in_progress}
                   </p>
                   <p className="text-xs text-text-muted mt-1">In Progress</p>
                 </div>

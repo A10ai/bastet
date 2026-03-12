@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServerSupabaseClient();
+
+    // Get current booking
+    const { data: booking, error: fetchError } = await supabase
+      .from("bookings")
+      .select("id, status, apartment_id")
+      .eq("id", params.id)
+      .single();
+
+    if (fetchError || !booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    if (booking.status !== "confirmed") {
+      return NextResponse.json(
+        { error: `Cannot check in booking with status: ${booking.status}. Must be confirmed.` },
+        { status: 400 }
+      );
+    }
+
+    // Update booking status
+    const { data: updated, error: updateError } = await supabase
+      .from("bookings")
+      .update({
+        status: "checked_in",
+        checked_in_at: new Date().toISOString(),
+      })
+      .eq("id", params.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    // Set apartment to occupied
+    await supabase
+      .from("apartments")
+      .update({ status: "occupied" })
+      .eq("id", booking.apartment_id);
+
+    return NextResponse.json({ data: updated });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
