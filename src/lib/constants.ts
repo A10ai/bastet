@@ -68,3 +68,101 @@ export const STAFF_ROLES = [
   "maintenance",
   "admin",
 ] as const;
+
+// Housekeeping
+export const HOUSEKEEPING_TYPES = [
+  "checkout_clean",
+  "midstay_clean",
+  "deep_clean",
+  "inspection",
+  "turndown",
+] as const;
+
+export const HOUSEKEEPING_STATUSES = [
+  "pending",
+  "assigned",
+  "in_progress",
+  "completed",
+  "verified",
+  "issue_found",
+] as const;
+
+export const PRIORITY_LEVELS = ["low", "normal", "high", "urgent"] as const;
+
+// Maintenance
+export const MAINTENANCE_CATEGORIES = [
+  "plumbing",
+  "electrical",
+  "hvac",
+  "appliance",
+  "structural",
+  "furniture",
+  "painting",
+  "pest_control",
+  "general",
+] as const;
+
+export const MAINTENANCE_STATUSES = [
+  "open",
+  "assigned",
+  "in_progress",
+  "on_hold",
+  "completed",
+  "cancelled",
+] as const;
+
+export const MAINTENANCE_PRIORITY_LEVELS = [
+  "low",
+  "normal",
+  "high",
+  "urgent",
+  "emergency",
+] as const;
+
+// Staff scheduling
+export const SHIFT_TYPES = [
+  "regular",
+  "overtime",
+  "on_call",
+  "holiday",
+] as const;
+
+export const SCHEDULE_STATUSES = [
+  "scheduled",
+  "confirmed",
+  "completed",
+  "absent",
+  "cancelled",
+] as const;
+
+// Finance
+export const INVOICE_STATUSES = [
+  "draft",
+  "sent",
+  "paid",
+  "partially_paid",
+  "overdue",
+  "cancelled",
+] as const;
+
+export const PAYMENT_METHODS = [
+  "card",
+  "bank_transfer",
+  "cash",
+  "stripe",
+  "cheque",
+] as const;
+
+export const EXPENSE_CATEGORIES = [
+  "utilities",
+  "staff",
+  "maintenance",
+  "supplies",
+  "marketing",
+  "insurance",
+  "taxes",
+  "software",
+  "professional_services",
+  "travel",
+  "other",
+] as const;

@@ -71,6 +71,19 @@ export function getStatusColor(status: string): string {
     in_progress: "text-bastet-gold",
     completed: "text-status-success",
     verified: "text-status-success",
+    on_hold: "text-status-warning",
+    issue_found: "text-status-error",
+    draft: "text-text-secondary",
+    sent: "text-status-info",
+    paid: "text-status-success",
+    partially_paid: "text-bastet-gold",
+    overdue: "text-status-error",
+    refunded: "text-status-warning",
+    high: "text-status-warning",
+    low: "text-status-info",
+    normal: "text-text-secondary",
+    urgent: "text-status-error",
+    emergency: "text-status-error",
   };
   return colors[status] || "text-text-secondary";
 }
@@ -88,10 +101,23 @@ export function getStatusBgColor(status: string): string {
     checked_out: "bg-text-secondary/10 text-text-secondary",
     cancelled: "bg-status-error/10 text-status-error",
     open: "bg-status-warning/10 text-status-warning",
+    assigned: "bg-status-info/10 text-status-info",
     in_progress: "bg-bastet-gold-muted text-bastet-gold",
     completed: "bg-status-success/10 text-status-success",
+    verified: "bg-status-success/10 text-status-success",
     urgent: "bg-status-error/10 text-status-error",
     emergency: "bg-status-error/20 text-status-error",
+    on_hold: "bg-status-warning/10 text-status-warning",
+    issue_found: "bg-status-error/10 text-status-error",
+    draft: "bg-text-secondary/10 text-text-secondary",
+    sent: "bg-status-info/10 text-status-info",
+    paid: "bg-status-success/10 text-status-success",
+    partially_paid: "bg-bastet-gold-muted text-bastet-gold",
+    overdue: "bg-status-error/10 text-status-error",
+    refunded: "bg-status-warning/10 text-status-warning",
+    high: "bg-status-warning/10 text-status-warning",
+    low: "bg-status-info/10 text-status-info",
+    normal: "bg-text-secondary/10 text-text-secondary",
   };
   return colors[status] || "bg-text-secondary/10 text-text-secondary";
 }

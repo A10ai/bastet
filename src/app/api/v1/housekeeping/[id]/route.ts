@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from("housekeeping_tasks")
+      .select(`
+        *,
+        apartment:apartments(id, number, floor, status, building:buildings(id, name, code)),
+        assigned_staff:staff!housekeeping_tasks_assigned_to_fkey(id, first_name, last_name, role, email, phone)
+      `)
+      .eq("id", params.id)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServerSupabaseClient();
+    const body = await request.json();
+
+    const allowedFields = ["priority", "notes", "scheduled_date", "type"];
+    const updates: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in body) updates[key] = body[key];
+    }
+
+    const { data, error } = await supabase
+      .from("housekeeping_tasks")
+      .update(updates)
+      .eq("id", params.id)
+      .select(`
+        *,
+        apartment:apartments(id, number, building:buildings(id, name, code)),
+        assigned_staff:staff!housekeeping_tasks_assigned_to_fkey(id, first_name, last_name, role)
+      `)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

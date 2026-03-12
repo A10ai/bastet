@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServerSupabaseClient();
+
+    const { data: task } = await supabase
+      .from("housekeeping_tasks")
+      .select("id, status, assigned_to")
+      .eq("id", params.id)
+      .single();
+
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    if (task.status !== "assigned") {
+      return NextResponse.json(
+        { error: `Cannot start task with status: ${task.status}. Must be assigned.` },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("housekeeping_tasks")
+      .update({
+        status: "in_progress",
+        started_at: new Date().toISOString(),
+      })
+      .eq("id", params.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

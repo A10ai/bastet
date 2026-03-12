@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { searchParams } = request.nextUrl;
+    const status = searchParams.get("status");
+    const type = searchParams.get("type");
+    const priority = searchParams.get("priority");
+    const apartmentId = searchParams.get("apartment_id");
+    const assignedTo = searchParams.get("assigned_to");
+    const date = searchParams.get("date");
+
+    let query = supabase
+      .from("housekeeping_tasks")
+      .select(`
+        *,
+        apartment:apartments(id, number, floor, building:buildings(id, name, code)),
+        assigned_staff:staff!housekeeping_tasks_assigned_to_fkey(id, first_name, last_name, role)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (status) query = query.eq("status", status);
+    if (type) query = query.eq("type", type);
+    if (priority) query = query.eq("priority", priority);
+    if (apartmentId) query = query.eq("apartment_id", apartmentId);
+    if (assignedTo) query = query.eq("assigned_to", assignedTo);
+    if (date) query = query.eq("scheduled_date", date);
+
+    const { data, error } = await query;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createServerSupabaseClient();
+    const body = await request.json();
+
+    const {
+      apartment_id,
+      type,
+      priority = "normal",
+      scheduled_date,
+      assigned_to,
+      notes,
+    } = body;
+
+    if (!apartment_id || !type || !scheduled_date) {
+      return NextResponse.json(
+        { error: "Missing required fields: apartment_id, type, scheduled_date" },
+        { status: 400 }
+      );
+    }
+
+    // Get property_id from apartment
+    const { data: apartment } = await supabase
+      .from("apartments")
+      .select("property_id")
+      .eq("id", apartment_id)
+      .single();
+
+    if (!apartment) {
+      return NextResponse.json({ error: "Apartment not found" }, { status: 404 });
+    }
+
+    const { data, error } = await supabase
+      .from("housekeeping_tasks")
+      .insert({
+        property_id: apartment.property_id,
+        apartment_id,
+        type,
+        status: assigned_to ? "assigned" : "pending",
+        priority,
+        scheduled_date,
+        assigned_to: assigned_to || null,
+        notes: notes || null,
+      })
+      .select(`
+        *,
+        apartment:apartments(id, number, floor, building:buildings(id, name, code)),
+        assigned_staff:staff!housekeeping_tasks_assigned_to_fkey(id, first_name, last_name, role)
+      `)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ data }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

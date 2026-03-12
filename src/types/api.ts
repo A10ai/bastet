@@ -49,3 +49,26 @@ export interface DashboardStats {
   guest_satisfaction: number;
   channel_split: { channel: string; bookings: number; percentage: number }[];
 }
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price_gbp: number;
+  total_gbp: number;
+}
+
+export interface FinancialSummary {
+  revenue_gbp: number;
+  expenses_gbp: number;
+  net_profit_gbp: number;
+  occupancy_rate: number;
+  adr_gbp: number;
+  revpaa_gbp: number;
+  total_invoices: number;
+  outstanding_invoices: number;
+  monthly_data: {
+    month: string;
+    revenue: number;
+    expenses: number;
+  }[];
+}
