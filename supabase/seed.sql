@@ -54,22 +54,22 @@ BEGIN
 -- 1. Property
 -- ============================================================
 INSERT INTO properties (name, slug, address, city, country, latitude, longitude, timezone, default_currency, reporting_currency, star_rating, total_apartments, status, phone, email, website)
-VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Sahl Hasheesh Road, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 250, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com')
+VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Kawthar District, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 270, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com')
 RETURNING id INTO v_property_id;
 
 -- ============================================================
--- 2. Buildings
+-- 2. Buildings (Ground + 4 floors + rooftop = 5 blocks)
 -- ============================================================
 INSERT INTO buildings (property_id, name, code, floors, apartments_per_floor, has_elevator, has_parking, status)
-VALUES (v_property_id, 'Block A', 'A', 7, 10, true, false, 'active')
+VALUES (v_property_id, 'Block A', 'A', 5, 14, true, false, 'active')
 RETURNING id INTO v_building_a;
 
 INSERT INTO buildings (property_id, name, code, floors, apartments_per_floor, has_elevator, has_parking, status)
-VALUES (v_property_id, 'Block B', 'B', 7, 10, true, false, 'active')
+VALUES (v_property_id, 'Block B', 'B', 5, 14, true, false, 'active')
 RETURNING id INTO v_building_b;
 
 INSERT INTO buildings (property_id, name, code, floors, apartments_per_floor, has_elevator, has_parking, status)
-VALUES (v_property_id, 'Block C', 'C', 6, 8, true, true, 'active')
+VALUES (v_property_id, 'Block C', 'C', 5, 14, true, true, 'active')
 RETURNING id INTO v_building_c;
 
 -- ============================================================
@@ -92,38 +92,78 @@ VALUES (v_property_id, 'Penthouse', 'penthouse', 'Premium top-floor penthouse wi
 RETURNING id INTO v_type_penthouse;
 
 -- ============================================================
--- 4. Apartments (20 units)
+-- 4. Apartments (270 units: 180 studios, 76 one-bed, 10 two-bed, 4 penthouses)
 -- ============================================================
 v_apt_ids := ARRAY[]::UUID[];
 
--- Block A: 7 apartments
-INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status) VALUES
-  (v_property_id, v_building_a, v_type_studio, 'A101', 1, 'garden', 'available'),
-  (v_property_id, v_building_a, v_type_1bed, 'A102', 1, 'pool', 'occupied'),
-  (v_property_id, v_building_a, v_type_studio, 'A201', 2, 'garden', 'available'),
-  (v_property_id, v_building_a, v_type_2bed, 'A202', 2, 'sea', 'occupied'),
-  (v_property_id, v_building_a, v_type_1bed, 'A301', 3, 'sea', 'occupied'),
-  (v_property_id, v_building_a, v_type_studio, 'A401', 4, 'partial_sea', 'cleaning'),
-  (v_property_id, v_building_a, v_type_penthouse, 'A701', 7, 'sea', 'available');
+-- Generate 270 apartments using loops within the existing DO block
+DECLARE
+  v_blocks UUID[] := ARRAY[v_building_a, v_building_b, v_building_c];
+  v_block_codes TEXT[] := ARRAY['A', 'B', 'C'];
+  v_views TEXT[] := ARRAY['garden', 'pool', 'city', 'partial_sea', 'sea'];
+  v_statuses TEXT[] := ARRAY['available', 'available', 'available', 'occupied', 'occupied', 'occupied', 'occupied', 'cleaning', 'maintenance'];
+  v_b INT;
+  v_f INT;
+  v_u INT;
+  v_n INT := 0;
+BEGIN
+  FOR v_b IN 1..3 LOOP
+    -- Studios: 60 per block = 180 total (floors 0-3, 15 per floor)
+    FOR v_f IN 0..3 LOOP
+      FOR v_u IN 1..15 LOOP
+        v_n := v_n + 1;
+        INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+        VALUES (
+          v_property_id, v_blocks[v_b], v_type_studio,
+          v_block_codes[v_b] || v_f || LPAD(v_u::TEXT, 2, '0'),
+          v_f,
+          v_views[1 + (v_n % 5)],
+          v_statuses[1 + (v_n % 9)]
+        );
+      END LOOP;
+    END LOOP;
 
--- Block B: 7 apartments
-INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status) VALUES
-  (v_property_id, v_building_b, v_type_studio, 'B101', 1, 'pool', 'available'),
-  (v_property_id, v_building_b, v_type_1bed, 'B102', 1, 'garden', 'maintenance'),
-  (v_property_id, v_building_b, v_type_2bed, 'B201', 2, 'pool', 'occupied'),
-  (v_property_id, v_building_b, v_type_studio, 'B202', 2, 'city', 'available'),
-  (v_property_id, v_building_b, v_type_1bed, 'B301', 3, 'sea', 'occupied'),
-  (v_property_id, v_building_b, v_type_2bed, 'B401', 4, 'sea', 'available'),
-  (v_property_id, v_building_b, v_type_penthouse, 'B701', 7, 'sea', 'blocked');
+    -- 1-Beds: 25-26 per block = 76 total (floors 1-4, 6 per floor + adjust)
+    FOR v_f IN 1..4 LOOP
+      FOR v_u IN 1..CASE WHEN v_b = 3 AND v_f = 4 THEN 5 ELSE 6 END LOOP
+        v_n := v_n + 1;
+        INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+        VALUES (
+          v_property_id, v_blocks[v_b], v_type_1bed,
+          v_block_codes[v_b] || v_f || LPAD((15 + v_u)::TEXT, 2, '0'),
+          v_f,
+          v_views[1 + ((v_n + v_f) % 5)],
+          v_statuses[1 + (v_n % 9)]
+        );
+      END LOOP;
+    END LOOP;
 
--- Block C: 6 apartments
-INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status) VALUES
-  (v_property_id, v_building_c, v_type_studio, 'C101', 1, 'garden', 'available'),
-  (v_property_id, v_building_c, v_type_1bed, 'C102', 1, 'pool', 'occupied'),
-  (v_property_id, v_building_c, v_type_2bed, 'C201', 2, 'sea', 'available'),
-  (v_property_id, v_building_c, v_type_studio, 'C202', 2, 'city', 'available'),
-  (v_property_id, v_building_c, v_type_1bed, 'C301', 3, 'partial_sea', 'occupied'),
-  (v_property_id, v_building_c, v_type_penthouse, 'C601', 6, 'sea', 'available');
+    -- 2-Beds: 3-4 per block = 10 total (floors 3-4)
+    FOR v_u IN 1..CASE WHEN v_b <= 2 THEN 4 ELSE 2 END LOOP
+      v_n := v_n + 1;
+      INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+      VALUES (
+        v_property_id, v_blocks[v_b], v_type_2bed,
+        v_block_codes[v_b] || (3 + (v_u - 1) / 2) || LPAD((21 + v_u)::TEXT, 2, '0'),
+        3 + (v_u - 1) / 2,
+        'sea',
+        v_statuses[1 + (v_n % 9)]
+      );
+    END LOOP;
+
+    -- Penthouses: 2 in Block A, 2 in Block B = 4 total (floor 4)
+    IF v_b <= 2 THEN
+      FOR v_u IN 1..2 LOOP
+        INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+        VALUES (
+          v_property_id, v_blocks[v_b], v_type_penthouse,
+          v_block_codes[v_b] || '4' || LPAD((25 + v_u)::TEXT, 2, '0'),
+          4, 'sea', 'available'
+        );
+      END LOOP;
+    END IF;
+  END LOOP;
+END;
 
 -- ============================================================
 -- 5. Booking Channels

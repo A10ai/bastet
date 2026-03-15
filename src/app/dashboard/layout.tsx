@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/providers/auth-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { AIChatPanel } from "@/components/ai/chat-panel";
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
           <Header />
           <main className="flex-1 p-6 overflow-auto">{children}</main>
         </div>
+        <AIChatPanel />
       </div>
     </AuthProvider>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Brain,
   LayoutDashboard,
   Building2,
   CalendarDays,
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Brain,
   LayoutDashboard,
   Building2,
   CalendarDays,
