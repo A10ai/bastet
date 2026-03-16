@@ -291,19 +291,16 @@ export default function EventBusPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-bastet-gold" />
-            <h1 className="text-2xl font-display font-bold text-text-primary">
+            <Activity className="w-5 h-5 text-bastet-gold" />
+            <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               Event Bus
             </h1>
-            <span className="text-sm text-text-muted">
-              — Cross-System Intelligence
-            </span>
           </div>
           <p className="text-sm text-text-secondary mt-1">
-            Real-time event processing across all property systems
+            Cross-system intelligence — real-time event processing
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -311,13 +308,13 @@ export default function EventBusPage() {
             <RefreshCw className="w-4 h-4 mr-1.5" />
             Refresh
           </Button>
-          <Button onClick={handleEmitTest} disabled={emitting} size="md">
+          <Button onClick={handleEmitTest} disabled={emitting} size="sm">
             {emitting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
             ) : (
-              <Zap className="w-4 h-4 mr-2" />
+              <Zap className="w-4 h-4 mr-1.5" />
             )}
-            {emitting ? "Emitting..." : "Emit Test Event"}
+            {emitting ? "Emitting..." : "Test Event"}
           </Button>
         </div>
       </div>

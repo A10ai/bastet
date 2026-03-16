@@ -738,7 +738,7 @@ export default function RevenueCopilotPage() {
       </div>
 
       {/* A. Revenue Stats (5 cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 [&>*:last-child]:col-span-2 [&>*:last-child]:sm:col-span-1">
         <StatCard
           label="Total Revenue"
           value={formatCurrency(overview.total_revenue_gbp)}
