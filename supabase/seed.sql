@@ -47,6 +47,14 @@ DECLARE
   v_segment_nomad UUID;
   v_segment_domestic UUID;
   v_segment_corporate UUID;
+  v_blocks UUID[];
+  v_codes TEXT[] := ARRAY['A', 'B', 'C'];
+  v_views TEXT[] := ARRAY['garden', 'pool', 'city', 'partial_sea', 'sea'];
+  v_apt_statuses TEXT[] := ARRAY['available', 'available', 'available', 'available', 'occupied', 'occupied', 'occupied', 'cleaning', 'maintenance'];
+  v_b INT;
+  v_f INT;
+  v_u INT;
+  v_n INT := 0;
 
 BEGIN
 
@@ -95,75 +103,68 @@ RETURNING id INTO v_type_penthouse;
 -- 4. Apartments (270 units: 180 studios, 76 one-bed, 10 two-bed, 4 penthouses)
 -- ============================================================
 v_apt_ids := ARRAY[]::UUID[];
+v_blocks := ARRAY[v_building_a, v_building_b, v_building_c];
 
--- Generate 270 apartments using loops within the existing DO block
-DECLARE
-  v_blocks UUID[] := ARRAY[v_building_a, v_building_b, v_building_c];
-  v_block_codes TEXT[] := ARRAY['A', 'B', 'C'];
-  v_views TEXT[] := ARRAY['garden', 'pool', 'city', 'partial_sea', 'sea'];
-  v_statuses TEXT[] := ARRAY['available', 'available', 'available', 'occupied', 'occupied', 'occupied', 'occupied', 'cleaning', 'maintenance'];
-  v_b INT;
-  v_f INT;
-  v_u INT;
-  v_n INT := 0;
-BEGIN
-  FOR v_b IN 1..3 LOOP
-    -- Studios: 60 per block = 180 total (floors 0-3, 15 per floor)
-    FOR v_f IN 0..3 LOOP
-      FOR v_u IN 1..15 LOOP
-        v_n := v_n + 1;
-        INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
-        VALUES (
-          v_property_id, v_blocks[v_b], v_type_studio,
-          v_block_codes[v_b] || v_f || LPAD(v_u::TEXT, 2, '0'),
-          v_f,
-          v_views[1 + (v_n % 5)],
-          v_statuses[1 + (v_n % 9)]
-        );
-      END LOOP;
+FOR v_b IN 1..3 LOOP
+  -- Studios: 60 per block = 180 total (floors 0-3, 15 per floor)
+  FOR v_f IN 0..3 LOOP
+    FOR v_u IN 1..15 LOOP
+      v_n := v_n + 1;
+      INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+      VALUES (
+        v_property_id, v_blocks[v_b], v_type_studio,
+        v_codes[v_b] || v_f || LPAD(v_u::TEXT, 2, '0'),
+        v_f,
+        v_views[1 + (v_n % 5)],
+        v_apt_statuses[1 + (v_n % 9)]
+      );
     END LOOP;
+  END LOOP;
 
-    -- 1-Beds: 25-26 per block = 76 total (floors 1-4, 6 per floor + adjust)
-    FOR v_f IN 1..4 LOOP
-      FOR v_u IN 1..CASE WHEN v_b = 3 AND v_f = 4 THEN 5 ELSE 6 END LOOP
+  -- 1-Beds: 25-26 per block = 76 total (floors 1-4, 6 per floor)
+  FOR v_f IN 1..4 LOOP
+    FOR v_u IN 1..6 LOOP
+      IF NOT (v_b = 3 AND v_f = 4 AND v_u > 5) THEN
         v_n := v_n + 1;
         INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
         VALUES (
           v_property_id, v_blocks[v_b], v_type_1bed,
-          v_block_codes[v_b] || v_f || LPAD((15 + v_u)::TEXT, 2, '0'),
+          v_codes[v_b] || v_f || LPAD((15 + v_u)::TEXT, 2, '0'),
           v_f,
           v_views[1 + ((v_n + v_f) % 5)],
-          v_statuses[1 + (v_n % 9)]
+          v_apt_statuses[1 + (v_n % 9)]
         );
-      END LOOP;
+      END IF;
     END LOOP;
+  END LOOP;
 
-    -- 2-Beds: 3-4 per block = 10 total (floors 3-4)
-    FOR v_u IN 1..CASE WHEN v_b <= 2 THEN 4 ELSE 2 END LOOP
+  -- 2-Beds: 4 + 4 + 2 = 10 total (floors 3-4)
+  FOR v_u IN 1..4 LOOP
+    IF NOT (v_b = 3 AND v_u > 2) THEN
       v_n := v_n + 1;
       INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
       VALUES (
         v_property_id, v_blocks[v_b], v_type_2bed,
-        v_block_codes[v_b] || (3 + (v_u - 1) / 2) || LPAD((21 + v_u)::TEXT, 2, '0'),
+        v_codes[v_b] || (3 + (v_u - 1) / 2) || LPAD((21 + v_u)::TEXT, 2, '0'),
         3 + (v_u - 1) / 2,
         'sea',
-        v_statuses[1 + (v_n % 9)]
+        v_apt_statuses[1 + (v_n % 9)]
       );
-    END LOOP;
-
-    -- Penthouses: 2 in Block A, 2 in Block B = 4 total (floor 4)
-    IF v_b <= 2 THEN
-      FOR v_u IN 1..2 LOOP
-        INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
-        VALUES (
-          v_property_id, v_blocks[v_b], v_type_penthouse,
-          v_block_codes[v_b] || '4' || LPAD((25 + v_u)::TEXT, 2, '0'),
-          4, 'sea', 'available'
-        );
-      END LOOP;
     END IF;
   END LOOP;
-END;
+
+  -- Penthouses: 2 in A, 2 in B = 4 total (floor 4)
+  IF v_b <= 2 THEN
+    FOR v_u IN 1..2 LOOP
+      INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
+      VALUES (
+        v_property_id, v_blocks[v_b], v_type_penthouse,
+        v_codes[v_b] || '4' || LPAD((25 + v_u)::TEXT, 2, '0'),
+        4, 'sea', 'available'
+      );
+    END LOOP;
+  END IF;
+END LOOP;
 
 -- ============================================================
 -- 5. Booking Channels
