@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,7 +22,10 @@ import {
   Settings,
   Workflow,
   Zap,
+  ChevronLeft,
+  ChevronRight,
   X,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";
@@ -54,6 +57,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
   // Close mobile drawer on route change
@@ -76,46 +80,92 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     };
   }, [mobileOpen]);
 
-  return (
+  const navContent = (showLabels: boolean) => (
     <>
-      {/* Desktop sidebar — always icon-only, transparent */}
-      <aside className="h-screen sticky top-0 w-16 bg-bastet-card/60 backdrop-blur-xl border-r border-bastet-border/50 flex-col hidden md:flex">
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-center border-b border-bastet-border/50">
-          <Link href="/dashboard">
-            <span className="text-lg font-display font-bold text-white">
+      {/* Brand */}
+      <div className="h-16 flex items-center px-4 border-b border-bastet-border">
+        {showLabels ? (
+          <Link href="/dashboard" className="flex items-center gap-2" onClick={onMobileClose}>
+            <span className="text-xl font-display font-bold text-white">
+              Hospit<span className="text-cyan-400">AI</span>
+            </span>
+          </Link>
+        ) : (
+          <Link href="/dashboard" className="mx-auto">
+            <span className="text-xl font-display font-bold text-white">
               H<span className="text-cyan-400">.</span>
             </span>
           </Link>
-        </div>
+        )}
+        {/* Mobile close button */}
+        {onMobileClose && showLabels && (
+          <button
+            onClick={onMobileClose}
+            className="ml-auto p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg transition-colors md:hidden"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
-        {/* Nav icons */}
-        <nav className="flex-1 py-3 px-1.5 space-y-0.5 overflow-y-auto">
-          {SIDEBAR_NAV.map((item) => {
-            const Icon = iconMap[item.icon];
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" &&
-                !SIDEBAR_NAV.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
-                pathname.startsWith(item.href));
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {SIDEBAR_NAV.map((item) => {
+          const Icon = iconMap[item.icon];
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" &&
+              !SIDEBAR_NAV.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
+              pathname.startsWith(item.href));
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center justify-center w-11 h-11 mx-auto rounded-xl transition-all duration-200",
-                  isActive
-                    ? "bg-cyan-400/15 text-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.15)]"
-                    : "text-text-muted hover:text-text-primary hover:bg-white/5"
-                )}
-                title={item.label}
-              >
-                {Icon && <Icon className="w-[18px] h-[18px]" />}
-              </Link>
-            );
-          })}
-        </nav>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onMobileClose}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-bastet-gold-muted text-bastet-gold"
+                  : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg",
+                !showLabels && "justify-center px-2"
+              )}
+              title={!showLabels ? item.label : undefined}
+            >
+              {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
+              {showLabels && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Collapse toggle - desktop only */}
+      <div className="p-2 border-t border-bastet-border hidden md:block">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="w-full flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg transition-colors"
+        >
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "h-screen sticky top-0 bg-bastet-card border-r border-bastet-border flex-col transition-all duration-300 hidden md:flex",
+          collapsed ? "w-16" : "w-60"
+        )}
+      >
+        {navContent(!collapsed)}
       </aside>
 
       {/* Mobile overlay backdrop */}
@@ -127,57 +177,14 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         />
       )}
 
-      {/* Mobile drawer — full sidebar with labels */}
+      {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-bastet-card/95 backdrop-blur-xl border-r border-bastet-border/50 flex flex-col transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-bastet-card border-r border-bastet-border flex flex-col transition-transform duration-300 ease-in-out md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Brand + close */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-bastet-border/50">
-          <Link href="/dashboard" onClick={onMobileClose}>
-            <span className="text-xl font-display font-bold text-white">
-              Hospit<span className="text-cyan-400">AI</span>
-            </span>
-          </Link>
-          <button
-            onClick={onMobileClose}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors"
-            aria-label="Close sidebar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Nav with labels */}
-        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-          {SIDEBAR_NAV.map((item) => {
-            const Icon = iconMap[item.icon];
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" &&
-                !SIDEBAR_NAV.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
-                pathname.startsWith(item.href));
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onMobileClose}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-cyan-400/15 text-cyan-400"
-                    : "text-text-secondary hover:text-text-primary hover:bg-white/5"
-                )}
-              >
-                {Icon && <Icon className="w-[18px] h-[18px] flex-shrink-0" />}
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        {navContent(true)}
       </aside>
     </>
   );
