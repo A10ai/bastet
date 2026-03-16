@@ -8,6 +8,7 @@ export const SIDEBAR_NAV = [
   { label: "Apartments", href: "/dashboard/apartments", icon: "Building2" },
   { label: "Bookings", href: "/dashboard/bookings", icon: "CalendarDays" },
   { label: "Guests", href: "/dashboard/guests", icon: "Users" },
+  { label: "Guest Intelligence", href: "/dashboard/ai/guests", icon: "UserCheck" },
   { label: "Housekeeping", href: "/dashboard/housekeeping", icon: "Sparkles" },
   { label: "Maintenance", href: "/dashboard/maintenance", icon: "Wrench" },
   { label: "Finance", href: "/dashboard/finance", icon: "Wallet" },
