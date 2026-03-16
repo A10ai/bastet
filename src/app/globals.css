@@ -8,30 +8,46 @@
   }
   body {
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom scrollbar for dark theme */
+  ::selection {
+    background-color: rgba(34, 211, 238, 0.25);
+    color: white;
+  }
+
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0d1117;
+    background: #0A0F1C;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e293b;
-    border-radius: 4px;
+    background: #1E2D44;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #2A3F5F;
   }
 }
 
 @layer components {
+  /* Primary gradient button */
   .gold-gradient {
-    background: linear-gradient(135deg, #c9a84c 0%, #d4b85c 50%, #c9a84c 100%);
+    background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 50%, #22D3EE 100%);
   }
+
+  /* Subtle card glow on hover */
   .card-glow {
-    box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.1);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08);
+  }
+
+  /* Glow divider */
+  .glow-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.3), transparent);
   }
 }

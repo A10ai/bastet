@@ -109,7 +109,7 @@ export function AIChatPanel() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-bastet-gold text-bastet-bg flex items-center justify-center shadow-lg shadow-bastet-gold/20 hover:scale-105 transition-transform"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-cyan-400 text-navy-950 flex items-center justify-center shadow-lg shadow-cyan-400/20 hover:scale-105 transition-transform"
           title="Ask HospitAI"
         >
           <Brain className="w-6 h-6" />
@@ -164,7 +164,7 @@ export function AIChatPanel() {
                 className={cn(
                   "max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
                   msg.role === "user"
-                    ? "bg-bastet-gold text-bastet-bg"
+                    ? "bg-cyan-400 text-navy-950"
                     : "bg-bastet-bg border border-bastet-border text-text-primary"
                 )}
               >
@@ -240,7 +240,7 @@ export function AIChatPanel() {
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || loading}
-              className="p-2.5 rounded-lg bg-bastet-gold text-bastet-bg disabled:opacity-30 hover:opacity-90 transition-opacity"
+              className="p-2.5 rounded-lg bg-cyan-400 text-navy-950 disabled:opacity-30 hover:opacity-90 transition-opacity"
             >
               <Send className="w-4 h-4" />
             </button>

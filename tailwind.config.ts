@@ -10,23 +10,38 @@ const config: Config = {
     extend: {
       colors: {
         bastet: {
-          bg: "#0d1117",
-          card: "#12121f",
-          border: "#1e293b",
-          gold: "#c9a84c",
-          "gold-hover": "#d4b85c",
-          "gold-muted": "rgba(201, 168, 76, 0.15)",
+          bg: "#0A0F1C",
+          card: "#0F1729",
+          border: "#1E2D44",
+          gold: "#22D3EE",
+          "gold-hover": "#67E8F9",
+          "gold-muted": "rgba(34, 211, 238, 0.12)",
         },
         text: {
           primary: "#f1f5f9",
-          secondary: "#94a3b8",
-          muted: "#64748b",
+          secondary: "#CBD5E1",
+          muted: "#64748B",
         },
         status: {
-          success: "#22c55e",
-          warning: "#f59e0b",
-          error: "#ef4444",
-          info: "#3b82f6",
+          success: "#34D399",
+          warning: "#FBBF24",
+          error: "#F87171",
+          info: "#22D3EE",
+        },
+        navy: {
+          950: "#0A0F1C",
+          900: "#0F1729",
+          800: "#162033",
+          700: "#1E2D44",
+          600: "#2A3F5F",
+        },
+        cyan: {
+          300: "#67E8F9",
+          400: "#22D3EE",
+          500: "#06B6D4",
+        },
+        emerald: {
+          400: "#34D399",
         },
       },
       fontFamily: {

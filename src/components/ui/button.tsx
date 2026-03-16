@@ -14,7 +14,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-bastet-gold/50 disabled:opacity-50 disabled:cursor-not-allowed",
           {
-            "gold-gradient text-bastet-bg hover:opacity-90":
+            "gold-gradient text-navy-950 font-semibold hover:opacity-90":
               variant === "primary",
             "bg-bastet-card border border-bastet-border text-text-primary hover:bg-bastet-border":
               variant === "secondary",
