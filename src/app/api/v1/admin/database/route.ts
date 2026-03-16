@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    let countQuery = supabase
+    const countQuery = supabase
       .from(table)
       .select("*", { count: "exact", head: true });
     const { count: totalCount } = await countQuery;

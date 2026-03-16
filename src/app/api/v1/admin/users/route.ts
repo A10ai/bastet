@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     // Try to get auth users list (requires service role)
-    let authUsers: Record<string, any> = {};
+    const authUsers: Record<string, unknown> = {};
     try {
       const { data: authData } = await supabase.auth.admin.listUsers();
       if (authData?.users) {

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { AuthProvider } from "@/providers/auth-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
