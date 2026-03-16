@@ -121,6 +121,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" &&
+              !SIDEBAR_NAV.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
               pathname.startsWith(item.href));
 
           return (
