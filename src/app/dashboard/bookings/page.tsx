@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AvailabilityCalendar } from "@/components/bookings/availability-calendar";
 import {
   CalendarDays,
   Plus,
@@ -26,7 +25,6 @@ export default function BookingsPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [showCalendar, setShowCalendar] = useState(false);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -78,13 +76,12 @@ export default function BookingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setShowCalendar(!showCalendar)}
-          >
-            <CalendarDays className="w-4 h-4 mr-2" />
-            {showCalendar ? "Hide Calendar" : "Calendar"}
-          </Button>
+          <Link href="/dashboard/bookings/calendar">
+            <Button variant="secondary">
+              <CalendarDays className="w-4 h-4 mr-2" />
+              Calendar
+            </Button>
+          </Link>
           <Link href="/dashboard/bookings/new">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -93,8 +90,6 @@ export default function BookingsPage() {
           </Link>
         </div>
       </div>
-
-      {showCalendar && <AvailabilityCalendar />}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
