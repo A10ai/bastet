@@ -18,6 +18,7 @@ import {
   Shield,
   Settings,
   Workflow,
+  Zap,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Shield,
   Settings,
   Workflow,
+  Zap,
 };
 
 export function Sidebar() {
