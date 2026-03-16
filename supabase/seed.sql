@@ -121,10 +121,11 @@ FOR v_b IN 1..3 LOOP
     END LOOP;
   END LOOP;
 
-  -- 1-Beds: 25-26 per block = 76 total (floors 1-4, 6 per floor)
+  -- 1-Beds: 26 + 26 + 24 = 76 total (floors 1-4)
+  -- Block A: 7+7+6+6=26, Block B: 7+7+6+6=26, Block C: 7+7+5+5=24
   FOR v_f IN 1..4 LOOP
-    FOR v_u IN 1..6 LOOP
-      IF NOT (v_b = 3 AND v_f = 4 AND v_u > 5) THEN
+    FOR v_u IN 1..7 LOOP
+      IF (v_f <= 2 AND v_u <= 7) OR (v_f >= 3 AND v_b <= 2 AND v_u <= 6) OR (v_f >= 3 AND v_b = 3 AND v_u <= 5) THEN
         v_n := v_n + 1;
         INSERT INTO apartments (property_id, building_id, apartment_type_id, number, floor, view_type, status)
         VALUES (
