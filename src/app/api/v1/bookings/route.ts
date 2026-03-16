@@ -38,9 +38,7 @@ export async function GET(request: NextRequest) {
     if (dateFrom) query = query.gte("check_in", dateFrom);
     if (dateTo) query = query.lte("check_out", dateTo);
     if (search) {
-      query = query.or(
-        `reference.ilike.%${search}%,guest.first_name.ilike.%${search}%,guest.last_name.ilike.%${search}%`
-      );
+      query = query.ilike("reference", `%${search}%`);
     }
 
     const { data, error } = await query;
