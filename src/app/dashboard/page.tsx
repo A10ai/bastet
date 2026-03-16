@@ -82,7 +82,7 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-sm text-text-secondary mt-1">
-          Overview of Bastet Aparthotels — Hurghada
+          HospitAI — Bastet Hurghada
         </p>
       </div>
 

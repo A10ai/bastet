@@ -50,16 +50,15 @@ export function Sidebar() {
       <div className="h-16 flex items-center px-4 border-b border-bastet-border">
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-xl font-display font-bold text-bastet-gold">
-              BASTET
+            <span className="text-xl font-display font-bold text-white">
+              Hospit<span className="text-cyan-400">AI</span>
             </span>
-            <span className="text-xs text-text-muted">PMS</span>
           </Link>
         )}
         {collapsed && (
           <Link href="/dashboard" className="mx-auto">
-            <span className="text-xl font-display font-bold text-bastet-gold">
-              B
+            <span className="text-xl font-display font-bold text-white">
+              H<span className="text-cyan-400">.</span>
             </span>
           </Link>
         )}

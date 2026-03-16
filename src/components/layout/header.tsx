@@ -10,7 +10,7 @@ export function Header() {
     <header className="h-16 bg-bastet-card border-b border-bastet-border flex items-center justify-between px-6">
       <div>
         <h2 className="text-sm text-text-muted">
-          Bastet Aparthotels — Hurghada
+          HospitAI — Bastet Hurghada
         </h2>
       </div>
 

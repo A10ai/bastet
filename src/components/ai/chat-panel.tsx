@@ -31,7 +31,7 @@ export function AIChatPanel() {
     {
       role: "ai",
       content:
-        "I'm your HospitAI assistant. Ask me anything about the property — occupancy, revenue, guests, maintenance, pricing, energy. I pull live data from all systems.",
+        "I'm HospitAI. Ask me anything — occupancy, revenue, guests, maintenance, pricing, energy. Live data from all systems.",
       timestamp: new Date().toISOString(),
     },
   ]);

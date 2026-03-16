@@ -101,11 +101,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-display font-bold text-bastet-gold">
-            BASTET
+          <h1 className="text-3xl font-display font-bold text-white">
+            Hospit<span className="text-cyan-400">AI</span>
           </h1>
           <p className="text-text-secondary mt-1 text-sm">
-            Property Management System
+            The AI operating system for hotels
           </p>
         </div>
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
         </Suspense>
 
         <p className="text-center text-text-muted text-xs mt-6">
-          Bastet Aparthotels Ltd — Hurghada, Egypt
+          HospitAI — Bastet Hurghada
         </p>
       </div>
     </div>
