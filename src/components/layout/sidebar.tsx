@@ -15,6 +15,7 @@ import {
   Palmtree,
   UserCog,
   Settings,
+  Workflow,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Palmtree,
   UserCog,
   Settings,
+  Workflow,
 };
 
 export function Sidebar() {

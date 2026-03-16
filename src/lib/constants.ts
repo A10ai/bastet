@@ -1,6 +1,7 @@
 // Sidebar navigation items
 export const SIDEBAR_NAV = [
   { label: "AI Command Centre", href: "/dashboard/ai", icon: "Brain" },
+  { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Apartments", href: "/dashboard/apartments", icon: "Building2" },
   { label: "Bookings", href: "/dashboard/bookings", icon: "CalendarDays" },
