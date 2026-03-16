@@ -11,6 +11,7 @@ export const SIDEBAR_NAV = [
   { label: "Finance", href: "/dashboard/finance", icon: "Wallet" },
   { label: "Marketplace", href: "/dashboard/marketplace", icon: "Palmtree" },
   { label: "Staff", href: "/dashboard/staff", icon: "UserCog" },
+  { label: "Admin", href: "/dashboard/admin", icon: "Shield" },
   { label: "Settings", href: "/dashboard/settings", icon: "Settings" },
 ] as const;
 

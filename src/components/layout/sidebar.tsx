@@ -14,6 +14,7 @@ import {
   Wallet,
   Palmtree,
   UserCog,
+  Shield,
   Settings,
   Workflow,
   ChevronLeft,
@@ -33,6 +34,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Wallet,
   Palmtree,
   UserCog,
+  Shield,
   Settings,
   Workflow,
 };
