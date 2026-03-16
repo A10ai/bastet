@@ -181,11 +181,11 @@ export default function AICommandCentre() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <Brain className="w-6 h-6 text-bastet-gold" />
-            <h1 className="text-2xl font-display font-bold text-text-primary">
+            <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               AI Command Centre
             </h1>
           </div>
@@ -193,7 +193,7 @@ export default function AICommandCentre() {
             Real-time intelligence across all property systems
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bastet-gold-muted border border-bastet-gold/20">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bastet-gold-muted border border-bastet-gold/20 self-start">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-xs font-medium text-bastet-gold">
             Live analysis
@@ -335,22 +335,23 @@ export default function AICommandCentre() {
             <span className="text-xs text-text-muted">Next 7 days</span>
           </CardHeader>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Type
                   </th>
-                  <th className="text-right text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-right text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Current
                   </th>
-                  <th className="text-right text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-right text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     AI Suggested
                   </th>
-                  <th className="text-right text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-right text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Change
                   </th>
-                  <th className="text-right text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-right text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Confidence
                   </th>
                 </tr>
@@ -361,16 +362,16 @@ export default function AICommandCentre() {
                     key={rec.apartment_type}
                     className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
                   >
-                    <td className="px-6 py-3 text-sm text-text-primary font-medium">
+                    <td className="px-4 md:px-6 py-3 text-sm text-text-primary font-medium">
                       {rec.apartment_type}
                     </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary text-right">
+                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-text-secondary text-right">
                       {formatCurrency(rec.current_rate)}
                     </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-primary text-right font-bold">
+                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-text-primary text-right font-bold">
                       {formatCurrency(rec.recommended_rate)}
                     </td>
-                    <td className="px-6 py-3 text-right">
+                    <td className="px-4 md:px-6 py-3 text-right">
                       <span
                         className={cn(
                           "inline-flex items-center gap-0.5 text-xs font-mono font-bold",
@@ -390,7 +391,7 @@ export default function AICommandCentre() {
                         {rec.change_percent}%
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-right">
+                    <td className="px-4 md:px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-12 h-1.5 bg-bastet-bg rounded-full overflow-hidden">
                           <div
@@ -407,8 +408,9 @@ export default function AICommandCentre() {
                 ))}
               </tbody>
             </table>
+            </div>
             {data.pricing_recommendations.length > 0 && (
-              <div className="px-6 py-3 border-t border-bastet-border">
+              <div className="px-4 md:px-6 py-3 border-t border-bastet-border">
                 <p className="text-xs text-text-muted italic">
                   {data.pricing_recommendations[0].reason}
                 </p>
@@ -431,7 +433,7 @@ export default function AICommandCentre() {
         </CardHeader>
         <CardContent>
           <OccupancyChart forecast={data.occupancy_forecast} />
-          <div className="flex items-center gap-6 mt-4 pt-4 border-t border-bastet-border">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-4 pt-4 border-t border-bastet-border">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-emerald-400/80" />
               <span className="text-xs text-text-muted">&gt;85% High</span>

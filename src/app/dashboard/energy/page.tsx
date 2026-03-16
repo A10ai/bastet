@@ -123,7 +123,7 @@ function BuildingBarChart({ buildings }: { buildings: BuildingEnergy[] }) {
 
         return (
           <div key={building.building_id} className="group">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1.5 gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-text-primary bg-bastet-bg px-2 py-0.5 rounded">
                   {building.building_code}
@@ -186,7 +186,7 @@ function BuildingBarChart({ buildings }: { buildings: BuildingEnergy[] }) {
       })}
 
       {/* Legend */}
-      <div className="flex items-center gap-5 pt-2 border-t border-bastet-border">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 pt-2 border-t border-bastet-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-cyan-400/70" />
           <span className="text-[10px] text-text-muted">Occupied</span>
@@ -331,7 +331,7 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-bastet-border">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 mt-4 pt-3 border-t border-bastet-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-cyan-400/60" />
           <span className="text-[10px] text-text-muted">Occupied</span>
@@ -865,7 +865,7 @@ export default function EnergyDashboard() {
               24-Hour Consumption Pattern
             </h3>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-1.5 rounded bg-cyan-400/60" />
               <span className="text-[10px] text-text-muted">

@@ -1,9 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { AuthProvider } from "@/providers/auth-provider";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { AIChatPanel } from "@/components/ai/chat-panel";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 
 export default function DashboardLayout({
   children,
@@ -12,14 +10,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen bg-bastet-bg">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">{children}</main>
-        </div>
-        <AIChatPanel />
-      </div>
+      <DashboardShell>{children}</DashboardShell>
     </AuthProvider>
   );
 }

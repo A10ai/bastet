@@ -738,7 +738,7 @@ export default function RevenueCopilotPage() {
       </div>
 
       {/* A. Revenue Stats (5 cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           label="Total Revenue"
           value={formatCurrency(overview.total_revenue_gbp)}
@@ -1027,7 +1027,7 @@ export default function RevenueCopilotPage() {
               <Calendar className="w-5 h-5 text-emerald-400" />
               <h2 className="text-lg font-semibold text-text-primary">30-Day Revenue Forecast</h2>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="text-text-muted">Confirmed:</span>
                 <span className="text-cyan-400 font-medium">
@@ -1046,7 +1046,7 @@ export default function RevenueCopilotPage() {
         <CardContent className="space-y-4">
           <ForecastChart forecast={revenue_forecast} />
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-bastet-bg rounded-lg p-3 text-center">
               <p className="text-xs text-text-muted">Conservative</p>
               <p className="text-lg font-bold text-text-secondary">

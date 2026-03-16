@@ -48,6 +48,18 @@ export function AIChatPanel() {
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // Prevent body scroll when chat is open on mobile
+  useEffect(() => {
+    if (open && window.innerWidth < 768) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   const sendMessage = async (text?: string) => {
     const msg = text || input.trim();
     if (!msg || loading) return;
@@ -109,17 +121,22 @@ export function AIChatPanel() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-cyan-400 text-navy-950 flex items-center justify-center shadow-lg shadow-cyan-400/20 hover:scale-105 transition-transform"
+          className="fixed bottom-4 right-4 z-50 w-12 h-12 md:bottom-6 md:right-6 md:w-14 md:h-14 rounded-full bg-cyan-400 text-navy-950 flex items-center justify-center shadow-lg shadow-cyan-400/20 hover:scale-105 transition-transform"
           title="Ask HospitAI"
+          data-chat-button
         >
-          <Brain className="w-6 h-6" />
+          <Brain className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       )}
 
       {/* Chat panel */}
       <div
         className={cn(
-          "fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[600px] sm:h-[640px] sm:bottom-6 sm:right-6 sm:rounded-xl flex flex-col bg-bastet-card border border-bastet-border shadow-2xl transition-all duration-300",
+          "fixed z-50 flex flex-col bg-bastet-card border border-bastet-border shadow-2xl transition-all duration-300",
+          // Mobile: full-screen overlay
+          "inset-0 md:inset-auto",
+          // Desktop: positioned bottom-right with fixed size
+          "md:bottom-6 md:right-6 md:w-[420px] md:h-[640px] md:rounded-xl",
           open
             ? "translate-y-0 opacity-100 pointer-events-auto"
             : "translate-y-8 opacity-0 pointer-events-none"
@@ -139,9 +156,10 @@ export function AIChatPanel() {
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="p-1 text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 md:p-1 text-text-muted hover:text-text-primary transition-colors rounded-lg hover:bg-bastet-bg"
+            aria-label="Close chat"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 md:w-4 md:h-4" />
           </button>
         </div>
 
@@ -225,7 +243,7 @@ export function AIChatPanel() {
         )}
 
         {/* Input */}
-        <div className="px-4 py-3 border-t border-bastet-border">
+        <div className="px-4 py-3 border-t border-bastet-border pb-safe">
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}

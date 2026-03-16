@@ -233,7 +233,7 @@ function ExecutiveView({ data }: { data: any }) {
   return (
     <div className="space-y-6">
       {/* Key metrics grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {metrics.map((m) => (
           <Card key={m.label} className="report-card">
             <CardContent className="py-5">

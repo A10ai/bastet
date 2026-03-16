@@ -143,22 +143,23 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Reference
                   </th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Guest
                   </th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Apt
                   </th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Nights
                   </th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">
+                  <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Status
                   </th>
                 </tr>
@@ -169,36 +170,37 @@ export default function DashboardPage() {
                     key={booking.id}
                     className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
                   >
-                    <td className="px-6 py-3 text-sm font-mono text-bastet-gold">
+                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-bastet-gold">
                       <Link href={`/dashboard/bookings/${booking.id}`} className="hover:underline">
                         {booking.reference}
                       </Link>
                     </td>
-                    <td className="px-6 py-3 text-sm text-text-primary">
+                    <td className="px-4 md:px-6 py-3 text-sm text-text-primary">
                       {booking.guest
                         ? `${booking.guest.first_name} ${booking.guest.last_name}`
                         : "—"}
                     </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary">
+                    <td className="px-4 md:px-6 py-3 text-sm text-text-secondary">
                       {booking.apartment?.number || "—"}
                     </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
+                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-text-secondary">
                       {booking.nights}
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="px-4 md:px-6 py-3">
                       <Badge status={booking.status} variant="status" />
                     </td>
                   </tr>
                 ))}
                 {stats.recent_bookings.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-text-muted">
+                    <td colSpan={5} className="px-4 md:px-6 py-8 text-center text-sm text-text-muted">
                       No recent bookings
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </div>
           </CardContent>
         </Card>
 
@@ -213,7 +215,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-secondary">Clean</span>
               <div className="flex items-center gap-2">
-                <div className="w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
+                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
                   <div
                     className="h-full bg-status-success rounded-full"
                     style={{
@@ -229,7 +231,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-secondary">To Clean</span>
               <div className="flex items-center gap-2">
-                <div className="w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
+                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
                   <div
                     className="h-full bg-status-warning rounded-full"
                     style={{
@@ -245,7 +247,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-secondary">In Progress</span>
               <div className="flex items-center gap-2">
-                <div className="w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
+                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
                   <div
                     className="h-full bg-bastet-gold rounded-full"
                     style={{
