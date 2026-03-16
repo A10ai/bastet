@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   Brain,
   LayoutDashboard,
   Building2,
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Activity,
   Brain,
   LayoutDashboard,
   Building2,

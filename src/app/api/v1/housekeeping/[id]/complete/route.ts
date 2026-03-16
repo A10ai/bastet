@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { emitEvent } from "@/lib/event-bus";
 
 export async function POST(
   request: NextRequest,
@@ -45,6 +46,12 @@ export async function POST(
       .from("apartments")
       .update({ status: "available" })
       .eq("id", task.apartment_id);
+
+    // Emit event bus event
+    await emitEvent("housekeeping.completed", "housekeeping", {
+      task_id: params.id,
+      apartment_id: task.apartment_id,
+    }, supabase);
 
     return NextResponse.json({ data });
   } catch {

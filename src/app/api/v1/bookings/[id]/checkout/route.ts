@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { POINTS_PER_GBP_ROOM } from "@/lib/constants";
+import { emitEvent } from "@/lib/event-bus";
 
 export async function POST(
   request: NextRequest,
@@ -99,6 +100,13 @@ export async function POST(
         });
       }
     }
+
+    // 6. Emit event bus event
+    await emitEvent("booking.checked_out", "bookings", {
+      booking_id: booking.id,
+      apartment_id: booking.apartment_id,
+      guest_id: booking.guest_id,
+    }, supabase);
 
     return NextResponse.json({ data: updated });
   } catch {

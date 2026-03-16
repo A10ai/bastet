@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { emitEvent } from "@/lib/event-bus";
 
 export async function GET(request: NextRequest) {
   try {
@@ -111,6 +112,17 @@ export async function POST(request: NextRequest) {
         .from("apartments")
         .update({ status: "maintenance" })
         .eq("id", apartment_id);
+    }
+
+    // Emit event bus event
+    if (data) {
+      await emitEvent("maintenance.created", "maintenance", {
+        maintenance_id: data.id,
+        apartment_id: apartment_id || null,
+        category,
+        priority,
+        title,
+      }, supabase);
     }
 
     return NextResponse.json({ data }, { status: 201 });
