@@ -1,0 +1,1010 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { toCSV, formatReportData } from "@/lib/export-utils";
+import {
+  FileBarChart,
+  Download,
+  Printer,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle2,
+  Building2,
+  Users,
+  Wrench,
+  Sparkles,
+  DollarSign,
+  BarChart3,
+  PieChart,
+} from "lucide-react";
+
+// ─── Types ───────────────────────────────────────────────────────────
+
+type ReportType = "executive" | "occupancy" | "revenue" | "guests" | "operations" | "financial";
+
+const REPORT_LABELS: Record<ReportType, string> = {
+  executive: "Executive Summary",
+  occupancy: "Occupancy",
+  revenue: "Revenue",
+  guests: "Guests",
+  operations: "Operations",
+  financial: "Financial",
+};
+
+// ─── Component ───────────────────────────────────────────────────────
+
+export default function ReportsPage() {
+  const [reportType, setReportType] = useState<ReportType>("executive");
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/reports?type=${reportType}&from=${dateFrom}&to=${dateTo}`
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to fetch report");
+      }
+      const json = await res.json();
+      setData(json.data);
+    } catch (e: any) {
+      setError(e.message);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [reportType, dateFrom, dateTo]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
+
+  const handleExportCSV = () => {
+    if (!data) return;
+    const rows = formatReportData(reportType, data);
+    if (rows.length === 0) return;
+    toCSV(rows, `${reportType}-report-${dateFrom}-to-${dateTo}`);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <>
+      {/* Print styles */}
+      <style jsx global>{`
+        @media print {
+          body { background: white !important; color: #111 !important; }
+          .no-print, nav, aside, header, [data-chat-button] { display: none !important; }
+          .print-header { display: block !important; }
+          .report-card { background: white !important; border: 1px solid #ddd !important; color: #111 !important; break-inside: avoid; }
+          .report-card * { color: #111 !important; }
+          .report-section { break-before: auto; break-inside: avoid; }
+          .css-bar-fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          table { border-collapse: collapse; }
+          th, td { border: 1px solid #ccc; padding: 6px 10px; }
+          th { background: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+      `}</style>
+
+      {/* Print header (hidden on screen) */}
+      <div className="print-header hidden">
+        <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 4 }}>
+          HospitAI — {REPORT_LABELS[reportType]} — {dateFrom} to {dateTo}
+        </h1>
+        <hr style={{ marginBottom: 16 }} />
+      </div>
+
+      <div className="space-y-6">
+        {/* Page header */}
+        <div className="no-print">
+          <h1 className="text-2xl font-display font-bold text-text-primary">Reports</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Generate professional reports for investors, operations, and management
+          </p>
+        </div>
+
+        {/* Report Builder Header */}
+        <Card className="no-print">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-end gap-4">
+              {/* Date range */}
+              <div>
+                <label className="block text-xs text-text-muted mb-1">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-text-muted mb-1">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                />
+              </div>
+
+              {/* Report type tabs */}
+              <div className="flex-1">
+                <label className="block text-xs text-text-muted mb-1">Report Type</label>
+                <div className="flex flex-wrap gap-1">
+                  {(Object.keys(REPORT_LABELS) as ReportType[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setReportType(t)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        reportType === t
+                          ? "bg-bastet-gold/20 text-cyan-400 border border-cyan-400/30"
+                          : "bg-bastet-bg border border-bastet-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {REPORT_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button onClick={fetchReport} disabled={loading}>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileBarChart className="w-4 h-4 mr-1" />}
+                  Generate
+                </Button>
+                <Button variant="secondary" onClick={handleExportCSV} disabled={!data}>
+                  <Download className="w-4 h-4 mr-1" />
+                  CSV
+                </Button>
+                <Button variant="secondary" onClick={handlePrint} disabled={!data}>
+                  <Printer className="w-4 h-4 mr-1" />
+                  Print
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !loading && (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <AlertTriangle className="w-8 h-8 text-status-error mx-auto mb-2" />
+              <p className="text-sm text-status-error">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Report content */}
+        {!loading && !error && data && (
+          <>
+            {reportType === "executive" && <ExecutiveView data={data} />}
+            {reportType === "occupancy" && <OccupancyView data={data} />}
+            {reportType === "revenue" && <RevenueView data={data} />}
+            {reportType === "guests" && <GuestView data={data} />}
+            {reportType === "operations" && <OperationsView data={data} />}
+            {reportType === "financial" && <FinancialView data={data} />}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Executive Summary View ──────────────────────────────────────────
+
+function ExecutiveView({ data }: { data: any }) {
+  const metrics = [
+    { label: "Occupancy", value: `${data.occupancy_pct}%`, icon: Building2, color: "text-cyan-400" },
+    { label: "Revenue", value: formatCurrency(data.revenue), icon: DollarSign, color: "text-emerald-400" },
+    { label: "ADR", value: formatCurrency(data.adr), icon: TrendingUp, color: "text-cyan-300" },
+    { label: "RevPAR", value: formatCurrency(data.revpar), icon: BarChart3, color: "text-cyan-400" },
+    { label: "Profit Margin", value: `${data.profit_margin}%`, icon: PieChart, color: "text-emerald-400" },
+    { label: "Guest Satisfaction", value: data.guest_satisfaction > 0 ? `${data.guest_satisfaction}/5` : "N/A", icon: Users, color: "text-cyan-300" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Key metrics grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {metrics.map((m) => (
+          <Card key={m.label} className="report-card">
+            <CardContent className="py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-bastet-bg flex items-center justify-center">
+                  <m.icon className={`w-5 h-5 ${m.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted">{m.label}</p>
+                  <p className="text-lg font-semibold font-mono text-text-primary">{m.value}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Highlights & Concerns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="report-card report-section">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-semibold text-text-primary">Highlights</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {(data.highlights || []).map((h: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                  <TrendingUp className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <span>{h}</span>
+                </li>
+              ))}
+              {(!data.highlights || data.highlights.length === 0) && (
+                <li className="text-sm text-text-muted">No highlights for this period</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className="report-card report-section">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-status-warning" />
+              <h3 className="text-lg font-semibold text-text-primary">Concerns</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {(data.concerns || []).map((c: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                  <AlertTriangle className="w-4 h-4 text-status-warning mt-0.5 flex-shrink-0" />
+                  <span>{c}</span>
+                </li>
+              ))}
+              {(!data.concerns || data.concerns.length === 0) && (
+                <li className="text-sm text-text-muted">No concerns flagged</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Occupancy View ──────────────────────────────────────────────────
+
+function OccupancyView({ data }: { data: any }) {
+  const maxOcc = Math.max(...(data.daily || []).map((d: any) => d.occupancy), 1);
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Average Occupancy" value={`${data.average_occupancy}%`} />
+        <MetricCard label="Peak Day" value={data.peak_day ? `${data.peak_day.occupancy}%` : "N/A"} sub={data.peak_day?.date} />
+        <MetricCard label="Low Day" value={data.low_day ? `${data.low_day.occupancy}%` : "N/A"} sub={data.low_day?.date} />
+        <MetricCard
+          label="vs Previous Period"
+          value={`${data.change_pct > 0 ? "+" : ""}${data.change_pct}%`}
+          positive={data.change_pct >= 0}
+        />
+      </div>
+
+      {/* Daily bar chart */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Daily Occupancy</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+            {(data.daily || []).map((d: any) => (
+              <div key={d.date} className="flex items-center gap-3 text-xs">
+                <span className="w-20 text-text-muted font-mono flex-shrink-0">
+                  {formatDate(d.date, "dd MMM")}
+                </span>
+                <div className="flex-1 h-5 bg-bastet-bg rounded overflow-hidden">
+                  <div
+                    className="css-bar-fill h-full rounded bg-cyan-400/80 transition-all"
+                    style={{ width: `${Math.max((d.occupancy / maxOcc) * 100, 1)}%` }}
+                  />
+                </div>
+                <span className="w-12 text-right text-text-secondary font-mono">{d.occupancy}%</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* By building */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">By Building</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Building", "Occupancy", "Occupied Days", "Total Days"]}
+              rows={(data.by_building || []).map((b: any) => [
+                b.building_name,
+                `${b.occupancy}%`,
+                String(b.occupied),
+                String(b.total),
+              ])}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">By Apartment Type</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Type", "Occupancy", "Occupied Days", "Total Days"]}
+              rows={(data.by_apartment_type || []).map((t: any) => [
+                t.type_name,
+                `${t.occupancy}%`,
+                String(t.occupied),
+                String(t.total),
+              ])}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Revenue View ────────────────────────────────────────────────────
+
+function RevenueView({ data }: { data: any }) {
+  const maxRev = Math.max(...(data.daily || []).map((d: any) => d.revenue), 1);
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Total Revenue" value={formatCurrency(data.total_revenue)} />
+        <MetricCard label="ADR" value={formatCurrency(data.adr)} />
+        <MetricCard label="RevPAR" value={formatCurrency(data.revpar)} />
+        <MetricCard
+          label="vs Previous Period"
+          value={`${data.change_pct > 0 ? "+" : ""}${data.change_pct}%`}
+          positive={data.change_pct >= 0}
+        />
+      </div>
+
+      {/* Channel breakdown */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Revenue by Channel</h3>
+        </CardHeader>
+        <CardContent>
+          <ReportTable
+            headers={["Channel", "Revenue", "Commission", "Net Revenue", "Bookings"]}
+            rows={(data.by_channel || []).map((c: any) => [
+              c.channel,
+              formatCurrency(c.revenue),
+              formatCurrency(c.commission),
+              formatCurrency(c.net_revenue),
+              String(c.bookings),
+            ])}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Daily revenue chart */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Daily Revenue</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+            {(data.daily || []).map((d: any) => (
+              <div key={d.date} className="flex items-center gap-3 text-xs">
+                <span className="w-20 text-text-muted font-mono flex-shrink-0">
+                  {formatDate(d.date, "dd MMM")}
+                </span>
+                <div className="flex-1 h-5 bg-bastet-bg rounded overflow-hidden">
+                  <div
+                    className="css-bar-fill h-full rounded bg-emerald-400/80 transition-all"
+                    style={{ width: `${Math.max((d.revenue / maxRev) * 100, 1)}%` }}
+                  />
+                </div>
+                <span className="w-20 text-right text-text-secondary font-mono">
+                  {formatCurrency(d.revenue)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top bookings */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Top Bookings by Value</h3>
+        </CardHeader>
+        <CardContent>
+          <ReportTable
+            headers={["Ref", "Guest", "Apartment", "Nights", "Amount"]}
+            rows={(data.top_bookings || []).map((b: any) => [
+              b.ref,
+              b.guest_name,
+              b.apartment,
+              String(b.nights),
+              formatCurrency(b.amount),
+            ])}
+          />
+        </CardContent>
+      </Card>
+
+      {/* By apartment type */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Revenue by Apartment Type</h3>
+        </CardHeader>
+        <CardContent>
+          <ReportTable
+            headers={["Type", "Revenue", "Bookings"]}
+            rows={(data.by_apartment_type || []).map((t: any) => [
+              t.type_name,
+              formatCurrency(t.revenue),
+              String(t.bookings),
+            ])}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Guest View ──────────────────────────────────────────────────────
+
+function GuestView({ data }: { data: any }) {
+  const total = data.total_guests || 1;
+  const newPct = Math.round(((data.new_guests || 0) / total) * 100);
+  const retPct = 100 - newPct;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Total Guests" value={String(data.total_guests || 0)} />
+        <MetricCard label="New Guests" value={String(data.new_guests || 0)} />
+        <MetricCard label="Returning Guests" value={String(data.returning_guests || 0)} />
+        <MetricCard label="Avg Spend / Guest" value={formatCurrency(data.average_spend || 0)} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* New vs Returning - CSS circle */}
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">New vs Returning</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center gap-8 py-4">
+              <div className="relative w-32 h-32">
+                <svg viewBox="0 0 36 36" className="w-32 h-32 transform -rotate-90">
+                  <circle
+                    cx="18" cy="18" r="14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-bastet-border"
+                  />
+                  <circle
+                    cx="18" cy="18" r="14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeDasharray={`${newPct * 0.88} ${88 - newPct * 0.88}`}
+                    className="text-cyan-400"
+                  />
+                  <circle
+                    cx="18" cy="18" r="14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeDasharray={`${retPct * 0.88} ${88 - retPct * 0.88}`}
+                    strokeDashoffset={`-${newPct * 0.88}`}
+                    className="text-emerald-400"
+                  />
+                </svg>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-cyan-400" />
+                  <span className="text-sm text-text-secondary">New: {data.new_guests} ({newPct}%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                  <span className="text-sm text-text-secondary">Returning: {data.returning_guests} ({retPct}%)</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Nationality breakdown */}
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Guests by Nationality</h3>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const maxCount = Math.max(...(data.by_nationality || []).map((n: any) => n.count), 1);
+              return (
+                <div className="space-y-2">
+                  {(data.by_nationality || []).map((n: any) => (
+                    <div key={n.nationality} className="flex items-center gap-3 text-xs">
+                      <span className="w-24 text-text-secondary truncate">{n.nationality}</span>
+                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
+                        <div
+                          className="css-bar-fill h-full rounded bg-cyan-400/70"
+                          style={{ width: `${(n.count / maxCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-right text-text-muted font-mono">{n.count}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Loyalty tier distribution */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Loyalty Tier Distribution</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 flex-wrap">
+            {(data.by_loyalty_tier || []).map((t: any) => {
+              const tierColors: Record<string, string> = {
+                bronze: "bg-amber-700/20 text-amber-500 border-amber-700/30",
+                silver: "bg-gray-400/20 text-gray-300 border-gray-400/30",
+                gold: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+                platinum: "bg-cyan-400/20 text-cyan-300 border-cyan-400/30",
+              };
+              return (
+                <div
+                  key={t.tier}
+                  className={`px-4 py-3 rounded-lg border ${tierColors[t.tier] || "bg-bastet-bg border-bastet-border text-text-secondary"}`}
+                >
+                  <p className="text-xs font-medium capitalize">{t.tier}</p>
+                  <p className="text-xl font-semibold font-mono">{t.count}</p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* VIP guests */}
+      {(data.vip_guests || []).length > 0 && (
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">VIP Guests</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Name", "Email", "Tier", "Total Spend", "Stays"]}
+              rows={(data.vip_guests || []).map((g: any) => [
+                g.name,
+                g.email,
+                g.tier,
+                formatCurrency(g.total_spend),
+                String(g.stays),
+              ])}
+            />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Operations View ─────────────────────────────────────────────────
+
+function OperationsView({ data }: { data: any }) {
+  const hk = data.housekeeping || {};
+  const mx = data.maintenance || {};
+
+  return (
+    <div className="space-y-6">
+      {/* Housekeeping section */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-text-primary">Housekeeping</h3>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-text-primary">{hk.total_tasks || 0}</p>
+              <p className="text-xs text-text-muted">Total Tasks</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-status-success">{hk.completed || 0}</p>
+              <p className="text-xs text-text-muted">Completed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-cyan-400">{hk.avg_completion_minutes || 0}m</p>
+              <p className="text-xs text-text-muted">Avg Completion</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* By status */}
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">By Status</p>
+              <div className="space-y-1.5">
+                {(hk.by_status || []).map((s: any) => (
+                  <div key={s.status} className="flex items-center justify-between text-xs">
+                    <Badge status={s.status} variant="status">{s.status}</Badge>
+                    <span className="font-mono text-text-secondary">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* By type */}
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">By Type</p>
+              {(() => {
+                const maxC = Math.max(...(hk.by_type || []).map((t: any) => t.count), 1);
+                return (
+                  <div className="space-y-1.5">
+                    {(hk.by_type || []).map((t: any) => (
+                      <div key={t.type} className="flex items-center gap-2 text-xs">
+                        <span className="w-28 text-text-secondary capitalize truncate">{t.type.replace(/_/g, " ")}</span>
+                        <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
+                          <div
+                            className="css-bar-fill h-full rounded bg-cyan-400/70"
+                            style={{ width: `${(t.count / maxC) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-6 text-right font-mono text-text-muted">{t.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Maintenance section */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-status-warning" />
+            <h3 className="text-lg font-semibold text-text-primary">Maintenance</h3>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-text-primary">{mx.opened || 0}</p>
+              <p className="text-xs text-text-muted">Opened</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-status-success">{mx.resolved || 0}</p>
+              <p className="text-xs text-text-muted">Resolved</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-cyan-400">{mx.avg_resolution_hours || 0}h</p>
+              <p className="text-xs text-text-muted">Avg Resolution</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-semibold font-mono text-status-warning">{formatCurrency(mx.total_cost || 0)}</p>
+              <p className="text-xs text-text-muted">Total Cost</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* By category */}
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">By Category</p>
+              {(() => {
+                const maxC = Math.max(...(mx.by_category || []).map((c: any) => c.count), 1);
+                return (
+                  <div className="space-y-1.5">
+                    {(mx.by_category || []).map((c: any) => (
+                      <div key={c.category} className="flex items-center gap-2 text-xs">
+                        <span className="w-24 text-text-secondary capitalize truncate">{c.category.replace(/_/g, " ")}</span>
+                        <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
+                          <div
+                            className="css-bar-fill h-full rounded bg-status-warning/70"
+                            style={{ width: `${(c.count / maxC) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-6 text-right font-mono text-text-muted">{c.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+            {/* By priority */}
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">By Priority</p>
+              <div className="space-y-1.5">
+                {(mx.by_priority || []).map((p: any) => (
+                  <div key={p.priority} className="flex items-center justify-between text-xs">
+                    <Badge status={p.priority} variant="status">{p.priority}</Badge>
+                    <span className="font-mono text-text-secondary">{p.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Staff workload */}
+      {(data.staff_workload || []).length > 0 && (
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Staff Workload</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Staff", "Role", "Assigned", "Completed"]}
+              rows={(data.staff_workload || []).map((s: any) => [
+                s.staff_name,
+                s.role,
+                String(s.tasks_assigned),
+                String(s.tasks_completed),
+              ])}
+            />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Financial View ──────────────────────────────────────────────────
+
+function FinancialView({ data }: { data: any }) {
+  return (
+    <div className="space-y-6">
+      {/* P&L Style */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <h3 className="text-lg font-semibold text-text-primary">Profit & Loss</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-bastet-border">
+              <span className="text-sm font-medium text-text-primary">Total Revenue</span>
+              <span className="text-sm font-mono font-semibold text-status-success">
+                {formatCurrency(data.total_revenue)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-bastet-border">
+              <span className="text-sm font-medium text-text-primary">Total Expenses</span>
+              <span className="text-sm font-mono font-semibold text-status-error">
+                ({formatCurrency(data.total_expenses)})
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b-2 border-bastet-border">
+              <span className="text-base font-semibold text-text-primary">Gross Profit</span>
+              <span className={`text-base font-mono font-bold ${data.gross_profit >= 0 ? "text-status-success" : "text-status-error"}`}>
+                {formatCurrency(data.gross_profit)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-text-secondary">Profit Margin</span>
+              <span className={`text-sm font-mono font-semibold ${data.profit_margin >= 30 ? "text-status-success" : data.profit_margin >= 15 ? "text-status-warning" : "text-status-error"}`}>
+                {data.profit_margin}%
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue breakdown */}
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Revenue Breakdown</h3>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const maxAmt = Math.max(...(data.revenue_breakdown || []).map((r: any) => r.amount), 1);
+              return (
+                <div className="space-y-2">
+                  {(data.revenue_breakdown || []).map((r: any) => (
+                    <div key={r.source} className="flex items-center gap-2 text-xs">
+                      <span className="w-28 text-text-secondary capitalize truncate">{r.source}</span>
+                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
+                        <div
+                          className="css-bar-fill h-full rounded bg-emerald-400/70"
+                          style={{ width: `${(r.amount / maxAmt) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-20 text-right font-mono text-text-secondary">{formatCurrency(r.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* Expense breakdown */}
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Expense Breakdown</h3>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const maxAmt = Math.max(...(data.expense_breakdown || []).map((e: any) => e.amount), 1);
+              return (
+                <div className="space-y-2">
+                  {(data.expense_breakdown || []).map((e: any) => (
+                    <div key={e.category} className="flex items-center gap-2 text-xs">
+                      <span className="w-28 text-text-secondary capitalize truncate">{e.category.replace(/_/g, " ")}</span>
+                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
+                        <div
+                          className="css-bar-fill h-full rounded bg-status-error/60"
+                          style={{ width: `${(e.amount / maxAmt) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-20 text-right font-mono text-text-secondary">{formatCurrency(e.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Outstanding invoices & Cash flow */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Outstanding Invoices</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-3xl font-semibold font-mono text-status-warning">
+                  {data.outstanding_invoices?.count || 0}
+                </p>
+                <p className="text-xs text-text-muted">Invoices</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-semibold font-mono text-status-warning">
+                  {formatCurrency(data.outstanding_invoices?.value || 0)}
+                </p>
+                <p className="text-xs text-text-muted">Total Value</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Cash Flow</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Payments Received</span>
+                <span className="font-mono text-status-success">
+                  {formatCurrency(data.cash_flow?.payments_received || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-text-secondary">Expenses Paid</span>
+                <span className="font-mono text-status-error">
+                  ({formatCurrency(data.cash_flow?.expenses_paid || 0)})
+                </span>
+              </div>
+              <div className="flex justify-between text-sm pt-2 border-t border-bastet-border">
+                <span className="font-medium text-text-primary">Net Cash Flow</span>
+                <span className={`font-mono font-semibold ${(data.cash_flow?.net || 0) >= 0 ? "text-status-success" : "text-status-error"}`}>
+                  {formatCurrency(data.cash_flow?.net || 0)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared Sub-components ───────────────────────────────────────────
+
+function MetricCard({ label, value, sub, positive }: { label: string; value: string; sub?: string; positive?: boolean }) {
+  return (
+    <Card className="report-card">
+      <CardContent className="py-4">
+        <p className="text-xs text-text-muted">{label}</p>
+        <p className={`text-lg font-semibold font-mono ${
+          positive === true ? "text-status-success" : positive === false ? "text-status-error" : "text-text-primary"
+        }`}>
+          {value}
+        </p>
+        {sub && <p className="text-xs text-text-muted mt-0.5">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReportTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-text-muted py-4 text-center">No data available</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-bastet-border">
+            {headers.map((h) => (
+              <th key={h} className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wider">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr
+              key={i}
+              className={`border-b border-bastet-border/50 ${i % 2 === 1 ? "bg-bastet-bg/30" : ""}`}
+            >
+              {row.map((cell, j) => (
+                <td key={j} className="py-2 px-3 text-text-secondary">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
