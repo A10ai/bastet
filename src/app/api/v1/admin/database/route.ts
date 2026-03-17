@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 
 const ALLOWED_TABLES = [
   "properties",
@@ -49,6 +50,9 @@ const ALLOWED_TABLES = [
 ];
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
@@ -147,6 +151,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
@@ -184,6 +191,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
@@ -223,6 +233,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createServerSupabaseClient();
     const { searchParams } = request.nextUrl;

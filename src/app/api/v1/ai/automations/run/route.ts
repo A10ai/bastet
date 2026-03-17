@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { runAllAutomations, getAutomations } from "@/lib/automations-engine";
+import { requireAuth } from "@/lib/api-auth";
 
 /**
  * POST /api/v1/ai/automations/run
  * Executes all enabled automations against live Supabase data.
  * Returns per-automation results and updated automation metadata.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createServerSupabaseClient();
     const runResults = await runAllAutomations(supabase);
