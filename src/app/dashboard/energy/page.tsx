@@ -23,6 +23,8 @@ import type {
   EnergyRecommendation,
 } from "@/lib/energy-engine";
 
+const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -30,6 +32,7 @@ import type {
 interface EnergyData {
   overview: EnergyOverview;
   by_building: BuildingEnergy[];
+  by_floor: BuildingEnergy[];
   heatmap: HeatmapCell[];
   timeline: TimelinePoint[];
   recommendations: EnergyRecommendation[];
@@ -92,20 +95,20 @@ function StatCard({
 // Building Bar Chart (pure CSS)
 // ---------------------------------------------------------------------------
 
-function BuildingBarChart({ buildings }: { buildings: BuildingEnergy[] }) {
-  if (buildings.length === 0) {
+function FloorBarChart({ floors }: { floors: BuildingEnergy[] }) {
+  if (floors.length === 0) {
     return (
       <p className="text-sm text-text-muted py-8 text-center">
-        No building data available
+        No floor data available
       </p>
     );
   }
 
-  const maxConsumption = Math.max(...buildings.map((b) => b.consumption_kwh), 1);
+  const maxConsumption = Math.max(...floors.map((b) => b.consumption_kwh), 1);
 
   return (
     <div className="space-y-4">
-      {buildings.map((building) => {
+      {floors.map((building) => {
         const occupiedWidth =
           ((building.occupied_units * 18) / maxConsumption) * 100;
         const wasteWidth = (building.waste_kwh / maxConsumption) * 100;
@@ -122,13 +125,10 @@ function BuildingBarChart({ buildings }: { buildings: BuildingEnergy[] }) {
         );
 
         return (
-          <div key={building.building_id} className="group">
+          <div key={building.building_code} className="group">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1.5 gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-text-primary bg-bastet-bg px-2 py-0.5 rounded">
-                  {building.building_code}
-                </span>
-                <span className="text-sm text-text-secondary">
                   {building.building_name}
                 </span>
                 <span className="text-xs text-text-muted">
@@ -223,25 +223,15 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
     );
   }
 
-  // Group by building then floor
-  const buildingGroups = new Map<
-    string,
-    { code: string; name: string; floors: Map<number, HeatmapCell[]> }
-  >();
+  // Group by floor
+  const floorGroups = new Map<number, HeatmapCell[]>();
 
   for (const cell of cells) {
-    if (!buildingGroups.has(cell.building_id)) {
-      buildingGroups.set(cell.building_id, {
-        code: cell.building_code,
-        name: cell.building_name,
-        floors: new Map(),
-      });
+    const f = cell.floor ?? 0;
+    if (!floorGroups.has(f)) {
+      floorGroups.set(f, []);
     }
-    const group = buildingGroups.get(cell.building_id)!;
-    if (!group.floors.has(cell.floor)) {
-      group.floors.set(cell.floor, []);
-    }
-    group.floors.get(cell.floor)!.push(cell);
+    floorGroups.get(f)!.push(cell);
   }
 
   function getCellColor(cell: HeatmapCell): string {
@@ -262,7 +252,7 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
             Unit {hoveredCell.apartment_number}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            {hoveredCell.building_name} / Floor {hoveredCell.floor}
+            {floorLabel(hoveredCell.floor)}
           </p>
           <div className="mt-2 space-y-1">
             <div className="flex justify-between">
@@ -287,47 +277,36 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
       )}
 
       <div className="space-y-5">
-        {Array.from(buildingGroups.entries()).map(
-          ([buildingId, { code, name, floors }]) => (
-            <div key={buildingId}>
+        {Array.from(floorGroups.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([floor, floorCells]) => (
+            <div key={floor}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono font-bold text-text-primary bg-bastet-bg px-2 py-0.5 rounded">
-                  {code}
+                  {floorLabel(floor)}
                 </span>
-                <span className="text-xs text-text-muted">{name}</span>
+                <span className="text-xs text-text-muted">{floorCells.length} units</span>
               </div>
-              <div className="space-y-1.5">
-                {Array.from(floors.entries())
-                  .sort(([a], [b]) => a - b)
-                  .map(([floor, floorCells]) => (
-                    <div key={floor} className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-text-muted w-8 text-right shrink-0">
-                        F{floor}
-                      </span>
-                      <div className="flex gap-1 flex-wrap">
-                        {floorCells.map((cell) => (
-                          <div
-                            key={cell.apartment_id}
-                            className={cn(
-                              "w-7 h-7 rounded-sm cursor-pointer transition-all duration-200",
-                              getCellColor(cell),
-                              hoveredCell?.apartment_id === cell.apartment_id &&
-                                "ring-2 ring-white/50 scale-110"
-                            )}
-                            onMouseEnter={() => setHoveredCell(cell)}
-                            onMouseLeave={() => setHoveredCell(null)}
-                            title={`${cell.apartment_number} - ${cell.status}`}
-                            role="gridcell"
-                            aria-label={`Apartment ${cell.apartment_number}, ${cell.status}, ${cell.consumption_kwh} kWh per day${cell.is_wasteful ? ", wasteful" : ""}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex gap-1 flex-wrap">
+                {floorCells.map((cell) => (
+                  <div
+                    key={cell.apartment_id}
+                    className={cn(
+                      "w-7 h-7 rounded-sm cursor-pointer transition-all duration-200",
+                      getCellColor(cell),
+                      hoveredCell?.apartment_id === cell.apartment_id &&
+                        "ring-2 ring-white/50 scale-110"
+                    )}
+                    onMouseEnter={() => setHoveredCell(cell)}
+                    onMouseLeave={() => setHoveredCell(null)}
+                    title={`${cell.apartment_number} - ${cell.status}`}
+                    role="gridcell"
+                    aria-label={`Apartment ${cell.apartment_number}, ${cell.status}, ${cell.consumption_kwh} kWh per day${cell.is_wasteful ? ", wasteful" : ""}`}
+                  />
+                ))}
               </div>
             </div>
-          )
-        )}
+          ))}
       </div>
 
       {/* Legend */}
@@ -746,7 +725,8 @@ export default function EnergyDashboard() {
     );
   }
 
-  const { overview, by_building, heatmap, timeline, recommendations } = data;
+  const { overview, by_building, by_floor, heatmap, timeline, recommendations } = data;
+  const floorData = by_floor || by_building;
 
   return (
     <div className="space-y-6">
@@ -819,22 +799,22 @@ export default function EnergyDashboard() {
         />
       </div>
 
-      {/* B. Building Breakdown + C. Heatmap */}
+      {/* B. Floor Breakdown + C. Heatmap */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-cyan-400" />
               <h3 className="text-lg font-semibold text-text-primary">
-                Building Breakdown
+                Floor Breakdown
               </h3>
             </div>
             <span className="text-xs text-text-muted">
-              {by_building.length} building{by_building.length !== 1 ? "s" : ""}
+              {floorData.length} floor{floorData.length !== 1 ? "s" : ""}
             </span>
           </CardHeader>
           <CardContent>
-            <BuildingBarChart buildings={by_building} />
+            <FloorBarChart floors={floorData} />
           </CardContent>
         </Card>
 

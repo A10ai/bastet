@@ -285,6 +285,70 @@ export async function getEnergyByBuilding(
   return results;
 }
 
+const floorLabelFn = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
+
+export async function getEnergyByFloorGrouped(
+  supabase: SupabaseClient
+): Promise<BuildingEnergy[]> {
+  const { data: apartments } = await supabase
+    .from("apartments")
+    .select("id, number, floor, status, building_id");
+
+  const units = toApartmentRows(apartments);
+
+  // Group by floor
+  const floorGroups: Record<number, ApartmentRow[]> = {};
+  for (const unit of units) {
+    const f = unit.floor ?? 0;
+    if (!floorGroups[f]) floorGroups[f] = [];
+    floorGroups[f].push(unit);
+  }
+
+  const results: BuildingEnergy[] = [];
+  const floors = Object.keys(floorGroups).map(Number).sort((a, b) => a - b);
+
+  for (const floor of floors) {
+    const floorUnits = floorGroups[floor];
+
+    const occupied = floorUnits.filter((a) => a.status === "occupied").length;
+    const cleaning = floorUnits.filter((a) => a.status === "cleaning").length;
+    const maint = floorUnits.filter((a) => a.status === "maintenance").length;
+    const vacant = floorUnits.length - occupied - cleaning - maint;
+
+    let consumption = 0;
+    let optimal = 0;
+
+    for (const unit of floorUnits) {
+      const wasteful = isUnitWasteful(unit.id, unit.status);
+      consumption += computeConsumption(unit.status, wasteful);
+      if (isVacantStatus(unit.status)) {
+        optimal += KWH_VACANT_STANDBY;
+      } else {
+        optimal += computeConsumption(unit.status, false);
+      }
+    }
+
+    const waste = Math.max(0, consumption - optimal);
+
+    results.push({
+      building_id: String(floor),
+      building_name: floorLabelFn(floor),
+      building_code: `F${floor}`,
+      total_units: floorUnits.length,
+      occupied_units: occupied,
+      vacant_units: vacant,
+      cleaning_units: cleaning,
+      maintenance_units: maint,
+      consumption_kwh: Math.round(consumption * 10) / 10,
+      optimal_kwh: Math.round(optimal * 10) / 10,
+      waste_kwh: Math.round(waste * 10) / 10,
+      savings_potential_gbp: Math.round(waste * COST_PER_KWH * 100) / 100,
+    });
+  }
+
+  return results;
+}
+
 export async function getEnergyByFloor(
   supabase: SupabaseClient,
   buildingId: string

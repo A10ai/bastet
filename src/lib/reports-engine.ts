@@ -9,6 +9,7 @@ export interface OccupancyReport {
   peak_day: { date: string; occupancy: number } | null;
   low_day: { date: string; occupancy: number } | null;
   by_building: { building_name: string; occupancy: number; occupied: number; total: number }[];
+  by_floor: { floor_label: string; occupancy: number; occupied: number; total: number }[];
   by_apartment_type: { type_name: string; occupancy: number; occupied: number; total: number }[];
   previous_period_avg: number;
   change_pct: number;
@@ -84,6 +85,8 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+const floorLabelFn = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
+
 function daysBetween(from: string, to: string): number {
   const a = new Date(from);
   const b = new Date(to);
@@ -109,10 +112,10 @@ export async function getOccupancyReport(
   dateFrom: string,
   dateTo: string
 ): Promise<OccupancyReport> {
-  // Get total apartments with building and type info
+  // Get total apartments with building, type, and floor info
   const { data: apartments } = await supabase
     .from("apartments")
-    .select("id, building_id, apartment_type_id, buildings(name), apartment_types(name)");
+    .select("id, floor, building_id, apartment_type_id, buildings(name), apartment_types(name)");
 
   const totalApartments = (apartments || []).length;
 
@@ -174,6 +177,32 @@ export async function getOccupancyReport(
     byBuilding.push({ building_name: name, occupancy: avgOcc, occupied: totalOccDays, total: info.total * days });
   }
 
+  // By floor
+  const floorMap = new Map<number, { total: number; floor: number }>();
+  for (const apt of apartments || []) {
+    const f = (apt as any).floor ?? 0;
+    const entry = floorMap.get(f) || { total: 0, floor: f };
+    entry.total++;
+    floorMap.set(f, entry);
+  }
+
+  const byFloor: OccupancyReport["by_floor"] = [];
+  for (const [f, info] of Array.from(floorMap)) {
+    const floorAptIds = (apartments || [])
+      .filter((a) => ((a as any).floor ?? 0) === f)
+      .map((a) => a.id);
+    let totalOccDays = 0;
+    for (const d of daily) {
+      const occ = (bookings || []).filter(
+        (b) => floorAptIds.includes(b.apartment_id) && b.check_in <= d.date && b.check_out > d.date
+      ).length;
+      totalOccDays += occ;
+    }
+    const avgOcc = info.total * days > 0 ? round2((totalOccDays / (info.total * days)) * 100) : 0;
+    byFloor.push({ floor_label: floorLabelFn(f), occupancy: avgOcc, occupied: totalOccDays, total: info.total * days });
+  }
+  byFloor.sort((a, b) => a.floor_label.localeCompare(b.floor_label));
+
   // By apartment type
   const typeMap = new Map<string, { total: number; name: string }>();
   for (const apt of apartments || []) {
@@ -227,6 +256,7 @@ export async function getOccupancyReport(
     peak_day: peakDay ? { date: peakDay.date, occupancy: peakDay.occupancy } : null,
     low_day: lowDay ? { date: lowDay.date, occupancy: lowDay.occupancy } : null,
     by_building: byBuilding,
+    by_floor: byFloor,
     by_apartment_type: byType,
     previous_period_avg: prevAvg,
     change_pct: prevAvg > 0 ? round2(((avgOccupancy - prevAvg) / prevAvg) * 100) : 0,
@@ -731,10 +761,10 @@ export async function getExecutiveSummary(
     concerns.push(`${financial.outstanding_invoices.count} outstanding invoices totalling ${financial.outstanding_invoices.value}`);
   }
 
-  // Check for buildings with low occupancy
-  for (const b of occupancy.by_building) {
-    if (b.occupancy < 50) {
-      concerns.push(`${b.building_name} occupancy is low at ${b.occupancy}%`);
+  // Check for floors with low occupancy
+  for (const f of occupancy.by_floor) {
+    if (f.occupancy < 50) {
+      concerns.push(`${f.floor_label} occupancy is low at ${f.occupancy}%`);
     }
   }
 

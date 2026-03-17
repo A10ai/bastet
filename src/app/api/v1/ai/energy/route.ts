@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   getEnergyOverview,
   getEnergyByBuilding,
+  getEnergyByFloorGrouped,
   getEnergyHeatmap,
   getEnergyTimeline,
   getEnergyRecommendations,
@@ -18,9 +19,10 @@ export async function GET() {
     const supabase = createServerSupabaseClient();
 
     // Run independent queries in parallel
-    const [overview, byBuilding, heatmap, recommendations] = await Promise.all([
+    const [overview, byBuilding, byFloor, heatmap, recommendations] = await Promise.all([
       getEnergyOverview(supabase),
       getEnergyByBuilding(supabase),
+      getEnergyByFloorGrouped(supabase),
       getEnergyHeatmap(supabase),
       getEnergyRecommendations(supabase),
     ]);
@@ -38,6 +40,7 @@ export async function GET() {
       data: {
         overview,
         by_building: byBuilding,
+        by_floor: byFloor,
         heatmap,
         timeline,
         recommendations,

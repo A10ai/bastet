@@ -51,6 +51,8 @@ interface CalendarApartment {
   bookings: CalendarBooking[];
 }
 
+const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
+
 interface BuildingOption {
   id: string;
   code: string;
@@ -165,7 +167,7 @@ export default function AvailabilityCalendarPage() {
   const [numDays, setNumDays] = useState(DESKTOP_DAYS);
   const [data, setData] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [buildingFilter, setBuildingFilter] = useState<string>("all");
+  const [floorFilter, setFloorFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [hoveredBooking, setHoveredBooking] = useState<{
     booking: CalendarBooking;
@@ -191,7 +193,6 @@ export default function AvailabilityCalendarPage() {
     try {
       const endDate = format(addDays(parseISO(startDate), numDays), "yyyy-MM-dd");
       const params = new URLSearchParams({ from: startDate, to: endDate });
-      if (buildingFilter !== "all") params.set("building_id", buildingFilter);
       if (typeFilter !== "all") params.set("type_id", typeFilter);
 
       const res = await fetch(`/api/v1/availability/calendar?${params}`);
@@ -204,7 +205,7 @@ export default function AvailabilityCalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, numDays, buildingFilter, typeFilter]);
+  }, [startDate, numDays, typeFilter]);
 
   useEffect(() => {
     fetchCalendar();
@@ -216,45 +217,48 @@ export default function AvailabilityCalendarPage() {
     [startDate, numDays]
   );
 
-  // Group apartments by building
+  // Group apartments by floor
   const groupedApartments = useMemo(() => {
     if (!data) return [];
-    const groups: {
-      building_code: string;
-      building_name: string;
-      apartments: CalendarApartment[];
-    }[] = [];
 
-    const buildingMap = new Map<
-      string,
-      { code: string; name: string; apartments: CalendarApartment[] }
+    // Apply floor filter client-side
+    const filteredApts = floorFilter === "all"
+      ? data.apartments
+      : data.apartments.filter((apt) => apt.floor === Number(floorFilter));
+
+    const floorMap = new Map<
+      number,
+      { floor: number; label: string; apartments: CalendarApartment[] }
     >();
 
-    for (const apt of data.apartments) {
-      const code = apt.building_code || "Other";
-      if (!buildingMap.has(code)) {
-        const building = data.buildings.find((b) => b.code === code);
-        buildingMap.set(code, {
-          code,
-          name: building?.name || code,
+    for (const apt of filteredApts) {
+      const f = apt.floor ?? 0;
+      if (!floorMap.has(f)) {
+        floorMap.set(f, {
+          floor: f,
+          label: floorLabel(f),
           apartments: [],
         });
       }
-      buildingMap.get(code)!.apartments.push(apt);
+      floorMap.get(f)!.apartments.push(apt);
     }
 
-    buildingMap.forEach((group) => {
+    const groups: {
+      floor: number;
+      floor_label: string;
+      apartments: CalendarApartment[];
+    }[] = [];
+
+    floorMap.forEach((group) => {
       groups.push({
-        building_code: group.code,
-        building_name: group.name,
+        floor: group.floor,
+        floor_label: group.label,
         apartments: group.apartments,
       });
     });
 
-    return groups.sort((a, b) =>
-      a.building_code.localeCompare(b.building_code)
-    );
-  }, [data]);
+    return groups.sort((a, b) => a.floor - b.floor);
+  }, [data, floorFilter]);
 
   // Summary stats
   const summaryStats = useMemo(() => {
@@ -428,17 +432,17 @@ export default function AvailabilityCalendarPage() {
           <div className="flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-text-muted" />
             <select
-              value={buildingFilter}
-              onChange={(e) => setBuildingFilter(e.target.value)}
+              value={floorFilter}
+              onChange={(e) => setFloorFilter(e.target.value)}
               className="bg-bastet-bg border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
-              aria-label="Filter by building"
+              aria-label="Filter by floor"
             >
-              <option value="all">All Buildings</option>
-              {data?.buildings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.code} - {b.name}
-                </option>
-              ))}
+              <option value="all">All Floors</option>
+              <option value="0">Ground</option>
+              <option value="1">Floor 1</option>
+              <option value="2">Floor 2</option>
+              <option value="3">Floor 3</option>
+              <option value="4">Floor 4</option>
             </select>
           </div>
           <div className="flex items-center gap-1.5">
@@ -533,10 +537,10 @@ export default function AvailabilityCalendarPage() {
               })}
             </div>
 
-            {/* Apartment Rows grouped by building */}
+            {/* Apartment Rows grouped by floor */}
             {groupedApartments.map((group) => (
-              <div key={group.building_code}>
-                {/* Building header */}
+              <div key={group.floor}>
+                {/* Floor header */}
                 <div
                   className="flex items-center border-b border-bastet-border bg-navy-800/60"
                   style={{ height: `${BUILDING_HEADER_HEIGHT}px` }}
@@ -547,10 +551,10 @@ export default function AvailabilityCalendarPage() {
                   >
                     <Building2 className="w-3 h-3 text-cyan-400" />
                     <span className="text-xs font-bold text-text-primary">
-                      {group.building_code}
+                      {group.floor_label}
                     </span>
                     <span className="text-[10px] text-text-muted">
-                      {group.building_name}
+                      ({group.apartments.length} units)
                     </span>
                   </div>
                   {/* Empty space for the date columns */}

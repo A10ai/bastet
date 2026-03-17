@@ -9,10 +9,21 @@ import { Building2, Eye, Filter, Loader2 } from "lucide-react";
 import { APARTMENT_STATUSES } from "@/lib/constants";
 import type { Apartment } from "@/types";
 
+const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
+
+const FLOOR_OPTIONS = [
+  { value: 0, label: "Ground" },
+  { value: 1, label: "Floor 1" },
+  { value: 2, label: "Floor 2" },
+  { value: 3, label: "Floor 3" },
+  { value: 4, label: "Floor 4" },
+];
+
 export default function ApartmentsPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [floorFilter, setFloorFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchApartments = async () => {
@@ -30,10 +41,11 @@ export default function ApartmentsPage() {
     fetchApartments();
   }, []);
 
-  const filtered =
-    statusFilter === "all"
-      ? apartments
-      : apartments.filter((a) => a.status === statusFilter);
+  const filtered = apartments.filter((a) => {
+    if (statusFilter !== "all" && a.status !== statusFilter) return false;
+    if (floorFilter !== "all" && a.floor !== Number(floorFilter)) return false;
+    return true;
+  });
 
   const statusCounts = APARTMENT_STATUSES.reduce(
     (acc, s) => {
@@ -60,31 +72,52 @@ export default function ApartmentsPage() {
         </Button>
       </div>
 
-      {/* Status Filter Pills */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setStatusFilter("all")}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-            statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          All ({apartments.length})
-        </button>
-        {APARTMENT_STATUSES.map((status) => (
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Floor Filter */}
+        <div className="flex items-center gap-1.5">
+          <Building2 className="w-3.5 h-3.5 text-text-muted" />
+          <select
+            value={floorFilter}
+            onChange={(e) => setFloorFilter(e.target.value)}
+            className="bg-bastet-card border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            aria-label="Filter by floor"
+          >
+            <option value="all">All Floors</option>
+            {FLOOR_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status Filter Pills */}
+        <div className="flex flex-wrap gap-2">
           <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
-              statusFilter === status
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              statusFilter === "all"
                 ? "bg-bastet-gold text-bastet-bg"
                 : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
             }`}
           >
-            {status.replace("_", " ")} ({statusCounts[status] || 0})
+            All ({apartments.length})
           </button>
-        ))}
+          {APARTMENT_STATUSES.map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
+                statusFilter === status
+                  ? "bg-bastet-gold text-bastet-bg"
+                  : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {status.replace("_", " ")} ({statusCounts[status] || 0})
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Apartments Table */}
@@ -99,9 +132,8 @@ export default function ApartmentsPage() {
               <thead>
                 <tr className="border-b border-bastet-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Number</th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Building</th>
-                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Floor</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">View</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Bedrooms</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Status</th>
@@ -120,13 +152,10 @@ export default function ApartmentsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-sm text-text-primary">
-                      {apt.building?.name || "—"}
+                      {floorLabel(apt.floor)}
                     </td>
                     <td className="px-6 py-3 text-sm text-text-primary">
                       {apt.apartment_type?.name || "—"}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
-                      {apt.floor}
                     </td>
                     <td className="px-6 py-3 text-sm text-text-secondary capitalize">
                       {apt.view_type.replace("_", " ")}

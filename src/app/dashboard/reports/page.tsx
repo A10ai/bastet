@@ -349,13 +349,13 @@ function OccupancyView({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="report-card report-section">
           <CardHeader>
-            <h3 className="text-lg font-semibold text-text-primary">By Building</h3>
+            <h3 className="text-lg font-semibold text-text-primary">By Floor</h3>
           </CardHeader>
           <CardContent>
             <ReportTable
-              headers={["Building", "Occupancy", "Occupied Days", "Total Days"]}
-              rows={(data.by_building || []).map((b: any) => [
-                b.building_name,
+              headers={["Floor", "Occupancy", "Occupied Days", "Total Days"]}
+              rows={(data.by_floor || data.by_building || []).map((b: any) => [
+                b.floor_label || b.building_name,
                 `${b.occupancy}%`,
                 String(b.occupied),
                 String(b.total),
