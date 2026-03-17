@@ -1,5 +1,6 @@
 // Sidebar navigation items
 export const SIDEBAR_NAV = [
+  { label: "AI Brain", href: "/dashboard/ai/brain", icon: "BrainCircuit" },
   { label: "AI Command Centre", href: "/dashboard/ai", icon: "Brain" },
   { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
   { label: "Event Bus", href: "/dashboard/ai/events", icon: "Activity" },

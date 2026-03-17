@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Brain,
+  BrainCircuit,
   LayoutDashboard,
   Building2,
   CalendarDays,
@@ -33,6 +34,7 @@ import { SIDEBAR_NAV } from "@/lib/constants";
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Activity,
   Brain,
+  BrainCircuit,
   LayoutDashboard,
   Building2,
   CalendarDays,
