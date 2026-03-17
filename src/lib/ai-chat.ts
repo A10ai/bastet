@@ -27,6 +27,11 @@ interface QueryIntent {
 function parseIntent(message: string): QueryIntent {
   const msg = message.toLowerCase();
 
+  // Full status update / summary / overview
+  if (msg.match(/status update|full status|overview|summary|what.*going on|how.*everything|brief me|update me|report/)) {
+    return { category: "general", action: "status_update" };
+  }
+
   // Occupancy
   if (msg.match(/occupan|how full|how busy|availability|vacant|empty/)) {
     const tf = getTimeframe(msg);
@@ -388,6 +393,42 @@ export async function processChat(
             ? "💡 Significant vacancy — ensure all empty units have HVAC, lighting, and water heating in standby."
             : "Energy systems should be running efficiently at current occupancy."),
           { vacant_units: empty, savings_potential_monthly: savingsMonth }
+        );
+      }
+
+      case "status_update": {
+        const { data: apts } = await supabase.from("apartments").select("status");
+        const total = apts?.length || 0;
+        const occ = apts?.filter((a) => a.status === "occupied").length || 0;
+        const avail = apts?.filter((a) => a.status === "available").length || 0;
+        const clean = apts?.filter((a) => a.status === "cleaning").length || 0;
+        const maint = apts?.filter((a) => a.status === "maintenance").length || 0;
+        const occPct = total > 0 ? Math.round((occ / total) * 100) : 0;
+
+        const { count: openMaint } = await supabase.from("maintenance_requests").select("id", { count: "exact", head: true }).in("status", ["open", "assigned", "in_progress"]);
+        const { count: urgentMaint } = await supabase.from("maintenance_requests").select("id", { count: "exact", head: true }).in("priority", ["urgent", "emergency"]);
+        const { count: pendingHk } = await supabase.from("housekeeping_tasks").select("id", { count: "exact", head: true }).eq("status", "pending");
+        const { count: arrivalsToday } = await supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["confirmed"]).eq("check_in", today);
+        const { count: departuresToday } = await supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "checked_in").eq("check_out", today);
+
+        const { data: rev } = await supabase.from("bookings").select("total_amount_gbp, nights").eq("status", "checked_in").lte("check_in", today).gt("check_out", today);
+        const dailyRev = (rev || []).reduce((s, b) => s + (b.nights > 0 ? b.total_amount_gbp / b.nights : 0), 0);
+
+        return reply(
+          `**HospitAI Status Update**\n\n` +
+          `**Occupancy: ${occPct}%** (${occ} of ${total} units)\n` +
+          `- ${avail} available, ${clean} cleaning, ${maint} in maintenance\n\n` +
+          `**Revenue today: £${Math.round(dailyRev).toLocaleString()}**\n\n` +
+          `**Operations:**\n` +
+          `- ${arrivalsToday || 0} arrivals today\n` +
+          `- ${departuresToday || 0} departures today\n` +
+          `- ${pendingHk || 0} rooms need cleaning\n` +
+          `- ${openMaint || 0} open maintenance requests${urgentMaint ? ` (${urgentMaint} urgent)` : ""}\n\n` +
+          (occPct > 85 ? "💡 High occupancy — consider rate increase.\n" :
+           occPct < 50 ? "💡 Low occupancy — consider promotions.\n" : "") +
+          ((urgentMaint || 0) > 0 ? "⚠️ Urgent maintenance needs immediate attention.\n" : "") +
+          ((pendingHk || 0) > 15 ? "⚠️ Housekeeping backlog building.\n" : ""),
+          { occupancy: occPct, revenue_today: Math.round(dailyRev), open_maintenance: openMaint, pending_housekeeping: pendingHk }
         );
       }
 
