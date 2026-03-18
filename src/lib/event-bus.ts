@@ -614,6 +614,165 @@ registerHandler("energy.waste_detected", async (event, supabase) => {
 });
 
 // ---------------------------------------------------------------------------
+// Notification Handlers — create notifications for key events
+// ---------------------------------------------------------------------------
+
+import { createNotification } from "@/lib/notifications";
+
+// booking.checked_out → Notification: cleaning dispatched
+registerHandler("booking.checked_out", async (event, supabase) => {
+  const { apartment_id } = event.payload as { apartment_id?: string };
+  if (!apartment_id) return [];
+
+  const { data: apt } = await supabase
+    .from("apartments")
+    .select("number")
+    .eq("id", apartment_id)
+    .single();
+
+  const unitLabel = apt?.number || apartment_id;
+
+  await createNotification(supabase, {
+    title: `Checkout: Unit ${unitLabel}`,
+    message: `Unit ${unitLabel} checked out — cleaning dispatched`,
+    type: "info",
+    category: "booking",
+    link: "/dashboard/housekeeping",
+  });
+
+  return [];
+});
+
+// booking.checked_in → Notification: guest checked in (+ VIP alert if applicable)
+registerHandler("booking.checked_in", async (event, supabase) => {
+  const { apartment_id, guest_id } = event.payload as {
+    apartment_id?: string;
+    guest_id?: string;
+  };
+  if (!apartment_id) return [];
+
+  const { data: apt } = await supabase
+    .from("apartments")
+    .select("number")
+    .eq("id", apartment_id)
+    .single();
+
+  const unitLabel = apt?.number || apartment_id;
+  let guestName = "Guest";
+  let isVip = false;
+
+  if (guest_id) {
+    const { data: guest } = await supabase
+      .from("guests")
+      .select("first_name, last_name, loyalty_tier")
+      .eq("id", guest_id)
+      .single();
+
+    if (guest) {
+      guestName = `${guest.first_name} ${guest.last_name}`;
+      isVip = guest.loyalty_tier === "platinum" || guest.loyalty_tier === "gold";
+    }
+  }
+
+  await createNotification(supabase, {
+    title: `Check-in: ${guestName} in Unit ${unitLabel}`,
+    message: `${guestName} has checked into Unit ${unitLabel}`,
+    type: "success",
+    category: "booking",
+    link: "/dashboard/bookings",
+  });
+
+  if (isVip) {
+    await createNotification(supabase, {
+      title: `VIP Alert: ${guestName} checked in`,
+      message: `VIP guest ${guestName} has checked into Unit ${unitLabel}. Ensure premium service.`,
+      type: "warning",
+      category: "guest",
+      link: "/dashboard/guests",
+    });
+  }
+
+  return [];
+});
+
+// maintenance.created → Notification for urgent issues
+registerHandler("maintenance.created", async (event, supabase) => {
+  const { apartment_id, priority, title } = event.payload as {
+    apartment_id?: string;
+    priority?: string;
+    title?: string;
+  };
+
+  if (priority !== "urgent" && priority !== "emergency") return [];
+
+  let unitLabel = "Unknown";
+  if (apartment_id) {
+    const { data: apt } = await supabase
+      .from("apartments")
+      .select("number")
+      .eq("id", apartment_id)
+      .single();
+    unitLabel = apt?.number || apartment_id;
+  }
+
+  await createNotification(supabase, {
+    title: `Urgent: ${title || "Maintenance Issue"} in Unit ${unitLabel}`,
+    message: `Urgent maintenance request created for Unit ${unitLabel}: ${title || "Unknown issue"}. Immediate attention required.`,
+    type: "error",
+    category: "maintenance",
+    link: "/dashboard/maintenance",
+  });
+
+  return [];
+});
+
+// housekeeping.completed → Notification: room ready
+registerHandler("housekeeping.completed", async (event, supabase) => {
+  const { apartment_id } = event.payload as { apartment_id?: string };
+  if (!apartment_id) return [];
+
+  const { data: apt } = await supabase
+    .from("apartments")
+    .select("number")
+    .eq("id", apartment_id)
+    .single();
+
+  const unitLabel = apt?.number || apartment_id;
+
+  await createNotification(supabase, {
+    title: `Room ready: Unit ${unitLabel}`,
+    message: `Unit ${unitLabel} cleaning completed — now available`,
+    type: "success",
+    category: "housekeeping",
+    link: "/dashboard/housekeeping",
+  });
+
+  return [];
+});
+
+// occupancy.threshold_crossed → Notification: pricing review needed
+registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
+  const { occupancy_percent, direction, threshold } = event.payload as {
+    occupancy_percent?: number;
+    direction?: string;
+    threshold?: number;
+  };
+
+  const dirLabel = direction === "above" ? "above" : "below";
+  const thresholdVal = threshold || (direction === "above" ? 85 : 50);
+
+  await createNotification(supabase, {
+    title: `Occupancy ${dirLabel} ${thresholdVal}%`,
+    message: `Occupancy is now at ${occupancy_percent}% (${dirLabel} ${thresholdVal}% threshold) — pricing review needed`,
+    type: "warning",
+    category: "pricing",
+    link: "/dashboard/rates",
+  });
+
+  return [];
+});
+
+// ---------------------------------------------------------------------------
 // Core: emitEvent — stores event and processes handlers
 // ---------------------------------------------------------------------------
 

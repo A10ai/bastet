@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emitEvent, type EventType } from "@/lib/event-bus";
+import { createNotification } from "@/lib/notifications";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -668,6 +669,21 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     total_decisions: brainConfig.total_decisions + storedDecisions.length,
     total_executed: brainConfig.total_executed + autoExecutedCount,
   };
+
+  // 5. Create notification summarising the brain cycle
+  if (storedDecisions.length > 0) {
+    try {
+      await createNotification(supabase, {
+        title: `AI Brain: ${storedDecisions.length} decision${storedDecisions.length > 1 ? "s" : ""}`,
+        message: analysisResult.summary,
+        type: "ai_decision",
+        category: "brain",
+        link: "/dashboard/ai/brain",
+      });
+    } catch (err) {
+      console.error("[AI Brain] Failed to create cycle notification:", err);
+    }
+  }
 
   return {
     cycle_id: cycleId,
