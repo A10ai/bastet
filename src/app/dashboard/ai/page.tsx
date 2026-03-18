@@ -277,7 +277,7 @@ export default function AICommandCentre() {
             {data.insights.map((insight) => {
               const config = severityConfig[insight.severity];
               const SeverityIcon = config.icon;
-              const TypeIcon = typeIcons[insight.type] || Brain;
+              const TypeIcon = typeIcons[insight.type] || BrainCircuit;
 
               return (
                 <div
