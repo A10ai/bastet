@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Brain,
+  BrainCircuit,
   Zap,
   TrendingUp,
   TrendingDown,
@@ -162,7 +162,7 @@ export default function AICommandCentre() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <Brain className="w-8 h-8 animate-pulse text-bastet-gold" />
+        <BrainCircuitclassName="w-8 h-8 animate-pulse text-bastet-gold" />
         <p className="text-sm text-text-secondary">
           AI is analysing property data...
         </p>
@@ -184,7 +184,7 @@ export default function AICommandCentre() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Brain className="w-6 h-6 text-bastet-gold" />
+            <BrainCircuitclassName="w-6 h-6 text-bastet-gold" />
             <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               AI Command Centre
             </h1>

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  BrainCircuit,
+  Brain,
   Play,
   Shield,
   Zap,
@@ -207,7 +207,7 @@ export default function AIBrainPage() {
                   : "bg-emerald-400/10"
                 : "bg-red-400/10"
             )}>
-              <BrainCircuit className={cn(
+              <Brain className={cn(
                 "w-7 h-7",
                 config?.enabled
                   ? config.mode === "autonomous"
@@ -414,7 +414,7 @@ export default function AIBrainPage() {
       {!latestCycle && (
         <Card>
           <CardContent className="py-12 text-center">
-            <BrainCircuit className="w-12 h-12 text-text-muted mx-auto mb-3" />
+            <Brain className="w-12 h-12 text-text-muted mx-auto mb-3" />
             <h3 className="text-white font-medium">No brain cycles yet</h3>
             <p className="text-text-secondary text-sm mt-1">
               Click &ldquo;Run Brain Cycle&rdquo; to analyze your property and get AI-powered recommendations.
