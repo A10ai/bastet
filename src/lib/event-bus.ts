@@ -766,7 +766,7 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
     message: `Occupancy is now at ${occupancy_percent}% (${dirLabel} ${thresholdVal}% threshold) — pricing review needed`,
     type: "warning",
     category: "pricing",
-    link: "/dashboard/rates",
+    link: "/dashboard/ai",
   });
 
   return [];
