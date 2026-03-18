@@ -88,14 +88,14 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="h-16 flex items-center px-4 border-b border-bastet-border">
         {showLabels ? (
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onMobileClose}>
-            <span className="text-xl font-display font-bold text-white">
-              Hospit<span className="text-cyan-400">AI</span>
+            <span className="text-xl font-display font-bold text-text-primary">
+              Hospit<span className="text-bastet-gold">AI</span>
             </span>
           </Link>
         ) : (
           <Link href="/dashboard" className="mx-auto">
-            <span className="text-xl font-display font-bold text-white">
-              H<span className="text-cyan-400">.</span>
+            <span className="text-xl font-display font-bold text-text-primary">
+              H<span className="text-bastet-gold">.</span>
             </span>
           </Link>
         )}
@@ -163,7 +163,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "h-screen sticky top-0 bg-bastet-card border-r border-bastet-border flex-col transition-all duration-300 hidden md:flex",
+          "h-screen sticky top-0 bg-bastet-card border-r border-bastet-border flex-col transition-all duration-300 hidden md:flex theme-transition",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -182,7 +182,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-bastet-card border-r border-bastet-border flex flex-col transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-bastet-card border-r border-bastet-border flex flex-col transition-transform duration-300 ease-in-out md:hidden theme-transition",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

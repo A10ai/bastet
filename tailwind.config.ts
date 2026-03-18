@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,23 +11,23 @@ const config: Config = {
     extend: {
       colors: {
         bastet: {
-          bg: "#0A0F1C",
-          card: "#0F1729",
-          border: "#1E2D44",
-          gold: "#22D3EE",
-          "gold-hover": "#67E8F9",
-          "gold-muted": "rgba(34, 211, 238, 0.12)",
+          bg: "var(--bastet-bg)",
+          card: "var(--bastet-card)",
+          border: "var(--bastet-border)",
+          gold: "var(--bastet-gold)",
+          "gold-hover": "var(--bastet-gold-hover)",
+          "gold-muted": "var(--bastet-gold-muted)",
         },
         text: {
-          primary: "#f1f5f9",
-          secondary: "#CBD5E1",
-          muted: "#64748B",
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
         },
         status: {
-          success: "#34D399",
-          warning: "#FBBF24",
-          error: "#F87171",
-          info: "#22D3EE",
+          success: "var(--status-success)",
+          warning: "var(--status-warning)",
+          error: "var(--status-error)",
+          info: "var(--status-info)",
         },
         navy: {
           950: "#0A0F1C",

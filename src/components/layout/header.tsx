@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/providers/auth-provider";
-import { LogOut, Menu, User } from "lucide-react";
+import { useTheme } from "@/providers/theme-provider";
+import { LogOut, Menu, Moon, Sun, User } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
 interface HeaderProps {
@@ -10,9 +11,10 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const { staff, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-16 bg-bastet-card border-b border-bastet-border flex items-center justify-between px-4 md:px-6">
+    <header className="h-16 bg-bastet-card border-b border-bastet-border flex items-center justify-between px-4 md:px-6 theme-transition">
       <div className="flex items-center gap-3">
         {/* Hamburger menu - mobile only */}
         {onMenuToggle && (
@@ -32,6 +34,24 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bastet-bg transition-colors"
+          aria-label={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          title={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+        >
+          {theme === "dark" ? (
+            <Sun className="w-4 h-4" />
+          ) : (
+            <Moon className="w-4 h-4" />
+          )}
+        </button>
+
         {/* Notifications */}
         <NotificationBell staffId={staff?.id} />
 

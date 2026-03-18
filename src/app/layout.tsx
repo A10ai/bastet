@@ -29,9 +29,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var t = localStorage.getItem('hospitai-theme');
+                if (t === 'light') document.documentElement.classList.add('light');
+                else document.documentElement.classList.add('dark');
+              } catch(e) { document.documentElement.classList.add('dark'); }
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased bg-bastet-bg text-text-primary`}
+        className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased bg-bastet-bg text-text-primary theme-transition`}
       >
         {children}
       </body>
