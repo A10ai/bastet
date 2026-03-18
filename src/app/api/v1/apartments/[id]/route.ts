@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
     const { data, error } = await supabase
@@ -32,6 +35,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
@@ -52,10 +57,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
     const { error } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { emitEvent, getRegisteredEventTypes, type EventType } from "@/lib/event-bus";
 
 /**
@@ -9,6 +10,8 @@ import { emitEvent, getRegisteredEventTypes, type EventType } from "@/lib/event-
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type");
@@ -76,6 +79,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 

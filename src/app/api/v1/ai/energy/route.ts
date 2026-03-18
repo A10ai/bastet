@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import {
   getEnergyOverview,
   getEnergyByBuilding,
@@ -14,8 +15,10 @@ import {
  * Returns full energy dashboard data: overview, building breakdown,
  * heatmap, 24-hour timeline, and AI recommendations.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
     // Run independent queries in parallel

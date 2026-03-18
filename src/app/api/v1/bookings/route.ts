@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import {
   calculateRate,
   calculateBookingTotal,
@@ -11,6 +12,8 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const status = searchParams.get("status");
@@ -53,6 +56,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 

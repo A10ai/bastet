@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import {
   getAllRevenueData,
   getWhatIfSimulation,
 } from "@/lib/revenue-engine";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const data = await getAllRevenueData(supabase);
     return NextResponse.json({ data });
@@ -21,6 +24,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const body = await request.json();
     const {
       current_rate,

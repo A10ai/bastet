@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { processChat } from "@/lib/ai-chat";
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authenticated) return auth.error!;
     const { message } = await req.json();
 
     if (!message || typeof message !== "string") {

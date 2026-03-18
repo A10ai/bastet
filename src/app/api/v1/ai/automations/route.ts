@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import {
   getAutomations,
   runAutomation,
@@ -10,8 +11,10 @@ import {
  * GET /api/v1/ai/automations
  * Returns all automations with their status and metadata.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const automations = getAutomations();
     return NextResponse.json({ data: automations });
   } catch {
@@ -31,6 +34,8 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/api-auth";
 import { POINTS_PER_GBP_ROOM } from "@/lib/constants";
 import { emitEvent } from "@/lib/event-bus";
 
@@ -8,6 +9,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
     // Get current booking with guest info
