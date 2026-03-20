@@ -22,6 +22,7 @@ import {
   Shield,
   Settings,
   Workflow,
+  Timer,
   Zap,
   ChevronLeft,
   ChevronRight,
@@ -50,6 +51,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Shield,
   Settings,
   Workflow,
+  Timer,
   Zap,
 };
 

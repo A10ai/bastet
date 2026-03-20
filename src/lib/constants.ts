@@ -3,6 +3,7 @@ export const SIDEBAR_NAV = [
   { label: "AI Brain", href: "/dashboard/ai/brain", icon: "Brain" },
   { label: "AI Command Centre", href: "/dashboard/ai", icon: "BrainCircuit" },
   { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
+  { label: "AI Scheduler", href: "/dashboard/ai/scheduler", icon: "Timer" },
   { label: "Event Bus", href: "/dashboard/ai/events", icon: "Activity" },
   { label: "Energy", href: "/dashboard/energy", icon: "Zap" },
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
