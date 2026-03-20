@@ -13,6 +13,12 @@ import {
   Wrench,
   Sparkles,
   Loader2,
+  Brain,
+  Zap,
+  TrendingUp,
+  AlertTriangle,
+  Star,
+  Users,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -38,9 +44,43 @@ interface DashboardStats {
   }[];
 }
 
+interface AIBrainStatus {
+  last_cycle_time?: string;
+  mode?: string;
+  decisions_pending?: number;
+}
+
+interface EnergySavings {
+  daily_savings_potential_gbp?: number;
+  waste_kwh?: number;
+}
+
+interface RevenueOpportunity {
+  adr_gbp?: number;
+  revpar_gbp?: number;
+  channel_optimization_savings_gbp?: number;
+}
+
+interface AIInsight {
+  id: string;
+  title: string;
+  severity: string;
+  impact: string;
+}
+
+interface GuestAlerts {
+  vip_arrivals_today?: number;
+  at_risk_guests?: number;
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [brainStatus, setBrainStatus] = useState<AIBrainStatus | null>(null);
+  const [energySavings, setEnergySavings] = useState<EnergySavings | null>(null);
+  const [revenueOpp, setRevenueOpp] = useState<RevenueOpportunity | null>(null);
+  const [insights, setInsights] = useState<AIInsight[]>([]);
+  const [guestAlerts, setGuestAlerts] = useState<GuestAlerts | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -55,6 +95,63 @@ export default function DashboardPage() {
       }
     };
     fetchStats();
+
+    // Fetch AI cross-data in parallel — all fail gracefully
+    const fetchAI = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/brain");
+        const json = await res.json();
+        setBrainStatus(json.data || json);
+      } catch { /* — */ }
+    };
+    const fetchEnergy = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/energy");
+        const json = await res.json();
+        const d = json.data || json;
+        setEnergySavings({
+          daily_savings_potential_gbp: d.overview?.daily_savings_potential_gbp ?? d.daily_savings_potential_gbp,
+          waste_kwh: d.overview?.waste_kwh ?? d.waste_kwh,
+        });
+      } catch { /* — */ }
+    };
+    const fetchRevenue = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/revenue");
+        const json = await res.json();
+        const d = json.data || json;
+        setRevenueOpp({
+          adr_gbp: d.adr_gbp ?? d.adr,
+          revpar_gbp: d.revpar_gbp ?? d.revpar,
+          channel_optimization_savings_gbp: d.channel_optimization_savings_gbp ?? d.channel_savings,
+        });
+      } catch { /* — */ }
+    };
+    const fetchInsights = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/insights");
+        const json = await res.json();
+        const list = json.data || json.insights || [];
+        setInsights(Array.isArray(list) ? list.slice(0, 3) : []);
+      } catch { /* — */ }
+    };
+    const fetchGuestAlerts = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/guests");
+        const json = await res.json();
+        const d = json.data || json;
+        setGuestAlerts({
+          vip_arrivals_today: d.vip_arrivals_today ?? d.vip_arrivals ?? 0,
+          at_risk_guests: d.at_risk_guests ?? d.at_risk ?? 0,
+        });
+      } catch { /* — */ }
+    };
+
+    fetchAI();
+    fetchEnergy();
+    fetchRevenue();
+    fetchInsights();
+    fetchGuestAlerts();
   }, []);
 
   if (loading) {
@@ -75,6 +172,19 @@ export default function DashboardPage() {
 
   const totalRooms = stats.total_apartments || 200;
 
+  const severityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case "critical":
+      case "high":
+        return "bg-status-error/15 text-status-error";
+      case "medium":
+      case "warning":
+        return "bg-status-warning/15 text-status-warning";
+      default:
+        return "bg-bastet-gold/15 text-bastet-gold";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -84,6 +194,87 @@ export default function DashboardPage() {
         <p className="text-sm text-text-secondary mt-1">
           HospitAI — Bastet Hurghada
         </p>
+      </div>
+
+      {/* AI Intelligence Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* AI Brain Status */}
+        <Card className="border-bastet-gold/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-bastet-gold" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-text-muted">AI Brain Status</p>
+                <p className="text-sm font-semibold text-text-primary capitalize">
+                  {brainStatus?.mode || "—"}
+                </p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-text-muted">
+                    Last cycle: {brainStatus?.last_cycle_time || "—"}
+                  </span>
+                  {(brainStatus?.decisions_pending ?? 0) > 0 && (
+                    <span className="text-xs font-mono text-bastet-gold">
+                      {brainStatus?.decisions_pending} pending
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Energy Savings */}
+        <Card className="border-emerald-500/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-text-muted">Energy Savings</p>
+                <p className="text-lg font-semibold font-mono text-emerald-400">
+                  {energySavings?.daily_savings_potential_gbp != null
+                    ? `${formatCurrency(energySavings.daily_savings_potential_gbp)}/day`
+                    : "—"}
+                </p>
+                {(energySavings?.waste_kwh ?? 0) > 0 && (
+                  <span className="text-xs text-red-400">
+                    {energySavings!.waste_kwh} kWh wasted today
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue Opportunity */}
+        <Card className="border-cyan-500/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-bastet-gold" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-text-muted">Revenue Opportunity</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-text-secondary">
+                    ADR: <span className="font-mono text-text-primary">{revenueOpp?.adr_gbp != null ? formatCurrency(revenueOpp.adr_gbp) : "—"}</span>
+                  </span>
+                  <span className="text-xs text-text-secondary">
+                    RevPAR: <span className="font-mono text-text-primary">{revenueOpp?.revpar_gbp != null ? formatCurrency(revenueOpp.revpar_gbp) : "—"}</span>
+                  </span>
+                </div>
+                {(revenueOpp?.channel_optimization_savings_gbp ?? 0) > 0 && (
+                  <span className="text-xs text-emerald-400 mt-0.5 block">
+                    Channel savings: {formatCurrency(revenueOpp!.channel_optimization_savings_gbp!)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Stats Grid */}
@@ -283,6 +474,95 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* AI Insights + Guest Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* AI Insights */}
+        <div className="lg:col-span-2">
+          <Card className="border-bastet-gold/10">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-bastet-gold" />
+                <h3 className="text-lg font-semibold text-text-primary">AI Insights</h3>
+              </div>
+              <Link
+                href="/dashboard/ai"
+                className="text-xs text-bastet-gold hover:underline"
+              >
+                Command Centre
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {insights.length > 0 ? (
+                <div className="space-y-3">
+                  {insights.map((insight, idx) => (
+                    <div
+                      key={insight.id || idx}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-text-primary">
+                            {insight.title}
+                          </span>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium uppercase ${severityColor(insight.severity)}`}
+                          >
+                            {insight.severity}
+                          </span>
+                        </div>
+                        {insight.impact && (
+                          <p className="text-xs text-text-secondary mt-1">{insight.impact}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-text-muted py-4 text-center">
+                  No active insights
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Guest Alerts */}
+        <Card className="border-bastet-gold/10">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-bastet-gold" />
+              <h3 className="text-lg font-semibold text-text-primary">Guest Alerts</h3>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+                <span className="text-sm text-text-secondary">VIP Arrivals Today</span>
+              </div>
+              <span className="text-lg font-mono font-bold text-bastet-gold">
+                {guestAlerts?.vip_arrivals_today ?? "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-status-warning" />
+                <span className="text-sm text-text-secondary">At-Risk Guests</span>
+              </div>
+              <span className="text-lg font-mono font-bold text-status-warning">
+                {guestAlerts?.at_risk_guests ?? "—"}
+              </span>
+            </div>
+            <Link
+              href="/dashboard/guests"
+              className="block text-center text-xs text-bastet-gold hover:underline pt-2"
+            >
+              View all guests
+            </Link>
           </CardContent>
         </Card>
       </div>

@@ -12,7 +12,7 @@ import {
   Loader2,
   Star,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Guest, LoyaltyTier } from "@/types";
 
 const TIER_COLORS: Record<LoyaltyTier, string> = {
@@ -22,12 +22,21 @@ const TIER_COLORS: Record<LoyaltyTier, string> = {
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
+interface GuestIntelligence {
+  [guestId: string]: {
+    churn_risk?: number;
+    ltv_gbp?: number;
+    last_checkout?: string;
+  };
+}
+
 export default function GuestsPage() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [vipOnly, setVipOnly] = useState(false);
+  const [intelligence, setIntelligence] = useState<GuestIntelligence>({});
 
   const fetchGuests = async () => {
     setLoading(true);
@@ -39,12 +48,61 @@ export default function GuestsPage() {
 
       const res = await fetch(`/api/v1/guests?${params}`);
       const json = await res.json();
-      setGuests(json.data || []);
+      const data = json.data || [];
+      setGuests(data);
+
+      // Fetch guest intelligence cross-data
+      fetchIntelligence(data);
     } catch {
       setGuests([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchIntelligence = async (guestList: Guest[]) => {
+    try {
+      const res = await fetch("/api/v1/ai/guests");
+      const json = await res.json();
+      const aiData = json.data || json;
+
+      // Build intelligence map
+      const intel: GuestIntelligence = {};
+
+      // If the AI endpoint returns per-guest data
+      const guestIntel = aiData.guests || aiData.guest_intelligence || [];
+      if (Array.isArray(guestIntel)) {
+        for (const gi of guestIntel) {
+          intel[gi.guest_id || gi.id] = {
+            churn_risk: gi.churn_risk ?? gi.churn_score ?? undefined,
+            ltv_gbp: gi.ltv_gbp ?? gi.lifetime_value ?? undefined,
+            last_checkout: gi.last_checkout ?? gi.last_stay ?? undefined,
+          };
+        }
+      }
+
+      // Also fetch bookings for last stay dates if not provided by AI
+      try {
+        const bkRes = await fetch("/api/v1/bookings?status=checked_out&limit=1000");
+        const bkJson = await bkRes.json();
+        const bookings = bkJson.data || [];
+
+        // Find most recent checkout per guest
+        for (const b of bookings) {
+          if (b.guest_id && b.check_out) {
+            const existing = intel[b.guest_id]?.last_checkout;
+            if (!existing || b.check_out > existing) {
+              intel[b.guest_id] = {
+                ...intel[b.guest_id],
+                last_checkout: b.check_out,
+              };
+            }
+          }
+        }
+      } catch { /* — */ }
+
+      setIntelligence(intel);
+    } catch { /* — */ }
   };
 
   useEffect(() => {
@@ -57,6 +115,25 @@ export default function GuestsPage() {
   }, [search]);
 
   const tiers: LoyaltyTier[] = ["bronze", "silver", "gold", "platinum"];
+
+  const churnBar = (risk?: number) => {
+    if (risk == null) return <span className="text-xs text-text-muted">—</span>;
+    const pct = Math.min(100, Math.max(0, risk));
+    let color = "bg-status-success";
+    if (pct >= 60) color = "bg-status-error";
+    else if (pct >= 30) color = "bg-status-warning";
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-16 h-2 bg-bastet-bg rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full ${color}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-xs font-mono text-text-secondary">{pct}%</span>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -137,6 +214,7 @@ export default function GuestsPage() {
               <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
@@ -147,62 +225,82 @@ export default function GuestsPage() {
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Stays</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Total Spend</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">VIP</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Churn Risk</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">LTV</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden lg:table-cell">Last Stay</th>
                   <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {guests.map((guest) => (
-                  <tr
-                    key={guest.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
-                  >
-                    <td className="px-6 py-3">
-                      <span className="text-sm font-semibold text-text-primary">
-                        {guest.first_name} {guest.last_name}
-                      </span>
-                      {guest.nationality && (
-                        <span className="ml-1.5 text-xs text-text-muted">
-                          {guest.nationality}
+                {guests.map((guest) => {
+                  const gi = intelligence[guest.id];
+                  return (
+                    <tr
+                      key={guest.id}
+                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                    >
+                      <td className="px-6 py-3">
+                        <span className="text-sm font-semibold text-text-primary">
+                          {guest.first_name} {guest.last_name}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary">
-                      {guest.email || "—"}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${TIER_COLORS[guest.loyalty_tier]}`}
-                      >
-                        {guest.loyalty_tier}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
-                      {guest.loyalty_points.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
-                      {guest.total_stays}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-primary">
-                      {formatCurrency(guest.total_spend_gbp)}
-                    </td>
-                    <td className="px-6 py-3">
-                      {guest.vip_status && (
-                        <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <Link
-                        href={`/dashboard/guests/${guest.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                        {guest.nationality && (
+                          <span className="ml-1.5 text-xs text-text-muted">
+                            {guest.nationality}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary">
+                        {guest.email || "—"}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${TIER_COLORS[guest.loyalty_tier]}`}
+                        >
+                          {guest.loyalty_tier}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-secondary">
+                        {guest.loyalty_points.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-secondary">
+                        {guest.total_stays}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-primary">
+                        {formatCurrency(guest.total_spend_gbp)}
+                      </td>
+                      <td className="px-6 py-3">
+                        {guest.vip_status && (
+                          <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+                        )}
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        {churnBar(gi?.churn_risk)}
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        <span className="text-sm font-mono text-text-primary">
+                          {gi?.ltv_gbp != null ? formatCurrency(gi.ltv_gbp) : "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 hidden lg:table-cell">
+                        <span className="text-sm text-text-secondary">
+                          {gi?.last_checkout ? formatDate(gi.last_checkout) : "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link
+                          href={`/dashboard/guests/${guest.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            </div>
           )}
           {!loading && guests.length === 0 && (
             <div className="flex flex-col items-center py-12 text-center">

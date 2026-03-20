@@ -22,11 +22,13 @@ import {
   DollarSign,
   BarChart3,
   PieChart,
+  Zap,
+  Brain,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-type ReportType = "executive" | "occupancy" | "revenue" | "guests" | "operations" | "financial";
+type ReportType = "executive" | "occupancy" | "revenue" | "guests" | "operations" | "financial" | "energy" | "ai_decisions";
 
 const REPORT_LABELS: Record<ReportType, string> = {
   executive: "Executive Summary",
@@ -35,6 +37,8 @@ const REPORT_LABELS: Record<ReportType, string> = {
   guests: "Guests",
   operations: "Operations",
   financial: "Financial",
+  energy: "Energy",
+  ai_decisions: "AI Decisions",
 };
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -211,6 +215,8 @@ export default function ReportsPage() {
             {reportType === "guests" && <GuestView data={data} />}
             {reportType === "operations" && <OperationsView data={data} />}
             {reportType === "financial" && <FinancialView data={data} />}
+            {reportType === "energy" && <EnergyReportView data={data} />}
+            {reportType === "ai_decisions" && <AIDecisionsView data={data} />}
           </>
         )}
       </div>
@@ -951,6 +957,143 @@ function FinancialView({ data }: { data: any }) {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ─── Energy Report View ──────────────────────────────────────────────
+
+function EnergyReportView({ data }: { data: any }) {
+  const floors = data.by_floor || data.floors || [];
+  const overview = data.overview || data;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Daily Consumption" value={`${overview.consumption_kwh || 0} kWh`} />
+        <MetricCard label="Daily Waste" value={`${overview.waste_kwh || 0} kWh`} />
+        <MetricCard label="Daily Savings" value={formatCurrency(overview.savings_potential_gbp || overview.daily_savings_potential_gbp || 0)} />
+        <MetricCard label="CO2 Reduction" value={`${overview.co2_saved_kg || 0} kg`} />
+      </div>
+
+      {/* By floor */}
+      <Card className="report-card report-section">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-text-primary">Energy by Floor</h3>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ReportTable
+            headers={["Floor", "Consumption (kWh)", "Waste (kWh)", "Savings Potential", "Occupied Units", "Total Units"]}
+            rows={floors.length > 0 ? floors.map((f: any) => [
+              f.floor_label || f.building_name || `Floor ${f.floor}`,
+              String(f.consumption_kwh || 0),
+              String(f.waste_kwh || 0),
+              formatCurrency(f.savings_potential_gbp || 0),
+              String(f.occupied_units || 0),
+              String(f.total_units || 0),
+            ]) : []}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Recommendations */}
+      {(data.recommendations || []).length > 0 && (
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">AI Recommendations</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Title", "Priority", "Affected Units", "Estimated Savings/day"]}
+              rows={(data.recommendations || []).map((r: any) => [
+                r.title,
+                r.priority,
+                String(r.affected_units || 0),
+                formatCurrency(r.estimated_savings_gbp || 0),
+              ])}
+            />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── AI Decisions Report View ───────────────────────────────────────
+
+function AIDecisionsView({ data }: { data: any }) {
+  const cycles = data.cycles || data.brain_cycles || [];
+  const decisions = data.decisions || data.recent_decisions || [];
+  const summary = data.summary || data;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="Total Cycles" value={String(summary.total_cycles || cycles.length || 0)} />
+        <MetricCard label="Decisions Made" value={String(summary.total_decisions || decisions.length || 0)} />
+        <MetricCard label="Mode" value={summary.mode || "supervised"} />
+        <MetricCard label="Avg Cycle Time" value={summary.avg_cycle_ms ? `${summary.avg_cycle_ms}ms` : "—"} />
+      </div>
+
+      {/* Brain Cycles */}
+      {cycles.length > 0 && (
+        <Card className="report-card report-section">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-semibold text-text-primary">Brain Cycle History</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Cycle ID", "Timestamp", "Duration", "Decisions", "Status"]}
+              rows={cycles.slice(0, 50).map((c: any) => [
+                c.id || c.cycle_id || "—",
+                c.timestamp || c.created_at || "—",
+                c.duration_ms ? `${c.duration_ms}ms` : "—",
+                String(c.decisions_count || c.decisions || 0),
+                c.status || c.outcome || "completed",
+              ])}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Decisions */}
+      {decisions.length > 0 && (
+        <Card className="report-card report-section">
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Recent Decisions</h3>
+          </CardHeader>
+          <CardContent>
+            <ReportTable
+              headers={["Decision", "Type", "Confidence", "Outcome", "Timestamp"]}
+              rows={decisions.slice(0, 50).map((d: any) => [
+                d.title || d.description || "—",
+                d.type || d.category || "—",
+                d.confidence ? `${(d.confidence * 100).toFixed(0)}%` : "—",
+                d.outcome || d.status || "—",
+                d.timestamp || d.created_at || "—",
+              ])}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fallback if no data */}
+      {cycles.length === 0 && decisions.length === 0 && (
+        <Card className="report-card">
+          <CardContent className="py-8 text-center">
+            <Brain className="w-8 h-8 text-text-muted mx-auto mb-2" />
+            <p className="text-sm text-text-muted">No AI decision data available for this period</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

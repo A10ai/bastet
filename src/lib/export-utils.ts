@@ -129,6 +129,42 @@ export function formatReportData(
       ];
     }
 
+    case "energy": {
+      const floors = (data.by_floor as any[]) || (data.floors as any[]) || [];
+      if (floors.length > 0) {
+        return floors.map((f) => ({
+          Floor: f.floor_label || f.building_name || `Floor ${f.floor}`,
+          "Consumption (kWh)": f.consumption_kwh || 0,
+          "Waste (kWh)": f.waste_kwh || 0,
+          "Savings Potential": f.savings_potential_gbp || 0,
+          "Occupied Units": f.occupied_units || 0,
+          "Total Units": f.total_units || 0,
+        }));
+      }
+      return [];
+    }
+
+    case "ai_decisions": {
+      const decisions = (data.decisions as any[]) || (data.recent_decisions as any[]) || [];
+      if (decisions.length > 0) {
+        return decisions.map((d) => ({
+          Decision: d.title || d.description || "—",
+          Type: d.type || d.category || "—",
+          Confidence: d.confidence ? `${(d.confidence * 100).toFixed(0)}%` : "—",
+          Outcome: d.outcome || d.status || "—",
+          Timestamp: d.timestamp || d.created_at || "—",
+        }));
+      }
+      const cycles = (data.cycles as any[]) || (data.brain_cycles as any[]) || [];
+      return cycles.map((c) => ({
+        "Cycle ID": c.id || c.cycle_id || "—",
+        Timestamp: c.timestamp || c.created_at || "—",
+        "Duration (ms)": c.duration_ms || "—",
+        Decisions: c.decisions_count || c.decisions || 0,
+        Status: c.status || c.outcome || "completed",
+      }));
+    }
+
     default:
       return [];
   }

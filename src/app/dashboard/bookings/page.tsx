@@ -13,10 +13,34 @@ import {
   Search,
   Filter,
   Loader2,
+  Star,
+  Wallet,
+  TrendingUp,
+  Globe,
 } from "lucide-react";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
+
+const TIER_BADGE_COLORS: Record<string, string> = {
+  bronze: "bg-orange-900/20 text-orange-400",
+  silver: "bg-gray-400/20 text-gray-300",
+  gold: "bg-bastet-gold-muted text-bastet-gold",
+  platinum: "bg-purple-400/20 text-purple-300",
+};
+
+interface BookingMiniStats {
+  total_revenue_month: number;
+  avg_nightly_rate: number;
+  direct_booking_pct: number;
+}
+
+interface GuestMeta {
+  [guestId: string]: {
+    loyalty_tier?: string;
+    vip_status?: boolean;
+  };
+}
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -25,6 +49,8 @@ export default function BookingsPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [miniStats, setMiniStats] = useState<BookingMiniStats | null>(null);
+  const [guestMeta, setGuestMeta] = useState<GuestMeta>({});
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -37,12 +63,61 @@ export default function BookingsPage() {
 
       const res = await fetch(`/api/v1/bookings?${params}`);
       const json = await res.json();
-      setBookings(json.data || []);
+      const data = json.data || [];
+      setBookings(data);
+
+      // Compute mini stats from bookings data
+      computeMiniStats(data);
+      // Fetch guest metadata for tier/VIP info
+      fetchGuestMeta(data);
     } catch {
       setBookings([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const computeMiniStats = (bks: Booking[]) => {
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const monthBookings = bks.filter(
+        (b) => b.check_in >= monthStart && !["cancelled", "no_show"].includes(b.status)
+      );
+      const totalRevenue = monthBookings.reduce((sum, b) => sum + (b.total_amount_gbp || 0), 0);
+      const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
+      const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
+      const directCount = monthBookings.filter(
+        (b) => (b as any).channel === "direct" || (b as any).source === "direct"
+      ).length;
+      const directPct = monthBookings.length > 0
+        ? Math.round((directCount / monthBookings.length) * 100)
+        : 0;
+
+      setMiniStats({
+        total_revenue_month: totalRevenue,
+        avg_nightly_rate: avgRate,
+        direct_booking_pct: directPct,
+      });
+    } catch {
+      // Non-critical
+    }
+  };
+
+  const fetchGuestMeta = async (bks: Booking[]) => {
+    try {
+      const res = await fetch("/api/v1/guests?limit=1000");
+      const json = await res.json();
+      const guests = json.data || [];
+      const meta: GuestMeta = {};
+      for (const g of guests) {
+        meta[g.id] = {
+          loyalty_tier: g.loyalty_tier,
+          vip_status: g.vip_status,
+        };
+      }
+      setGuestMeta(meta);
+    } catch { /* — */ }
   };
 
   useEffect(() => {
@@ -90,6 +165,57 @@ export default function BookingsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Mini Stat Cards */}
+      {miniStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="border-bastet-gold/10">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-bastet-gold" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-text-muted uppercase">Revenue This Month</p>
+                  <p className="text-sm font-semibold font-mono text-text-primary">
+                    {formatCurrency(miniStats.total_revenue_month)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-bastet-gold/10">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-bastet-gold" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-text-muted uppercase">Avg Nightly Rate</p>
+                  <p className="text-sm font-semibold font-mono text-text-primary">
+                    {formatCurrency(miniStats.avg_nightly_rate)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-bastet-gold/10">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-bastet-gold" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-text-muted uppercase">Direct Booking %</p>
+                  <p className="text-sm font-semibold font-mono text-text-primary">
+                    {miniStats.direct_booking_pct}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -153,11 +279,13 @@ export default function BookingsPage() {
               <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Reference</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Guest</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Tier</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Apartment</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Check-in</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Check-out</th>
@@ -168,52 +296,74 @@ export default function BookingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((booking) => (
-                  <tr
-                    key={booking.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
-                  >
-                    <td className="px-6 py-3">
-                      <span className="text-sm font-mono font-semibold text-bastet-gold">
-                        {booking.reference}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-primary">
-                      {booking.guest
-                        ? `${booking.guest.first_name} ${booking.guest.last_name}`
-                        : "—"}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary font-mono">
-                      {booking.apartment?.number || "—"}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary">
-                      {formatDate(booking.check_in)}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary">
-                      {formatDate(booking.check_out)}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
-                      {booking.nights}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-primary">
-                      {formatCurrency(booking.total_amount_gbp)}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge status={booking.status} variant="status" />
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <Link
-                        href={`/dashboard/bookings/${booking.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {bookings.map((booking) => {
+                  const gm = booking.guest_id ? guestMeta[booking.guest_id] : undefined;
+                  return (
+                    <tr
+                      key={booking.id}
+                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                    >
+                      <td className="px-6 py-3">
+                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                          {booking.reference}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-primary">
+                        <div className="flex items-center gap-1.5">
+                          {gm?.vip_status && (
+                            <Star className="w-3.5 h-3.5 text-bastet-gold fill-bastet-gold flex-shrink-0" />
+                          )}
+                          <span>
+                            {booking.guest
+                              ? `${booking.guest.first_name} ${booking.guest.last_name}`
+                              : "—"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        {gm?.loyalty_tier ? (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${TIER_BADGE_COLORS[gm.loyalty_tier] || "bg-bastet-bg text-text-muted"}`}
+                          >
+                            {gm.loyalty_tier}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary font-mono">
+                        {booking.apartment?.number || "—"}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary">
+                        {formatDate(booking.check_in)}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary">
+                        {formatDate(booking.check_out)}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-secondary">
+                        {booking.nights}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-primary">
+                        {formatCurrency(booking.total_amount_gbp)}
+                      </td>
+                      <td className="px-6 py-3">
+                        <Badge status={booking.status} variant="status" />
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link
+                          href={`/dashboard/bookings/${booking.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            </div>
           )}
           {!loading && bookings.length === 0 && (
             <div className="flex flex-col items-center py-12 text-center">

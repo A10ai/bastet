@@ -15,13 +15,29 @@ import {
   BarChart3,
   Loader2,
   ArrowRight,
+  Zap,
+  Globe,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
 
+interface ChannelAnalysis {
+  direct_pct: number;
+  ota_pct: number;
+  commission_cost_gbp: number;
+}
+
+interface RevenueForecast {
+  days: { date: string; projected_gbp: number }[];
+  total_7day_gbp: number;
+}
+
 export default function FinancePage() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [channelAnalysis, setChannelAnalysis] = useState<ChannelAnalysis | null>(null);
+  const [forecast, setForecast] = useState<RevenueForecast | null>(null);
+  const [energyCost, setEnergyCost] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -37,6 +53,42 @@ export default function FinancePage() {
       }
     };
     fetchSummary();
+
+    // Fetch channel analysis from revenue copilot
+    const fetchChannel = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/revenue");
+        const json = await res.json();
+        const d = json.data || json;
+        setChannelAnalysis({
+          direct_pct: d.direct_pct ?? d.direct_percentage ?? 0,
+          ota_pct: d.ota_pct ?? d.ota_percentage ?? 0,
+          commission_cost_gbp: d.commission_cost_gbp ?? d.total_commission ?? 0,
+        });
+
+        // Revenue forecast
+        if (d.forecast || d.revenue_forecast) {
+          const fc = d.forecast || d.revenue_forecast;
+          setForecast({
+            days: fc.days || [],
+            total_7day_gbp: fc.total_7day_gbp ?? fc.total ?? 0,
+          });
+        }
+      } catch { /* — */ }
+    };
+    fetchChannel();
+
+    // Fetch energy cost
+    const fetchEnergy = async () => {
+      try {
+        const res = await fetch("/api/v1/ai/energy");
+        const json = await res.json();
+        const d = json.data || json;
+        const overview = d.overview || d;
+        setEnergyCost(overview.waste_cost_gbp ?? overview.daily_energy_cost_gbp ?? null);
+      } catch { /* — */ }
+    };
+    fetchEnergy();
   }, []);
 
   if (loading) {
@@ -182,6 +234,104 @@ export default function FinancePage() {
           <CurrencyRatesCard />
         </div>
       </div>
+
+      {/* Channel Analysis + Revenue Forecast */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Channel Analysis */}
+        <Card className="border-bastet-gold/10">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-bastet-gold" />
+              <h3 className="text-lg font-semibold text-text-primary">Channel Analysis</h3>
+            </div>
+            <Link href="/dashboard/ai/revenue" className="text-xs text-bastet-gold hover:underline">
+              Revenue Copilot
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {channelAnalysis ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-text-secondary">Direct Bookings</span>
+                  <span className="text-sm font-mono font-semibold text-bastet-gold">{channelAnalysis.direct_pct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-text-secondary">OTA Bookings</span>
+                  <span className="text-sm font-mono text-text-primary">{channelAnalysis.ota_pct}%</span>
+                </div>
+                {/* Visual bar */}
+                <div className="w-full h-3 bg-bastet-bg rounded-full overflow-hidden flex">
+                  <div
+                    className="h-full bg-bastet-gold rounded-l-full"
+                    style={{ width: `${channelAnalysis.direct_pct}%` }}
+                    title={`Direct: ${channelAnalysis.direct_pct}%`}
+                  />
+                  <div
+                    className="h-full bg-amber-500/50"
+                    style={{ width: `${channelAnalysis.ota_pct}%` }}
+                    title={`OTA: ${channelAnalysis.ota_pct}%`}
+                  />
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+                  <span className="text-sm text-text-secondary">Commission Cost</span>
+                  <span className="text-sm font-mono text-status-error font-semibold">
+                    {formatCurrency(channelAnalysis.commission_cost_gbp)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted py-4 text-center">Channel data unavailable</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Revenue Forecast */}
+        <Card className="border-bastet-gold/10">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-bastet-gold" />
+              <h3 className="text-lg font-semibold text-text-primary">7-Day Revenue Forecast</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {forecast && forecast.days.length > 0 ? (
+              <div className="space-y-2">
+                {forecast.days.slice(0, 7).map((day) => (
+                  <div key={day.date} className="flex items-center justify-between text-sm">
+                    <span className="text-text-secondary font-mono text-xs">{day.date}</span>
+                    <span className="font-mono text-text-primary">{formatCurrency(day.projected_gbp)}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+                  <span className="text-sm font-medium text-text-primary">7-Day Total</span>
+                  <span className="text-sm font-mono font-bold text-bastet-gold">
+                    {formatCurrency(forecast.total_7day_gbp)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted py-4 text-center">Forecast data unavailable</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Energy Cost Line */}
+      {energyCost != null && energyCost > 0 && (
+        <Card className="border-amber-500/10">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-sm text-text-secondary">Daily Energy Waste Cost</span>
+              </div>
+              <span className="text-sm font-mono font-semibold text-amber-400">
+                {formatCurrency(energyCost)}/day
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

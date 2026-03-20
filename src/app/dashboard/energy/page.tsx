@@ -728,6 +728,41 @@ export default function EnergyDashboard() {
   const { overview, by_building, by_floor, heatmap, timeline, recommendations } = data;
   const floorData = by_floor || by_building;
 
+  // --- Cross-data: occupancy overlay & arriving soon ---
+  const [occupancyByFloor, setOccupancyByFloor] = useState<Record<number, { occupied: number; vacant: number }>>({});
+  const [arrivingSoonCount, setArrivingSoonCount] = useState(0);
+
+  useEffect(() => {
+    // Compute occupancy overlay from heatmap data
+    const floorOcc: Record<number, { occupied: number; vacant: number }> = {};
+    for (const cell of heatmap) {
+      const f = cell.floor ?? 0;
+      if (!floorOcc[f]) floorOcc[f] = { occupied: 0, vacant: 0 };
+      if (cell.status === "occupied") {
+        floorOcc[f].occupied++;
+      } else {
+        floorOcc[f].vacant++;
+      }
+    }
+    setOccupancyByFloor(floorOcc);
+
+    // Fetch arriving bookings (next 2 hours)
+    const fetchArrivals = async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const res = await fetch(`/api/v1/bookings?status=confirmed&limit=500`);
+        const json = await res.json();
+        const bookings = json.data || [];
+        const arriving = bookings.filter((b: any) => {
+          const checkIn = b.check_in?.split("T")[0];
+          return checkIn === today;
+        });
+        setArrivingSoonCount(arriving.length);
+      } catch { /* — */ }
+    };
+    fetchArrivals();
+  }, [heatmap]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -815,6 +850,25 @@ export default function EnergyDashboard() {
           </CardHeader>
           <CardContent>
             <FloorBarChart floors={floorData} />
+            {/* Occupancy Overlay */}
+            {Object.keys(occupancyByFloor).length > 0 && (
+              <div className="mt-4 pt-3 border-t border-bastet-border">
+                <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Occupancy Overlay</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {Object.entries(occupancyByFloor)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([floor, counts]) => (
+                      <div key={floor} className="flex items-center justify-between p-2 rounded-lg bg-bastet-bg">
+                        <span className="text-xs font-mono text-text-primary">{floorLabel(Number(floor))}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-cyan-400 font-mono">{counts.occupied} occ</span>
+                          <span className="text-[10px] text-text-muted font-mono">{counts.vacant} vac</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -933,6 +987,18 @@ export default function EnergyDashboard() {
               </div>
               <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-cyan-400 transition-colors" />
             </button>
+
+            {/* Arriving Soon Note */}
+            {arrivingSoonCount > 0 && (
+              <div className="p-3 rounded-lg bg-cyan-400/5 border border-cyan-400/20">
+                <div className="flex items-center gap-2">
+                  <Thermometer className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs text-cyan-400 font-medium">
+                    {arrivingSoonCount} room{arrivingSoonCount !== 1 ? "s" : ""} pre-cooling for arrivals today
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Summary stats */}
             <div className="mt-4 pt-4 border-t border-bastet-border space-y-3">

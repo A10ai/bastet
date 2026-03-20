@@ -19,11 +19,20 @@ const FLOOR_OPTIONS = [
   { value: 4, label: "Floor 4" },
 ];
 
+interface ApartmentCrossData {
+  [apartmentId: string]: {
+    guest_name?: string;
+    energy_status?: string;
+    open_tasks?: number;
+  };
+}
+
 export default function ApartmentsPage() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [floorFilter, setFloorFilter] = useState<string>("all");
+  const [crossData, setCrossData] = useState<ApartmentCrossData>({});
 
   useEffect(() => {
     const fetchApartments = async () => {
@@ -31,7 +40,11 @@ export default function ApartmentsPage() {
       try {
         const res = await fetch("/api/v1/apartments");
         const json = await res.json();
-        setApartments(json.data || []);
+        const apts = json.data || [];
+        setApartments(apts);
+
+        // Fetch cross-data for apartments
+        fetchCrossData(apts);
       } catch {
         setApartments([]);
       } finally {
@@ -40,6 +53,74 @@ export default function ApartmentsPage() {
     };
     fetchApartments();
   }, []);
+
+  const fetchCrossData = async (apts: Apartment[]) => {
+    const data: ApartmentCrossData = {};
+
+    // Fetch current bookings (checked_in)
+    try {
+      const res = await fetch("/api/v1/bookings?status=checked_in&limit=500");
+      const json = await res.json();
+      const bookings = json.data || [];
+      for (const b of bookings) {
+        if (b.apartment_id && b.guest) {
+          data[b.apartment_id] = {
+            ...data[b.apartment_id],
+            guest_name: `${b.guest.first_name} ${b.guest.last_name}`,
+          };
+        }
+      }
+    } catch { /* — */ }
+
+    // Fetch housekeeping + maintenance task counts
+    try {
+      const [hkRes, mxRes] = await Promise.all([
+        fetch("/api/v1/housekeeping").catch(() => null),
+        fetch("/api/v1/maintenance").catch(() => null),
+      ]);
+
+      const taskCount: Record<string, number> = {};
+
+      if (hkRes) {
+        const hkJson = await hkRes.json();
+        const tasks = hkJson.data || [];
+        for (const t of tasks) {
+          if (t.apartment_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
+            taskCount[t.apartment_id] = (taskCount[t.apartment_id] || 0) + 1;
+          }
+        }
+      }
+
+      if (mxRes) {
+        const mxJson = await mxRes.json();
+        const requests = mxJson.data || [];
+        for (const r of requests) {
+          if (r.apartment_id && ["open", "assigned", "in_progress"].includes(r.status)) {
+            taskCount[r.apartment_id] = (taskCount[r.apartment_id] || 0) + 1;
+          }
+        }
+      }
+
+      for (const [aptId, count] of Object.entries(taskCount)) {
+        data[aptId] = { ...data[aptId], open_tasks: count };
+      }
+    } catch { /* — */ }
+
+    // Derive energy status per apartment
+    for (const apt of apts) {
+      const isOccupied = !!data[apt.id]?.guest_name;
+      let energyStatus = "standby";
+      if (isOccupied) {
+        energyStatus = "active";
+      } else {
+        // Vacant — standby mode
+        energyStatus = "standby";
+      }
+      data[apt.id] = { ...data[apt.id], energy_status: energyStatus };
+    }
+
+    setCrossData(data);
+  };
 
   const filtered = apartments.filter((a) => {
     if (statusFilter !== "all" && a.status !== statusFilter) return false;
@@ -54,6 +135,18 @@ export default function ApartmentsPage() {
     },
     {} as Record<string, number>
   );
+
+  const energyBadge = (status?: string) => {
+    switch (status) {
+      case "active":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-bastet-gold/15 text-bastet-gold">Active</span>;
+      case "waste":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-status-error/15 text-status-error">Waste</span>;
+      case "standby":
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-400/15 text-gray-400">Standby</span>;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -128,6 +221,7 @@ export default function ApartmentsPage() {
               <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
@@ -137,48 +231,72 @@ export default function ApartmentsPage() {
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">View</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Bedrooms</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Booking</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Energy</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Tasks</th>
                   <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((apt) => (
-                  <tr
-                    key={apt.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
-                  >
-                    <td className="px-6 py-3">
-                      <span className="text-sm font-mono font-semibold text-bastet-gold">
-                        {apt.number}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-primary">
-                      {floorLabel(apt.floor)}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-primary">
-                      {apt.apartment_type?.name || "—"}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary capitalize">
-                      {apt.view_type.replace("_", " ")}
-                    </td>
-                    <td className="px-6 py-3 text-sm font-mono text-text-secondary">
-                      {apt.apartment_type?.bedrooms ?? "—"}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge status={apt.status} variant="status" />
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <Link
-                        href={`/dashboard/apartments/${apt.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((apt) => {
+                  const cd = crossData[apt.id];
+                  return (
+                    <tr
+                      key={apt.id}
+                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                    >
+                      <td className="px-6 py-3">
+                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                          {apt.number}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-primary">
+                        {floorLabel(apt.floor)}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-primary">
+                        {apt.apartment_type?.name || "—"}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary capitalize">
+                        {apt.view_type.replace("_", " ")}
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-text-secondary">
+                        {apt.apartment_type?.bedrooms ?? "—"}
+                      </td>
+                      <td className="px-6 py-3">
+                        <Badge status={apt.status} variant="status" />
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        <span className={`text-sm ${cd?.guest_name ? "text-text-primary font-medium" : "text-text-muted"}`}>
+                          {cd?.guest_name || "Available"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        {energyBadge(cd?.energy_status)}
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        {(cd?.open_tasks ?? 0) > 0 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-mono font-bold bg-status-warning/15 text-status-warning">
+                            {cd!.open_tasks}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-muted">0</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link
+                          href={`/dashboard/apartments/${apt.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            </div>
           )}
           {!loading && filtered.length === 0 && (
             <div className="flex flex-col items-center py-12 text-center">

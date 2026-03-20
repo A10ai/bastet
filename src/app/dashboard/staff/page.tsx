@@ -9,12 +9,17 @@ import { Eye, Filter, Loader2, Search, Plus } from "lucide-react";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
 
+interface StaffTaskCounts {
+  [staffId: string]: number;
+}
+
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("true");
   const [search, setSearch] = useState("");
+  const [taskCounts, setTaskCounts] = useState<StaffTaskCounts>({});
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -25,7 +30,11 @@ export default function StaffPage() {
         if (search) params.set("search", search);
         const res = await fetch(`/api/v1/staff?${params}`);
         const json = await res.json();
-        setStaff(json.data || []);
+        const data = json.data || [];
+        setStaff(data);
+
+        // Fetch task counts
+        fetchTaskCounts(data);
       } catch {
         setStaff([]);
       } finally {
@@ -34,6 +43,39 @@ export default function StaffPage() {
     };
     fetchStaff();
   }, [activeFilter, search]);
+
+  const fetchTaskCounts = async (staffList: Staff[]) => {
+    const counts: StaffTaskCounts = {};
+
+    try {
+      const [hkRes, mxRes] = await Promise.all([
+        fetch("/api/v1/housekeeping").catch(() => null),
+        fetch("/api/v1/maintenance").catch(() => null),
+      ]);
+
+      if (hkRes) {
+        const hkJson = await hkRes.json();
+        const tasks = hkJson.data || [];
+        for (const t of tasks) {
+          if (t.assigned_staff_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
+            counts[t.assigned_staff_id] = (counts[t.assigned_staff_id] || 0) + 1;
+          }
+        }
+      }
+
+      if (mxRes) {
+        const mxJson = await mxRes.json();
+        const requests = mxJson.data || [];
+        for (const r of requests) {
+          if (r.assigned_staff_id && ["open", "assigned", "in_progress"].includes(r.status)) {
+            counts[r.assigned_staff_id] = (counts[r.assigned_staff_id] || 0) + 1;
+          }
+        }
+      }
+    } catch { /* — */ }
+
+    setTaskCounts(counts);
+  };
 
   const filtered =
     roleFilter === "all"
@@ -146,6 +188,7 @@ export default function StaffPage() {
               <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bastet-border">
@@ -154,55 +197,69 @@ export default function StaffPage() {
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Role</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Department</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Active Tasks</th>
                   <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((member) => (
-                  <tr
-                    key={member.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
-                  >
-                    <td className="px-6 py-3">
-                      <span className="text-sm font-semibold text-text-primary">
-                        {member.first_name} {member.last_name}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary">
-                      {member.email}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge status={member.role} variant="status">
-                        {member.role}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-3 text-sm text-text-secondary capitalize">
-                      {member.department || "—"}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          member.is_active
-                            ? "bg-status-success/10 text-status-success"
-                            : "bg-status-error/10 text-status-error"
-                        }`}
-                      >
-                        {member.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <Link
-                        href={`/dashboard/staff/${member.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((member) => {
+                  const taskCount = taskCounts[member.id] || 0;
+                  return (
+                    <tr
+                      key={member.id}
+                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                    >
+                      <td className="px-6 py-3">
+                        <span className="text-sm font-semibold text-text-primary">
+                          {member.first_name} {member.last_name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary">
+                        {member.email}
+                      </td>
+                      <td className="px-6 py-3">
+                        <Badge status={member.role} variant="status">
+                          {member.role}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-text-secondary capitalize">
+                        {member.department || "—"}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            member.is_active
+                              ? "bg-status-success/10 text-status-success"
+                              : "bg-status-error/10 text-status-error"
+                          }`}
+                        >
+                          {member.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 hidden md:table-cell">
+                        {taskCount > 0 ? (
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold bg-bastet-gold/15 text-bastet-gold">
+                            {taskCount}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-muted">0</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <Link
+                          href={`/dashboard/staff/${member.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            </div>
           )}
           {!loading && filtered.length === 0 && (
             <div className="flex flex-col items-center py-12 text-center">
