@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logAudit } from "@/lib/audit";
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -816,6 +817,16 @@ export async function emitEvent(
       results: allResults,
     })
     .eq("id", eventId);
+
+  // Audit log the event
+  await logAudit(supabase, {
+    action: "event_emitted",
+    category: "system",
+    resource_type: "system_event",
+    resource_id: eventId,
+    description: `Event ${type} from ${sourceSystem} — ${allResults.length} handler results`,
+    new_data: { type, source: sourceSystem, handlers_triggered: allResults.length, payload },
+  });
 
   return { event_id: eventId, results: allResults };
 }

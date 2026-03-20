@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -683,6 +684,36 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     } catch (err) {
       console.error("[AI Brain] Failed to create cycle notification:", err);
     }
+  }
+
+  // Audit log the brain cycle
+  await logAudit(supabase, {
+    action: "brain_cycle_completed",
+    category: "ai_brain",
+    description: `Brain cycle ${cycleId} completed in ${mode} mode. ${storedDecisions.length} decisions. ${analysisResult.summary}`,
+    new_data: {
+      cycle_id: cycleId,
+      mode,
+      decisions_count: storedDecisions.length,
+      executed_count: storedDecisions.filter((d) => d.executed).length,
+    },
+  });
+
+  // Audit each decision
+  for (const decision of storedDecisions) {
+    await logAudit(supabase, {
+      action: decision.executed ? "ai_decision_executed" : "ai_decision_proposed",
+      category: "ai_decision",
+      resource_type: "brain_decision",
+      resource_id: decision.id,
+      description: `[${decision.category}] ${decision.action} — ${decision.reasoning}`,
+      new_data: {
+        confidence: decision.confidence,
+        auto_executable: decision.auto_executable,
+        executed: decision.executed,
+        impact: decision.impact_estimate,
+      },
+    });
   }
 
   return {
