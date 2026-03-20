@@ -224,6 +224,11 @@ export function generatePricingRecommendations(
 
 /**
  * Generate 14-day occupancy forecast.
+ *
+ * This is kept as a lightweight fallback for contexts where the full
+ * ML model cannot be invoked (no Supabase client available).
+ * The real ML-based forecast lives in prediction-model.ts and is served
+ * via /api/v1/ai/predictions.
  */
 export function generateOccupancyForecast(
   currentOccupancy: number,
@@ -238,12 +243,11 @@ export function generateOccupancyForecast(
     date.setDate(date.getDate() + i);
     const dayOfWeek = date.getDay();
 
-    // Simple seasonal + day-of-week model
+    // Simple seasonal + day-of-week model (fallback only)
     const weekendBoost = dayOfWeek === 5 || dayOfWeek === 6 ? 8 : 0;
     const trend = (arrivals - departures) * 0.5;
-    const noise = (Math.random() - 0.5) * 6;
 
-    occ = Math.max(15, Math.min(98, occ + trend * 0.3 + weekendBoost * 0.4 + noise));
+    occ = Math.max(15, Math.min(98, occ + trend * 0.3 + weekendBoost * 0.4));
 
     const factors: string[] = [];
     if (weekendBoost > 0) factors.push("Weekend demand");
@@ -254,7 +258,7 @@ export function generateOccupancyForecast(
     forecast.push({
       date: date.toISOString().split("T")[0],
       predicted_occupancy: Math.round(occ),
-      confidence: Math.max(50, 92 - i * 3), // Confidence decreases further out
+      confidence: Math.max(50, 92 - i * 3),
       factors: factors.length > 0 ? factors : ["Baseline forecast"],
     });
   }

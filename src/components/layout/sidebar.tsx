@@ -23,6 +23,7 @@ import {
   Settings,
   Workflow,
   Timer,
+  TrendingUp,
   Zap,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +53,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Workflow,
   Timer,
+  TrendingUp,
   Zap,
 };
 

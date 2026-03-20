@@ -8,6 +8,7 @@ import {
   generateOccupancyForecast,
   calculateHealthScore,
 } from "@/lib/ai-engine";
+import { forecast30Days } from "@/lib/prediction-model";
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,17 +99,32 @@ export async function GET(request: NextRequest) {
     // Run AI engine
     const insights = generateInsights(operationalData);
     const pricingRecommendations = generatePricingRecommendations(occupancy, rates);
-    const occupancyForecast = generateOccupancyForecast(
-      occupancy,
-      operationalData.arrivals_today,
-      operationalData.departures_today
-    );
     const healthScore = calculateHealthScore({
       occupancy,
       urgent_maintenance: operationalData.urgent_maintenance,
       housekeeping_dirty: hkDirty,
       total_apartments: totalApartments,
     });
+
+    // Try ML-based forecast, fall back to rule-based
+    let occupancyForecast;
+    try {
+      const mlForecast = await forecast30Days(supabase);
+      // Convert ML predictions to the OccupancyForecast interface
+      occupancyForecast = mlForecast.predictions.slice(0, 14).map((p) => ({
+        date: p.date,
+        predicted_occupancy: Math.round(p.predicted_occupancy_pct),
+        confidence: Math.round(100 - mlForecast.model.accuracy_mae),
+        factors: p.factors,
+      }));
+    } catch {
+      // Fallback to rule-based if ML model fails
+      occupancyForecast = generateOccupancyForecast(
+        occupancy,
+        operationalData.arrivals_today,
+        operationalData.departures_today
+      );
+    }
 
     // Calculate aggregate stats
     const revenueOpportunity = pricingRecommendations.reduce((sum, r) => {

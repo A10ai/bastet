@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { runBrainCycle, getBrainConfig } from "@/lib/ai-brain";
 import { runAllAutomations } from "@/lib/automations-engine";
 import { generateInsights } from "@/lib/ai-engine";
+import { trainModel } from "@/lib/prediction-model";
 
 // Store last run time in memory (resets on deploy)
 let lastSchedulerRun: string | null = null;
@@ -123,12 +124,14 @@ async function executeScheduledCycle() {
   const results: {
     brain: unknown;
     automations: unknown;
+    predictions: unknown;
     insights_count: number;
     duration_ms: number;
     timestamp: string;
   } = {
     brain: null,
     automations: null,
+    predictions: null,
     insights_count: 0,
     duration_ms: 0,
     timestamp: new Date().toISOString(),
@@ -166,7 +169,19 @@ async function executeScheduledCycle() {
       results.automations = { error: e instanceof Error ? e.message : "Automations failed" };
     }
 
-    // 3. Generate fresh insights (this also updates the AI Command Centre)
+    // 3. Retrain prediction model
+    try {
+      const model = await trainModel(supabase);
+      results.predictions = {
+        training_samples: model.training_samples,
+        mae: model.accuracy_mae,
+        r_squared: model.accuracy_r_squared,
+      };
+    } catch (e) {
+      results.predictions = { error: e instanceof Error ? e.message : "Prediction training failed" };
+    }
+
+    // 4. Generate fresh insights (this also updates the AI Command Centre)
     try {
       const insights = generateInsights({
         occupancy: 0, // Will be computed inside
