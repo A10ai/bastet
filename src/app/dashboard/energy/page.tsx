@@ -599,6 +599,8 @@ export default function EnergyDashboard() {
   const [data, setData] = useState<EnergyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [occupancyByFloor, setOccupancyByFloor] = useState<Record<number, { occupied: number; vacant: number }>>({});
+  const [arrivingSoonCount, setArrivingSoonCount] = useState(0);
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -619,6 +621,36 @@ export default function EnergyDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Cross-data: compute occupancy overlay & arriving count when data loads
+  useEffect(() => {
+    if (!data) return;
+    const floorOcc: Record<number, { occupied: number; vacant: number }> = {};
+    for (const cell of (data.heatmap || [])) {
+      const c = cell as unknown as Record<string, unknown>;
+      const f = (c.floor as number) ?? 0;
+      if (!floorOcc[f]) floorOcc[f] = { occupied: 0, vacant: 0 };
+      if (c.status === "occupied") {
+        floorOcc[f].occupied++;
+      } else {
+        floorOcc[f].vacant++;
+      }
+    }
+    setOccupancyByFloor(floorOcc);
+
+    (async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const res = await fetch("/api/v1/bookings?status=confirmed&limit=500");
+        const json = await res.json();
+        const arriving = (json.data || []).filter((b: Record<string, unknown>) => {
+          const checkIn = (b.check_in as string)?.split("T")[0];
+          return checkIn === today;
+        });
+        setArrivingSoonCount(arriving.length);
+      } catch { /* — */ }
+    })();
+  }, [data]);
 
   const emitEnergyEvent = useCallback(
     async (payload: Record<string, unknown>) => {
@@ -728,40 +760,7 @@ export default function EnergyDashboard() {
   const { overview, by_building, by_floor, heatmap, timeline, recommendations } = data;
   const floorData = by_floor || by_building;
 
-  // --- Cross-data: occupancy overlay & arriving soon ---
-  const [occupancyByFloor, setOccupancyByFloor] = useState<Record<number, { occupied: number; vacant: number }>>({});
-  const [arrivingSoonCount, setArrivingSoonCount] = useState(0);
-
-  useEffect(() => {
-    // Compute occupancy overlay from heatmap data
-    const floorOcc: Record<number, { occupied: number; vacant: number }> = {};
-    for (const cell of heatmap) {
-      const f = cell.floor ?? 0;
-      if (!floorOcc[f]) floorOcc[f] = { occupied: 0, vacant: 0 };
-      if (cell.status === "occupied") {
-        floorOcc[f].occupied++;
-      } else {
-        floorOcc[f].vacant++;
-      }
-    }
-    setOccupancyByFloor(floorOcc);
-
-    // Fetch arriving bookings (next 2 hours)
-    const fetchArrivals = async () => {
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        const res = await fetch(`/api/v1/bookings?status=confirmed&limit=500`);
-        const json = await res.json();
-        const bookings = json.data || [];
-        const arriving = bookings.filter((b: any) => {
-          const checkIn = b.check_in?.split("T")[0];
-          return checkIn === today;
-        });
-        setArrivingSoonCount(arriving.length);
-      } catch { /* — */ }
-    };
-    fetchArrivals();
-  }, [heatmap]);
+  // Cross-data computed in useEffect above (occupancyByFloor + arrivingSoonCount)
 
   return (
     <div className="space-y-6">
