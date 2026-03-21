@@ -5,6 +5,7 @@ export const SIDEBAR_NAV = [
   { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
   { label: "AI Scheduler", href: "/dashboard/ai/scheduler", icon: "Timer" },
   { label: "Predictions", href: "/dashboard/ai/predictions", icon: "TrendingUp" },
+  { label: "Workflows", href: "/dashboard/ai/workflows", icon: "GitBranch" },
   { label: "Event Bus", href: "/dashboard/ai/events", icon: "Activity" },
   { label: "Energy", href: "/dashboard/energy", icon: "Zap" },
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },

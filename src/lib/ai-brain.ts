@@ -14,6 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
+import { createWorkflowFromBrainDecision } from "@/lib/workflow-engine";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -714,6 +715,15 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
         impact: decision.impact_estimate,
       },
     });
+  }
+
+  // 6. Auto-create workflows for each decision
+  for (const decision of storedDecisions) {
+    try {
+      await createWorkflowFromBrainDecision(supabase, decision, mode);
+    } catch (err) {
+      console.error("[AI Brain] Failed to create workflow for decision:", decision.id, err);
+    }
   }
 
   return {

@@ -47,6 +47,7 @@ const ALLOWED_TABLES = [
   "staff_schedules",
   "supplier_orders",
   "suppliers",
+  "workflows",
 ];
 
 export async function GET(request: NextRequest) {
