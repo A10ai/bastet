@@ -10,7 +10,7 @@ import {
   getExecutiveSummary,
 } from "@/lib/reports-engine";
 
-const REPORT_TYPES = ["occupancy", "revenue", "guests", "operations", "financial", "executive"] as const;
+const REPORT_TYPES = ["occupancy", "revenue", "guests", "operations", "financial", "executive", "energy", "ai_decisions"] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
 
 function isValidDate(d: string): boolean {
@@ -77,6 +77,26 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
         { Metric: "RevPAR", Value: data.revpar },
         { Metric: "Profit Margin %", Value: data.profit_margin },
       ];
+    }
+    case "energy": {
+      const byZone = (data.by_zone as any[]) || [];
+      return byZone.map((z) => ({
+        Zone: z.zone,
+        "Total kWh": z.total_kwh,
+        "Total Cost": z.total_cost,
+        Readings: z.readings,
+      }));
+    }
+    case "ai_decisions": {
+      const decisions = (data.decisions as any[]) || [];
+      return decisions.map((d) => ({
+        "Cycle ID": d.cycle_id,
+        Category: d.category,
+        Action: d.action,
+        Confidence: d.confidence,
+        Executed: d.executed,
+        "Created At": d.created_at,
+      }));
     }
     default:
       return [];
@@ -156,6 +176,64 @@ export async function GET(request: NextRequest) {
       case "executive":
         data = await getExecutiveSummary(supabase, from, to) as unknown as Record<string, unknown>;
         break;
+      case "energy": {
+        const { data: readings } = await supabase
+          .from("energy_readings")
+          .select("zone, kwh, cost_gbp, recorded_at")
+          .gte("recorded_at", from)
+          .lte("recorded_at", to + "T23:59:59");
+
+        const zoneMap = new Map<string, { total_kwh: number; total_cost: number; readings: number }>();
+        for (const r of readings || []) {
+          const zone = r.zone || "unknown";
+          const entry = zoneMap.get(zone) || { total_kwh: 0, total_cost: 0, readings: 0 };
+          entry.total_kwh += r.kwh || 0;
+          entry.total_cost += r.cost_gbp || 0;
+          entry.readings++;
+          zoneMap.set(zone, entry);
+        }
+        const byZone = Array.from(zoneMap.entries()).map(([zone, d]) => ({
+          zone,
+          total_kwh: Math.round(d.total_kwh * 100) / 100,
+          total_cost: Math.round(d.total_cost * 100) / 100,
+          readings: d.readings,
+        })).sort((a, b) => b.total_kwh - a.total_kwh);
+
+        const totalKwh = byZone.reduce((s, z) => s + z.total_kwh, 0);
+        const totalCost = byZone.reduce((s, z) => s + z.total_cost, 0);
+        data = { total_kwh: Math.round(totalKwh * 100) / 100, total_cost: Math.round(totalCost * 100) / 100, by_zone: byZone } as unknown as Record<string, unknown>;
+        break;
+      }
+      case "ai_decisions": {
+        const { data: decisions } = await supabase
+          .from("brain_decisions")
+          .select("cycle_id, category, action, confidence, executed, created_at")
+          .gte("created_at", from)
+          .lte("created_at", to + "T23:59:59")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        const rows = (decisions || []).map((d) => ({
+          cycle_id: d.cycle_id,
+          category: d.category,
+          action: d.action,
+          confidence: d.confidence,
+          executed: d.executed,
+          created_at: d.created_at,
+        }));
+
+        const categoryMap = new Map<string, number>();
+        for (const d of rows) {
+          categoryMap.set(d.category || "unknown", (categoryMap.get(d.category || "unknown") || 0) + 1);
+        }
+        const byCategory = Array.from(categoryMap.entries())
+          .map(([category, count]) => ({ category, count }))
+          .sort((a, b) => b.count - a.count);
+
+        const executedCount = rows.filter((d) => d.executed).length;
+        data = { total: rows.length, executed: executedCount, by_category: byCategory, decisions: rows } as unknown as Record<string, unknown>;
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown report type" }, { status: 400 });
     }

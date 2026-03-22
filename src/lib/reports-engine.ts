@@ -280,8 +280,8 @@ export async function getRevenueReport(
     .from("bookings")
     .select("id, booking_ref, apartment_id, guest_id, check_in, check_out, total_amount_gbp, channel, nights, guests(first_name, last_name), apartments(unit_number)")
     .in("status", ["confirmed", "checked_in", "checked_out"])
-    .gte("check_in", dateFrom)
     .lte("check_in", dateTo)
+    .gte("check_out", dateFrom)
     .order("total_amount_gbp", { ascending: false });
 
   const totalRevenue = (bookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
@@ -352,8 +352,8 @@ export async function getRevenueReport(
     .from("bookings")
     .select("total_amount_gbp")
     .in("status", ["confirmed", "checked_in", "checked_out"])
-    .gte("check_in", prev.from)
-    .lte("check_in", prev.to);
+    .lte("check_in", prev.to)
+    .gte("check_out", prev.from);
 
   const prevRevenue = (prevBookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
 
@@ -638,13 +638,13 @@ export async function getFinancialSummary(
   dateFrom: string,
   dateTo: string
 ): Promise<FinancialReport> {
-  // Revenue from bookings
+  // Revenue from bookings (overlapping: active during period)
   const { data: bookings } = await supabase
     .from("bookings")
     .select("total_amount_gbp, channel")
     .in("status", ["confirmed", "checked_in", "checked_out"])
-    .gte("check_in", dateFrom)
-    .lte("check_in", dateTo);
+    .lte("check_in", dateTo)
+    .gte("check_out", dateFrom);
 
   const totalRevenue = (bookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
 

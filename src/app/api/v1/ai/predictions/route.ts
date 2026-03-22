@@ -9,7 +9,7 @@ import {
 } from "@/lib/prediction-model";
 
 /**
- * GET /api/v1/ai/predictions?type=forecast|performance|compare|train
+ * GET /api/v1/ai/predictions?type=forecast|footfall|revenue|performance|compare|train
  *
  * Returns ML-based predictions trained on real booking data.
  */
@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
     const type = request.nextUrl.searchParams.get("type") || "forecast";
 
     switch (type) {
-      case "forecast": {
+      case "forecast":
+      case "footfall":
+      case "revenue": {
         const result = await forecast30Days(supabase);
         return NextResponse.json({ data: result });
       }
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: "Unknown type. Use: forecast, performance, compare, train" },
+          { error: "Unknown type. Use: forecast, footfall, revenue, performance, compare, train" },
           { status: 400 }
         );
     }

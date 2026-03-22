@@ -553,6 +553,21 @@ export default function PredictionsPage() {
         </div>
       </div>
 
+      {/* Insufficient data warning */}
+      {model && (model.accuracy_r_squared < 0 || model.training_samples < 30) && (
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-400/10 border border-amber-400/20">
+          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-400">
+              Insufficient training data ({model.training_samples} samples)
+            </p>
+            <p className="text-xs text-text-secondary mt-1">
+              Predictions will improve as more booking data accumulates. Minimum recommended: 90 days of data.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* A. Model Status Card */}
       {model && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
