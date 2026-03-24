@@ -29,6 +29,17 @@ import {
   Bolt,
 } from "lucide-react";
 import { cn, formatCurrency, timeAgo } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types (mirroring server types)
@@ -366,6 +377,84 @@ export default function AIBrainPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts: Decisions by Category + Confidence Distribution */}
+      {history.length > 0 && (() => {
+        const DARK_TOOLTIP = { backgroundColor: '#111827', border: '1px solid #1F2937', borderRadius: '8px' };
+        const allDecisions = history.flatMap((c) => c.decisions);
+        const CATEGORY_COLORS: Record<string, string> = {
+          pricing: "#34D399", operations: "#22D3EE", energy: "#FBBF24",
+          guest: "#A78BFA", maintenance: "#FB923C", revenue: "#F472B6",
+        };
+        const catCounts: Record<string, number> = {};
+        allDecisions.forEach((d) => { catCounts[d.category] = (catCounts[d.category] || 0) + 1; });
+        const catData = Object.entries(catCounts).map(([cat, count]) => ({
+          name: cat.charAt(0).toUpperCase() + cat.slice(1),
+          count,
+          fill: CATEGORY_COLORS[cat] || "#22D3EE",
+        }));
+
+        const confBuckets = [
+          { name: "<50%", min: 0, max: 50, color: "#EF4444" },
+          { name: "50-74%", min: 50, max: 75, color: "#FBBF24" },
+          { name: "75-89%", min: 75, max: 90, color: "#22D3EE" },
+          { name: "90%+", min: 90, max: 101, color: "#34D399" },
+        ];
+        const confData = confBuckets.map((b) => ({
+          name: b.name,
+          value: allDecisions.filter((d) => d.confidence >= b.min && d.confidence < b.max).length,
+          color: b.color,
+        })).filter((d) => d.value > 0);
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-white">Decisions by Category</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={catData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Decisions"]} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {catData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-white">Confidence Distribution</h3>
+              </CardHeader>
+              <CardContent className="h-56 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={confData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} dataKey="value" paddingAngle={3} stroke="none">
+                      {confData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+              <div className="px-6 pb-4 flex flex-wrap justify-center gap-3">
+                {confData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-text-muted">{d.name} ({d.value})</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* C. Brain Summary */}
       {latestCycle && (

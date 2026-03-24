@@ -24,6 +24,16 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -391,6 +401,73 @@ export default function EventBusPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts: Events by Type + Timeline */}
+      {events.length > 0 && (() => {
+        const DARK_TOOLTIP = { backgroundColor: '#111827', border: '1px solid #1F2937', borderRadius: '8px' };
+        // Events by type bar chart
+        const typeCounts: Record<string, number> = {};
+        events.forEach((e) => { typeCounts[e.type] = (typeCounts[e.type] || 0) + 1; });
+        const typeData = Object.entries(typeCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+          .map(([type, count]) => ({
+            name: getEventConfig(type).label,
+            count,
+          }));
+
+        // Event timeline: group events by hour
+        const hourBuckets: Record<string, number> = {};
+        events.forEach((e) => {
+          const d = new Date(e.created_at);
+          const key = `${d.getHours().toString().padStart(2, "0")}:00`;
+          hourBuckets[key] = (hourBuckets[key] || 0) + 1;
+        });
+        const timelineData = Object.entries(hourBuckets)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([hour, count]) => ({ hour, events: count }));
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Events by Type</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={typeData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Events"]} />
+                    <Bar dataKey="count" fill="#22D3EE" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Event Timeline</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timelineData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <defs>
+                      <linearGradient id="eventGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#22D3EE" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="hour" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Events"]} />
+                    <Area type="monotone" dataKey="events" stroke="#22D3EE" strokeWidth={2} fill="url(#eventGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Filter Bar */}
       <Card>

@@ -16,6 +16,17 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface SchedulerStatus {
   enabled: boolean;
@@ -42,6 +53,7 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [lastResult, setLastResult] = useState<CycleResult | null>(null);
+  const [cycleHistory, setCycleHistory] = useState<CycleResult[]>([]);
   const [interval, setInterval] = useState(15);
 
   const fetchStatus = useCallback(async () => {
@@ -72,6 +84,7 @@ export default function SchedulerPage() {
       const json = await res.json();
       if (action === "run_now") {
         setLastResult(json.data);
+        if (json.data) setCycleHistory((prev) => [...prev, json.data].slice(-20));
       }
       await fetchStatus();
     } catch {
@@ -255,6 +268,81 @@ export default function SchedulerPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Charts: Cycle History Trend + Execution Status */}
+      {lastResult && (() => {
+        const DARK_TOOLTIP = { backgroundColor: '#111827', border: '1px solid #1F2937', borderRadius: '8px' };
+        const trendData = cycleHistory.length > 0
+          ? cycleHistory.map((c, i) => ({
+              cycle: `#${i + 1}`,
+              duration: c.duration_ms,
+              decisions: c.brain.decisions || 0,
+              actions: c.automations.total_actions || 0,
+            }))
+          : lastResult
+            ? [{ cycle: "#1", duration: lastResult.duration_ms, decisions: lastResult.brain.decisions || 0, actions: lastResult.automations.total_actions || 0 }]
+            : [];
+
+        const brainOk = !lastResult.brain.error && !lastResult.brain.skipped;
+        const autoOk = !lastResult.automations.error;
+        const statusData = [
+          { name: "Brain", value: brainOk ? 1 : 0, color: "#22D3EE" },
+          { name: "Automations", value: autoOk ? 1 : 0, color: "#34D399" },
+          { name: "Insights", value: lastResult.insights_count > 0 ? 1 : 0, color: "#FBBF24" },
+          { name: "Errors", value: (!brainOk ? 1 : 0) + (!autoOk ? 1 : 0), color: "#EF4444" },
+        ].filter((d) => d.value > 0);
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Cycle History</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <defs>
+                      <linearGradient id="schedGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#22D3EE" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="cycle" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [name === "duration" ? `${value}ms` : value, name === "duration" ? "Duration" : name === "decisions" ? "Decisions" : "Actions"]} />
+                    <Area type="monotone" dataKey="duration" stroke="#22D3EE" strokeWidth={2} fill="url(#schedGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Execution Status</h3>
+              </CardHeader>
+              <CardContent className="h-56 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} dataKey="value" paddingAngle={3} stroke="none">
+                      {statusData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+              <div className="px-6 pb-4 flex flex-wrap justify-center gap-3">
+                {statusData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-text-muted">{d.name}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Last Cycle Result */}
       {lastResult && (

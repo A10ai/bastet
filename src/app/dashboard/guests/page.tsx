@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,24 @@ import {
   Filter,
   Loader2,
   Star,
+  Users,
+  UserPlus,
+  Repeat,
 } from "lucide-react";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Guest, LoyaltyTier } from "@/types";
+
+const ACCENT = "#22D3EE";
+const TIER_PIE_COLORS = ["#F97316", "#94A3B8", "#FBBF24", "#A78BFA"];
+const NAT_BAR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 const TIER_COLORS: Record<LoyaltyTier, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
@@ -116,6 +131,40 @@ export default function GuestsPage() {
 
   const tiers: LoyaltyTier[] = ["bronze", "silver", "gold", "platinum"];
 
+  /* ---------- Chart data ---------- */
+  const statCards = useMemo(() => {
+    const total = guests.length;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const newThisMonth = guests.filter((g) => g.created_at >= monthStart).length;
+    const returning = guests.filter((g) => g.total_stays > 1).length;
+    const avgRating = 0; // no per-guest rating field; placeholder
+    return { total, newThisMonth, returning, avgRating };
+  }, [guests]);
+
+  const tierChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const g of guests) {
+      const t = g.loyalty_tier || "bronze";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+    return tiers
+      .map((t) => ({ name: t.charAt(0).toUpperCase() + t.slice(1), value: counts[t] || 0 }))
+      .filter((d) => d.value > 0);
+  }, [guests]);
+
+  const nationalityChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const g of guests) {
+      const nat = g.nationality || g.country || "Unknown";
+      counts[nat] = (counts[nat] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, value]) => ({ name, value }));
+  }, [guests]);
+
   const churnBar = (risk?: number) => {
     if (risk == null) return <span className="text-xs text-text-muted">—</span>;
     const pct = Math.min(100, Math.max(0, risk));
@@ -153,6 +202,83 @@ export default function GuestsPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Stat Cards */}
+      {!loading && guests.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Total Guests", value: statCards.total, icon: Users, color: ACCENT },
+            { label: "New This Month", value: statCards.newThisMonth, icon: UserPlus, color: "#34D399" },
+            { label: "Returning", value: statCards.returning, icon: Repeat, color: "#FBBF24" },
+            { label: "VIP Guests", value: guests.filter((g) => g.vip_status).length, icon: Star, color: "#A78BFA" },
+          ].map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${s.color}15` }}>
+                  <s.icon className="w-5 h-5" style={{ color: s.color }} />
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted">{s.label}</p>
+                  <p className="text-xl font-bold text-text-primary">{s.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Charts */}
+      {!loading && guests.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Top Nationalities */}
+          {nationalityChartData.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">Top Nationalities</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={nationalityChartData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="name" width={80} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} guests`, "Count"]} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+                      {nationalityChartData.map((_, i) => (
+                        <Cell key={i} fill={NAT_BAR_COLORS[i % NAT_BAR_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Loyalty Tier Donut */}
+          {tierChartData.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">Guests by Loyalty Tier</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={tierChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                      {tierChartData.map((_, i) => (
+                        <Cell key={i} fill={TIER_PIE_COLORS[i % TIER_PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} guests`, "Count"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  {tierChartData.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: TIER_PIE_COLORS[i % TIER_PIE_COLORS.length] }} />
+                      {d.name} ({d.value})
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

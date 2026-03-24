@@ -20,6 +20,17 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -243,6 +254,66 @@ export default function AutomationsPage() {
           {running === "all" ? "Running..." : "Run All"}
         </Button>
       </div>
+
+      {/* Charts */}
+      {automations.length > 0 && (() => {
+        const DARK_TOOLTIP = { backgroundColor: '#111827', border: '1px solid #1F2937', borderRadius: '8px' };
+        const typeData = automations.map((a) => ({
+          name: a.name.replace(/^Auto\s*/i, "").slice(0, 14),
+          actions: a.actions_taken,
+        }));
+        const enabledCount = automations.filter((a) => a.enabled).length;
+        const disabledCount = automations.length - enabledCount;
+        const statusData = [
+          { name: "Enabled", value: enabledCount, color: "#22D3EE" },
+          { name: "Disabled", value: disabledCount, color: "#374151" },
+        ].filter((d) => d.value > 0);
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Actions by Automation</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={typeData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} itemStyle={{ color: '#22D3EE' }} formatter={(value: any) => [value, "Actions"]} />
+                    <Bar dataKey="actions" fill="#22D3EE" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Status Split</h3>
+              </CardHeader>
+              <CardContent className="h-56 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} dataKey="value" paddingAngle={3} stroke="none">
+                      {statusData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+              <div className="px-6 pb-4 flex justify-center gap-4">
+                {statusData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-text-muted">{d.name} ({d.value})</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Automation Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

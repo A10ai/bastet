@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Filter, Loader2, Search, Plus } from "lucide-react";
+import { Eye, Filter, Loader2, Search, Plus, Users, UserCheck, UserX } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
+
+const ACCENT = "#22D3EE";
+const ROLE_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6"];
+const DEPT_COLORS = ["#818CF8", "#6EE7B7", "#FB923C", "#E879F9", "#38BDF8", "#FCD34D"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 interface StaffTaskCounts {
   [staffId: string]: number;
@@ -77,6 +87,36 @@ export default function StaffPage() {
     setTaskCounts(counts);
   };
 
+  /* ---------- Chart data ---------- */
+  const statCards = useMemo(() => {
+    const total = staff.length;
+    const active = staff.filter((s) => s.is_active).length;
+    const inactive = total - active;
+    return { total, active, inactive };
+  }, [staff]);
+
+  const roleChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of staff) {
+      const r = s.role || "other";
+      counts[r] = (counts[r] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+      .filter((d) => d.value > 0);
+  }, [staff]);
+
+  const deptChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of staff) {
+      const d = s.department || "Unassigned";
+      counts[d] = (counts[d] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+      .filter((d) => d.value > 0);
+  }, [staff]);
+
   const filtered =
     roleFilter === "all"
       ? staff
@@ -106,6 +146,88 @@ export default function StaffPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Stat Cards */}
+      {!loading && staff.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {[
+            { label: "Total Staff", value: statCards.total, icon: Users, color: ACCENT },
+            { label: "Active", value: statCards.active, icon: UserCheck, color: "#34D399" },
+            { label: "Inactive", value: statCards.inactive, icon: UserX, color: "#F97316" },
+          ].map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${s.color}15` }}>
+                  <s.icon className="w-5 h-5" style={{ color: s.color }} />
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted">{s.label}</p>
+                  <p className="text-xl font-bold text-text-primary">{s.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Charts */}
+      {!loading && staff.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Staff by Role */}
+          {roleChartData.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">Staff by Role</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={roleChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                      {roleChartData.map((_, i) => (
+                        <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} staff`, "Count"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  {roleChartData.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }} />
+                      {d.name} ({d.value})
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Staff by Department */}
+          {deptChartData.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">Staff by Department</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={deptChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                      {deptChartData.map((_, i) => (
+                        <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} staff`, "Count"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  {deptChartData.map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: DEPT_COLORS[i % DEPT_COLORS.length] }} />
+                      {d.name} ({d.value})
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Search & Active Toggle */}
       <div className="flex flex-wrap items-center gap-3">

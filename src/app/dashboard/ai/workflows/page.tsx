@@ -27,6 +27,17 @@ import {
   X,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -773,6 +784,80 @@ export default function WorkflowsPage() {
           </Card>
         </div>
       )}
+
+      {/* Charts: Workflow Status Donut + Completion Rate by Source */}
+      {stats && workflows.length > 0 && (() => {
+        const DARK_TOOLTIP = { backgroundColor: '#111827', border: '1px solid #1F2937', borderRadius: '8px' };
+        const STATUS_COLORS: Record<string, string> = {
+          pending: "#FBBF24", in_progress: "#22D3EE", awaiting_approval: "#F59E0B",
+          approved: "#3B82F6", completed: "#34D399", failed: "#EF4444", cancelled: "#6B7280",
+        };
+        const statusData = Object.entries(stats.by_status)
+          .filter(([, count]) => count > 0)
+          .map(([status, count]) => ({
+            name: STATUS_CONFIG[status]?.label || status,
+            value: count,
+            color: STATUS_COLORS[status] || "#6B7280",
+          }));
+
+        // Completion rate by source
+        const sourceGroups: Record<string, { total: number; completed: number }> = {};
+        workflows.forEach((w) => {
+          if (!sourceGroups[w.source]) sourceGroups[w.source] = { total: 0, completed: 0 };
+          sourceGroups[w.source].total++;
+          if (w.status === "completed") sourceGroups[w.source].completed++;
+        });
+        const completionData = Object.entries(sourceGroups).map(([src, data]) => ({
+          name: SOURCE_CONFIG[src]?.label || src,
+          rate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
+          total: data.total,
+        }));
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Workflow Status</h3>
+              </CardHeader>
+              <CardContent className="h-56 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} dataKey="value" paddingAngle={3} stroke="none">
+                      {statusData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+              <div className="px-6 pb-4 flex flex-wrap justify-center gap-3">
+                {statusData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-text-muted">{d.name} ({d.value})</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-text-primary">Completion Rate by Source</h3>
+              </CardHeader>
+              <CardContent className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={completionData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                    <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.total} total)`, "Completion"]} />
+                    <Bar dataKey="rate" fill="#22D3EE" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1 p-1 bg-bastet-bg rounded-lg w-fit">
