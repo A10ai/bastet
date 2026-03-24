@@ -14,6 +14,7 @@ export const SIDEBAR_NAV: NavGroup[] = [
   {
     label: "Overview",
     items: [
+      { label: "Daily Briefing", href: "/dashboard/briefing", icon: "Newspaper" },
       { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
       { label: "Apartments", href: "/dashboard/apartments", icon: "Building2" },
       { label: "Bookings", href: "/dashboard/bookings", icon: "CalendarDays" },
