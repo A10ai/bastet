@@ -18,6 +18,13 @@ import {
   Zap,
   Globe,
   PieChart as PieChartIcon,
+  DollarSign,
+  Percent,
+  BedDouble,
+  CalendarRange,
+  FlaskConical,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import {
   PieChart,
@@ -26,17 +33,37 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
 
 const darkTooltipStyle = {
-  backgroundColor: '#111827',
-  border: '1px solid #1F2937',
-  borderRadius: '8px',
+  backgroundColor: "#111827",
+  border: "1px solid #1F2937",
+  borderRadius: "8px",
+  color: "#F9FAFB",
 };
 
-const DONUT_COLORS = ['#22D3EE', '#F87171', '#FBBF24', '#34D399', '#A78BFA'];
+const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
+  utilities: "#F59E0B",
+  staff: "#3B82F6",
+  maintenance: "#F97316",
+  supplies: "#8B5CF6",
+  marketing: "#EC4899",
+  insurance: "#06B6D4",
+  taxes: "#EF4444",
+  software: "#10B981",
+  professional_services: "#6366F1",
+  travel: "#14B8A6",
+  other: "#6B7280",
+};
+
+const REVENUE_SOURCE_COLORS = ["#22D3EE", "#F59E0B", "#A78BFA", "#34D399", "#F87171"];
 
 interface ChannelAnalysis {
   direct_pct: number;
@@ -47,6 +74,17 @@ interface ChannelAnalysis {
 interface RevenueForecast {
   days: { date: string; projected_gbp: number }[];
   total_7day_gbp: number;
+}
+
+function ChangeIndicator({ value }: { value: number | null | undefined }) {
+  if (value == null) return null;
+  const isPositive = value >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${isPositive ? "text-status-success" : "text-status-error"}`}>
+      {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+      {Math.abs(value).toFixed(1)}%
+    </span>
+  );
 }
 
 export default function FinancePage() {
@@ -71,7 +109,6 @@ export default function FinancePage() {
     };
     fetchSummary();
 
-    // Fetch channel analysis from revenue copilot
     const fetchChannel = async () => {
       try {
         const res = await fetch("/api/v1/ai/revenue");
@@ -83,7 +120,6 @@ export default function FinancePage() {
           commission_cost_gbp: d.commission_cost_gbp ?? d.total_commission ?? 0,
         });
 
-        // Revenue forecast
         if (d.forecast || d.revenue_forecast) {
           const fc = d.forecast || d.revenue_forecast;
           setForecast({
@@ -91,11 +127,12 @@ export default function FinancePage() {
             total_7day_gbp: fc.total_7day_gbp ?? fc.total ?? 0,
           });
         }
-      } catch { /* — */ }
+      } catch {
+        /* -- */
+      }
     };
     fetchChannel();
 
-    // Fetch energy cost
     const fetchEnergy = async () => {
       try {
         const res = await fetch("/api/v1/ai/energy");
@@ -103,27 +140,58 @@ export default function FinancePage() {
         const d = json.data || json;
         const overview = d.overview || d;
         setEnergyCost(overview.waste_cost_gbp ?? overview.daily_energy_cost_gbp ?? null);
-      } catch { /* — */ }
+      } catch {
+        /* -- */
+      }
     };
     fetchEnergy();
   }, []);
 
-  // Build expense breakdown for donut chart from available data
-  const expenseBreakdown = useMemo(() => {
+  // Expense breakdown from API data
+  const expenseDonutData = useMemo(() => {
+    if (summary?.expense_breakdown && summary.expense_breakdown.length > 0) {
+      return summary.expense_breakdown.map((item) => ({
+        name: item.category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        value: item.total_gbp,
+        key: item.category,
+        percentage: item.percentage,
+      }));
+    }
+    // Fallback to estimated breakdown
     const total = summary?.expenses_gbp || 0;
     if (total <= 0) return [];
-
     const commission = channelAnalysis?.commission_cost_gbp || 0;
-    const energy = (energyCost || 0) * 30; // monthly estimate
+    const energy = (energyCost || 0) * 30;
     const remaining = Math.max(0, total - commission - energy);
-
-    const items: { name: string; value: number }[] = [];
-    if (remaining > 0) items.push({ name: 'Operations', value: Math.round(remaining) });
-    if (commission > 0) items.push({ name: 'OTA Commission', value: Math.round(commission) });
-    if (energy > 0) items.push({ name: 'Energy', value: Math.round(energy) });
-
+    const items: { name: string; value: number; key: string; percentage: number }[] = [];
+    if (remaining > 0) items.push({ name: "Operations", value: Math.round(remaining), key: "other", percentage: Math.round((remaining / total) * 100) });
+    if (commission > 0) items.push({ name: "OTA Commission", value: Math.round(commission), key: "marketing", percentage: Math.round((commission / total) * 100) });
+    if (energy > 0) items.push({ name: "Energy", value: Math.round(energy), key: "utilities", percentage: Math.round((energy / total) * 100) });
     return items;
   }, [summary, channelAnalysis, energyCost]);
+
+  // Revenue by source donut data
+  const revenueSourceData = useMemo(() => {
+    if (summary?.revenue_by_source && summary.revenue_by_source.length > 0) {
+      return summary.revenue_by_source.map((item) => ({
+        name: item.source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        value: item.amount_gbp,
+        percentage: item.percentage,
+      }));
+    }
+    return [];
+  }, [summary]);
+
+  // Cash flow trend data from monthly_data
+  const cashFlowData = useMemo(() => {
+    if (!summary?.monthly_data || summary.monthly_data.length === 0) return [];
+    return summary.monthly_data.map((m) => ({
+      month: m.month,
+      net_profit: m.revenue - m.expenses,
+      revenue: m.revenue,
+      expenses: m.expenses,
+    }));
+  }, [summary]);
 
   if (loading) {
     return (
@@ -135,23 +203,28 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-text-primary">Finance</h1>
+        <h1 className="text-2xl font-display font-bold text-text-primary">Financial Command Centre</h1>
         <p className="text-sm text-text-secondary mt-1">
-          Financial overview and management
+          Comprehensive financial overview and performance metrics
         </p>
       </div>
 
-      {/* KPI Cards */}
+      {/* ===== ROW 1: Primary KPIs ===== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Revenue */}
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-status-success/10 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-status-success" />
               </div>
-              <div>
-                <p className="text-xs text-text-muted">Revenue (Month)</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-text-muted">Revenue</p>
+                  <ChangeIndicator value={summary?.revenue_vs_last_month_pct} />
+                </div>
                 <p className="text-lg font-semibold font-mono text-text-primary">
                   {formatCurrency(summary?.revenue_gbp || 0)}
                 </p>
@@ -160,14 +233,18 @@ export default function FinancePage() {
           </CardContent>
         </Card>
 
+        {/* Expenses */}
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-status-error/10 flex items-center justify-center">
                 <TrendingDown className="w-5 h-5 text-status-error" />
               </div>
-              <div>
-                <p className="text-xs text-text-muted">Expenses (Month)</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-text-muted">Expenses</p>
+                  <ChangeIndicator value={summary?.expenses_vs_last_month_pct != null ? -summary.expenses_vs_last_month_pct : null} />
+                </div>
                 <p className="text-lg font-semibold font-mono text-text-primary">
                   {formatCurrency(summary?.expenses_gbp || 0)}
                 </p>
@@ -176,6 +253,7 @@ export default function FinancePage() {
           </CardContent>
         </Card>
 
+        {/* Net Profit */}
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -184,9 +262,7 @@ export default function FinancePage() {
               </div>
               <div>
                 <p className="text-xs text-text-muted">Net Profit</p>
-                <p className={`text-lg font-semibold font-mono ${
-                  (summary?.net_profit_gbp || 0) >= 0 ? "text-status-success" : "text-status-error"
-                }`}>
+                <p className={`text-lg font-semibold font-mono ${(summary?.net_profit_gbp || 0) >= 0 ? "text-status-success" : "text-status-error"}`}>
                   {formatCurrency(summary?.net_profit_gbp || 0)}
                 </p>
               </div>
@@ -194,6 +270,78 @@ export default function FinancePage() {
           </CardContent>
         </Card>
 
+        {/* Profit Margin */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <Percent className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Profit Margin</p>
+                <p className={`text-lg font-semibold font-mono ${(summary?.profit_margin_pct || 0) >= 0 ? "text-status-success" : "text-status-error"}`}>
+                  {(summary?.profit_margin_pct || 0).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ===== ROW 2: Operational KPIs ===== */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ADR */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">ADR</p>
+                <p className="text-lg font-semibold font-mono text-text-primary">
+                  {formatCurrency(summary?.adr_gbp || 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* RevPAA */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">RevPAA</p>
+                <p className="text-lg font-semibold font-mono text-text-primary">
+                  {formatCurrency(summary?.revpaa_gbp || 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cost per Occupied Room */}
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <BedDouble className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Cost / Occupied Room</p>
+                <p className="text-lg font-semibold font-mono text-text-primary">
+                  {formatCurrency(summary?.cost_per_occupied_room || 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Occupancy Rate */}
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -201,7 +349,7 @@ export default function FinancePage() {
                 <Building2 className="w-5 h-5 text-status-info" />
               </div>
               <div>
-                <p className="text-xs text-text-muted">Occupancy</p>
+                <p className="text-xs text-text-muted">Occupancy Rate</p>
                 <p className="text-lg font-semibold font-mono text-text-primary">
                   {summary?.occupancy_rate || 0}%
                 </p>
@@ -211,44 +359,52 @@ export default function FinancePage() {
         </Card>
       </div>
 
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs text-text-muted">ADR</p>
-            <p className="text-sm font-semibold font-mono text-text-primary">
-              {formatCurrency(summary?.adr_gbp || 0)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs text-text-muted">RevPAA</p>
-            <p className="text-sm font-semibold font-mono text-text-primary">
-              {formatCurrency(summary?.revpaa_gbp || 0)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs text-text-muted">Total Invoices</p>
-            <p className="text-sm font-semibold font-mono text-text-primary">
-              {summary?.total_invoices || 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs text-text-muted">Outstanding</p>
-            <p className="text-sm font-semibold font-mono text-status-warning">
-              {summary?.outstanding_invoices || 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ===== YTD Summary Card ===== */}
+      <Card className="border-cyan-500/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CalendarRange className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-text-primary">Year-to-Date Summary</h3>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-xs text-text-muted mb-1">YTD Revenue</p>
+              <p className="text-xl font-semibold font-mono text-status-success">
+                {formatCurrency(summary?.ytd_revenue_gbp || 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted mb-1">YTD Expenses</p>
+              <p className="text-xl font-semibold font-mono text-status-error">
+                {formatCurrency(summary?.ytd_expenses_gbp || 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted mb-1">YTD Net Profit</p>
+              <p className={`text-xl font-semibold font-mono ${(summary?.ytd_net_profit_gbp || 0) >= 0 ? "text-status-success" : "text-status-error"}`}>
+                {formatCurrency(summary?.ytd_net_profit_gbp || 0)}
+              </p>
+            </div>
+            {(summary?.r_and_d_total_gbp || 0) > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <FlaskConical className="w-3.5 h-3.5 text-cyan-400" />
+                  <p className="text-xs text-text-muted">R&D Spending</p>
+                </div>
+                <p className="text-xl font-semibold font-mono text-cyan-400">
+                  {formatCurrency(summary?.r_and_d_total_gbp || 0)}
+                </p>
+                <p className="text-[10px] text-text-muted mt-0.5">Innovate UK Eligible</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* ===== Revenue vs Expenses Chart + Currency ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -262,14 +418,180 @@ export default function FinancePage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Currency Rates */}
         <div>
           <CurrencyRatesCard />
         </div>
       </div>
 
-      {/* Channel Analysis + Revenue Forecast */}
+      {/* ===== Expense Breakdown + Revenue by Source ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expense Breakdown Donut */}
+        {expenseDonutData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <PieChartIcon className="w-5 h-5 text-text-muted" />
+                <h3 className="text-lg font-semibold text-text-primary">Expense Breakdown</h3>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col lg:flex-row items-center gap-4">
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={expenseDonutData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={105}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      stroke="none"
+                    >
+                      {expenseDonutData.map((item, index) => (
+                        <Cell
+                          key={`exp-${index}`}
+                          fill={EXPENSE_CATEGORY_COLORS[item.key] || EXPENSE_CATEGORY_COLORS.other}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={darkTooltipStyle}
+                      labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
+                      formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Legend with amounts */}
+                <div className="w-full lg:w-auto space-y-1.5 min-w-[180px]">
+                  {expenseDonutData.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2 text-xs">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: EXPENSE_CATEGORY_COLORS[item.key] || EXPENSE_CATEGORY_COLORS.other }}
+                      />
+                      <span className="text-text-secondary flex-1 truncate">{item.name}</span>
+                      <span className="font-mono text-text-primary">{formatCurrency(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Revenue by Source Donut */}
+        {revenueSourceData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <PieChartIcon className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-lg font-semibold text-text-primary">Revenue by Source</h3>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col lg:flex-row items-center gap-4">
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={revenueSourceData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={105}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      stroke="none"
+                    >
+                      {revenueSourceData.map((_, index) => (
+                        <Cell key={`rev-${index}`} fill={REVENUE_SOURCE_COLORS[index % REVENUE_SOURCE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={darkTooltipStyle}
+                      labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
+                      formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Legend with amounts */}
+                <div className="w-full lg:w-auto space-y-1.5 min-w-[180px]">
+                  {revenueSourceData.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2 text-xs">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: REVENUE_SOURCE_COLORS[index % REVENUE_SOURCE_COLORS.length] }}
+                      />
+                      <span className="text-text-secondary flex-1 truncate">{item.name}</span>
+                      <span className="font-mono text-text-primary">{formatCurrency(item.value)}</span>
+                      <span className="font-mono text-text-muted">({item.percentage}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* ===== Cash Flow Trend ===== */}
+      {cashFlowData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-semibold text-text-primary">Cash Flow Trend</h3>
+            </div>
+            <p className="text-xs text-text-muted mt-1">Net profit trend over the last 6 months</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={cashFlowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cashFlowPositive" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22D3EE" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22D3EE" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: "#6B7280", fontSize: 11 }}
+                  axisLine={{ stroke: "#374151" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#6B7280", fontSize: 11 }}
+                  axisLine={{ stroke: "#374151" }}
+                  tickLine={false}
+                  tickFormatter={(value: any) => `£${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  contentStyle={darkTooltipStyle}
+                  labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
+                  formatter={(value: any, name: any) => [
+                    formatCurrency(value),
+                    name === "net_profit" ? "Net Profit" : name,
+                  ]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="net_profit"
+                  stroke="#22D3EE"
+                  strokeWidth={2}
+                  fill="url(#cashFlowPositive)"
+                  dot={{ fill: "#22D3EE", strokeWidth: 0, r: 4 }}
+                  activeDot={{ r: 6, fill: "#22D3EE" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== Channel Analysis + Revenue Forecast ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Channel Analysis */}
         <Card className="border-bastet-gold/10">
@@ -293,7 +615,6 @@ export default function FinancePage() {
                   <span className="text-sm text-text-secondary">OTA Bookings</span>
                   <span className="text-sm font-mono text-text-primary">{channelAnalysis.ota_pct}%</span>
                 </div>
-                {/* Visual bar */}
                 <div className="w-full h-3 bg-bastet-bg rounded-full overflow-hidden flex">
                   <div
                     className="h-full bg-bastet-gold rounded-l-full"
@@ -350,48 +671,7 @@ export default function FinancePage() {
         </Card>
       </div>
 
-      {/* Expense Breakdown Donut */}
-      {expenseBreakdown.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-text-muted" />
-              <h3 className="text-lg font-semibold text-text-primary">Expense Breakdown</h3>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={expenseBreakdown}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={110}
-                  paddingAngle={3}
-                  dataKey="value"
-                  nameKey="name"
-                  stroke="none"
-                >
-                  {expenseBreakdown.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={darkTooltipStyle}
-                  labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
-                  formatter={(value: any, name: any) => [formatCurrency(value), name]}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 11, color: '#6B7280' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Energy Cost Line */}
+      {/* ===== Energy Cost ===== */}
       {energyCost != null && energyCost > 0 && (
         <Card className="border-amber-500/10">
           <CardContent className="py-3">
@@ -408,7 +688,7 @@ export default function FinancePage() {
         </Card>
       )}
 
-      {/* Navigation Cards */}
+      {/* ===== Navigation Cards ===== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/dashboard/finance/invoices">
           <Card className="hover:border-bastet-gold/50 transition-colors cursor-pointer">
@@ -419,7 +699,9 @@ export default function FinancePage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-text-primary">Invoices</p>
-                  <p className="text-xs text-text-secondary">Manage invoices and payments</p>
+                  <p className="text-xs text-text-secondary">
+                    {summary?.total_invoices || 0} total &middot; {summary?.outstanding_invoices || 0} outstanding
+                  </p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-text-muted" />

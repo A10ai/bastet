@@ -57,6 +57,19 @@ export interface InvoiceLineItem {
   total_gbp: number;
 }
 
+export interface ExpenseBreakdownItem {
+  category: string;
+  total_gbp: number;
+  count: number;
+  percentage: number;
+}
+
+export interface RevenueBySourceItem {
+  source: string;
+  amount_gbp: number;
+  percentage: number;
+}
+
 export interface FinancialSummary {
   revenue_gbp: number;
   expenses_gbp: number;
@@ -71,4 +84,14 @@ export interface FinancialSummary {
     revenue: number;
     expenses: number;
   }[];
+  expense_breakdown: ExpenseBreakdownItem[];
+  revenue_by_source: RevenueBySourceItem[];
+  cost_per_occupied_room: number;
+  profit_margin_pct: number;
+  revenue_vs_last_month_pct: number | null;
+  expenses_vs_last_month_pct: number | null;
+  ytd_revenue_gbp: number;
+  ytd_expenses_gbp: number;
+  ytd_net_profit_gbp: number;
+  r_and_d_total_gbp: number;
 }
