@@ -435,43 +435,45 @@ export default function FinancePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col lg:flex-row items-center gap-4">
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={expenseDonutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={105}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      stroke="none"
-                    >
-                      {expenseDonutData.map((item, index) => (
-                        <Cell
-                          key={`exp-${index}`}
-                          fill={EXPENSE_CATEGORY_COLORS[item.key] || EXPENSE_CATEGORY_COLORS.other}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={darkTooltipStyle}
-                      labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                      formatter={(value: any, name: any) => [formatCurrency(value), name]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row items-center gap-6">
+                <div className="w-[220px] h-[220px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={expenseDonutData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                        stroke="none"
+                      >
+                        {expenseDonutData.map((item, index) => (
+                          <Cell
+                            key={`exp-${index}`}
+                            fill={EXPENSE_CATEGORY_COLORS[item.key] || EXPENSE_CATEGORY_COLORS.other}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={darkTooltipStyle}
+                        labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
+                        formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 {/* Legend with amounts */}
-                <div className="w-full lg:w-auto space-y-1.5 min-w-[180px]">
+                <div className="flex-1 space-y-1.5">
                   {expenseDonutData.map((item, index) => (
                     <div key={index} className="flex items-center gap-2 text-xs">
                       <div
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: EXPENSE_CATEGORY_COLORS[item.key] || EXPENSE_CATEGORY_COLORS.other }}
                       />
-                      <span className="text-text-secondary flex-1 truncate">{item.name}</span>
+                      <span className="text-text-secondary flex-1">{item.name}</span>
                       <span className="font-mono text-text-primary">{formatCurrency(item.value)}</span>
                     </div>
                   ))}
@@ -491,41 +493,43 @@ export default function FinancePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col lg:flex-row items-center gap-4">
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={revenueSourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={105}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      stroke="none"
-                    >
-                      {revenueSourceData.map((_, index) => (
-                        <Cell key={`rev-${index}`} fill={REVENUE_SOURCE_COLORS[index % REVENUE_SOURCE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={darkTooltipStyle}
-                      labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                      formatter={(value: any, name: any) => [formatCurrency(value), name]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row items-center gap-6">
+                <div className="w-[220px] h-[220px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={revenueSourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                        stroke="none"
+                      >
+                        {revenueSourceData.map((_, index) => (
+                          <Cell key={`rev-${index}`} fill={REVENUE_SOURCE_COLORS[index % REVENUE_SOURCE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={darkTooltipStyle}
+                        labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
+                        formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 {/* Legend with amounts */}
-                <div className="w-full lg:w-auto space-y-1.5 min-w-[180px]">
+                <div className="flex-1 space-y-1.5">
                   {revenueSourceData.map((item, index) => (
                     <div key={index} className="flex items-center gap-2 text-xs">
                       <div
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: REVENUE_SOURCE_COLORS[index % REVENUE_SOURCE_COLORS.length] }}
                       />
-                      <span className="text-text-secondary flex-1 truncate">{item.name}</span>
-                      <span className="font-mono text-text-primary">{formatCurrency(item.value)}</span>
+                      <span className="text-text-secondary">{item.name}</span>
+                      <span className="font-mono text-text-primary ml-auto">{formatCurrency(item.value)}</span>
                       <span className="font-mono text-text-muted">({item.percentage}%)</span>
                     </div>
                   ))}
