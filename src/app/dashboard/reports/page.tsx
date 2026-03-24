@@ -21,10 +21,21 @@ import {
   Sparkles,
   DollarSign,
   BarChart3,
-  PieChart,
+  PieChart as PieChartIcon,
   Zap,
   Brain,
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie, AreaChart, Area, CartesianGrid,
+} from "recharts";
+
+const RECHARTS_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -232,7 +243,7 @@ function ExecutiveView({ data }: { data: any }) {
     { label: "Revenue", value: formatCurrency(data.revenue), icon: DollarSign, color: "text-emerald-400" },
     { label: "ADR", value: formatCurrency(data.adr), icon: TrendingUp, color: "text-cyan-300" },
     { label: "RevPAR", value: formatCurrency(data.revpar), icon: BarChart3, color: "text-cyan-400" },
-    { label: "Profit Margin", value: `${data.profit_margin}%`, icon: PieChart, color: "text-emerald-400" },
+    { label: "Profit Margin", value: `${data.profit_margin}%`, icon: PieChartIcon, color: "text-emerald-400" },
     { label: "Guest Satisfaction", value: data.guest_satisfaction > 0 ? `${data.guest_satisfaction}/5` : "N/A", icon: Users, color: "text-cyan-300" },
   ];
 
@@ -310,8 +321,6 @@ function ExecutiveView({ data }: { data: any }) {
 // ─── Occupancy View ──────────────────────────────────────────────────
 
 function OccupancyView({ data }: { data: any }) {
-  const maxOcc = Math.max(...(data.daily || []).map((d: any) => d.occupancy), 1);
-
   return (
     <div className="space-y-6">
       {/* Summary cards */}
@@ -326,28 +335,29 @@ function OccupancyView({ data }: { data: any }) {
         />
       </div>
 
-      {/* Daily bar chart */}
+      {/* Daily occupancy chart */}
       <Card className="report-card report-section">
         <CardHeader>
           <h3 className="text-lg font-semibold text-text-primary">Daily Occupancy</h3>
         </CardHeader>
         <CardContent>
-          <div className="space-y-1.5 max-h-96 overflow-y-auto">
-            {(data.daily || []).map((d: any) => (
-              <div key={d.date} className="flex items-center gap-3 text-xs">
-                <span className="w-20 text-text-muted font-mono flex-shrink-0">
-                  {formatDate(d.date, "dd MMM")}
-                </span>
-                <div className="flex-1 h-5 bg-bastet-bg rounded overflow-hidden">
-                  <div
-                    className="css-bar-fill h-full rounded bg-cyan-400/80 transition-all"
-                    style={{ width: `${Math.max((d.occupancy / maxOcc) * 100, 1)}%` }}
-                  />
-                </div>
-                <span className="w-12 text-right text-text-secondary font-mono">{d.occupancy}%</span>
-              </div>
-            ))}
-          </div>
+          {(data.daily || []).length > 0 && (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={(data.daily || []).map((d: any) => ({ date: (d.date || "").slice(5), occupancy: d.occupancy }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="occGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#22D3EE" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
+                <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
+                <Tooltip {...darkTooltipStyle} formatter={(value: any) => [`${value}%`, "Occupancy"]} />
+                <Area type="monotone" dataKey="occupancy" stroke="#22D3EE" strokeWidth={2} fill="url(#occGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -394,8 +404,6 @@ function OccupancyView({ data }: { data: any }) {
 // ─── Revenue View ────────────────────────────────────────────────────
 
 function RevenueView({ data }: { data: any }) {
-  const maxRev = Math.max(...(data.daily || []).map((d: any) => d.revenue), 1);
-
   return (
     <div className="space-y-6">
       {/* Summary */}
@@ -435,24 +443,23 @@ function RevenueView({ data }: { data: any }) {
           <h3 className="text-lg font-semibold text-text-primary">Daily Revenue</h3>
         </CardHeader>
         <CardContent>
-          <div className="space-y-1.5 max-h-96 overflow-y-auto">
-            {(data.daily || []).map((d: any) => (
-              <div key={d.date} className="flex items-center gap-3 text-xs">
-                <span className="w-20 text-text-muted font-mono flex-shrink-0">
-                  {formatDate(d.date, "dd MMM")}
-                </span>
-                <div className="flex-1 h-5 bg-bastet-bg rounded overflow-hidden">
-                  <div
-                    className="css-bar-fill h-full rounded bg-emerald-400/80 transition-all"
-                    style={{ width: `${Math.max((d.revenue / maxRev) * 100, 1)}%` }}
-                  />
-                </div>
-                <span className="w-20 text-right text-text-secondary font-mono">
-                  {formatCurrency(d.revenue)}
-                </span>
-              </div>
-            ))}
-          </div>
+          {(data.daily || []).length > 0 && (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={(data.daily || []).map((d: any) => ({ date: (d.date || "").slice(5), revenue: d.revenue }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#34D399" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#34D399" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
+                <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Revenue"]} />
+                <Area type="monotone" dataKey="revenue" stroke="#34D399" strokeWidth={2} fill="url(#revGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -513,41 +520,29 @@ function GuestView({ data }: { data: any }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* New vs Returning - CSS circle */}
+        {/* New vs Returning - Recharts donut */}
         <Card className="report-card report-section">
           <CardHeader>
             <h3 className="text-lg font-semibold text-text-primary">New vs Returning</h3>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center gap-8 py-4">
-              <div className="relative w-32 h-32">
-                <svg viewBox="0 0 36 36" className="w-32 h-32 transform -rotate-90">
-                  <circle
-                    cx="18" cy="18" r="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-bastet-border"
-                  />
-                  <circle
-                    cx="18" cy="18" r="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeDasharray={`${newPct * 0.88} ${88 - newPct * 0.88}`}
-                    className="text-cyan-400"
-                  />
-                  <circle
-                    cx="18" cy="18" r="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeDasharray={`${retPct * 0.88} ${88 - retPct * 0.88}`}
-                    strokeDashoffset={`-${newPct * 0.88}`}
-                    className="text-emerald-400"
-                  />
-                </svg>
-              </div>
+            <div className="flex items-center justify-center gap-6 py-2">
+              <ResponsiveContainer width={160} height={160}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "New", value: data.new_guests || 0 },
+                      { name: "Returning", value: data.returning_guests || 0 },
+                    ]}
+                    cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+                    paddingAngle={3} dataKey="value"
+                  >
+                    <Cell fill="#22D3EE" />
+                    <Cell fill="#34D399" />
+                  </Pie>
+                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Guests"]} />
+                </PieChart>
+              </ResponsiveContainer>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-cyan-400" />
@@ -568,25 +563,20 @@ function GuestView({ data }: { data: any }) {
             <h3 className="text-lg font-semibold text-text-primary">Guests by Nationality</h3>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const maxCount = Math.max(...(data.by_nationality || []).map((n: any) => n.count), 1);
-              return (
-                <div className="space-y-2">
-                  {(data.by_nationality || []).map((n: any) => (
-                    <div key={n.nationality} className="flex items-center gap-3 text-xs">
-                      <span className="w-24 text-text-secondary truncate">{n.nationality}</span>
-                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
-                        <div
-                          className="css-bar-fill h-full rounded bg-cyan-400/70"
-                          style={{ width: `${(n.count / maxCount) * 100}%` }}
-                        />
-                      </div>
-                      <span className="w-8 text-right text-text-muted font-mono">{n.count}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            {(data.by_nationality || []).length > 0 && (
+              <ResponsiveContainer width="100%" height={Math.max((data.by_nationality || []).length * 28, 120)}>
+                <BarChart data={(data.by_nationality || []).map((n: any) => ({ name: n.nationality, count: n.count }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                  <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Guests"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
+                    {(data.by_nationality || []).map((_: any, i: number) => (
+                      <Cell key={i} fill={RECHARTS_COLORS[i % RECHARTS_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -692,25 +682,16 @@ function OperationsView({ data }: { data: any }) {
             {/* By type */}
             <div>
               <p className="text-sm font-medium text-text-secondary mb-2">By Type</p>
-              {(() => {
-                const maxC = Math.max(...(hk.by_type || []).map((t: any) => t.count), 1);
-                return (
-                  <div className="space-y-1.5">
-                    {(hk.by_type || []).map((t: any) => (
-                      <div key={t.type} className="flex items-center gap-2 text-xs">
-                        <span className="w-28 text-text-secondary capitalize truncate">{t.type.replace(/_/g, " ")}</span>
-                        <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
-                          <div
-                            className="css-bar-fill h-full rounded bg-cyan-400/70"
-                            style={{ width: `${(t.count / maxC) * 100}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-right font-mono text-text-muted">{t.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+              {(hk.by_type || []).length > 0 && (
+                <ResponsiveContainer width="100%" height={Math.max((hk.by_type || []).length * 28, 100)}>
+                  <BarChart data={(hk.by_type || []).map((t: any) => ({ name: t.type.replace(/_/g, " "), count: t.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                    <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#22D3EE" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </CardContent>
@@ -748,25 +729,16 @@ function OperationsView({ data }: { data: any }) {
             {/* By category */}
             <div>
               <p className="text-sm font-medium text-text-secondary mb-2">By Category</p>
-              {(() => {
-                const maxC = Math.max(...(mx.by_category || []).map((c: any) => c.count), 1);
-                return (
-                  <div className="space-y-1.5">
-                    {(mx.by_category || []).map((c: any) => (
-                      <div key={c.category} className="flex items-center gap-2 text-xs">
-                        <span className="w-24 text-text-secondary capitalize truncate">{c.category.replace(/_/g, " ")}</span>
-                        <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
-                          <div
-                            className="css-bar-fill h-full rounded bg-status-warning/70"
-                            style={{ width: `${(c.count / maxC) * 100}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-right font-mono text-text-muted">{c.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+              {(mx.by_category || []).length > 0 && (
+                <ResponsiveContainer width="100%" height={Math.max((mx.by_category || []).length * 28, 100)}>
+                  <BarChart data={(mx.by_category || []).map((c: any) => ({ name: c.category.replace(/_/g, " "), count: c.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                    <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} cursor={{ fill: "rgba(251,191,36,0.08)" }} />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#FBBF24" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
             {/* By priority */}
             <div>
@@ -854,25 +826,16 @@ function FinancialView({ data }: { data: any }) {
             <h3 className="text-lg font-semibold text-text-primary">Revenue Breakdown</h3>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const maxAmt = Math.max(...(data.revenue_breakdown || []).map((r: any) => r.amount), 1);
-              return (
-                <div className="space-y-2">
-                  {(data.revenue_breakdown || []).map((r: any) => (
-                    <div key={r.source} className="flex items-center gap-2 text-xs">
-                      <span className="w-28 text-text-secondary capitalize truncate">{r.source}</span>
-                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
-                        <div
-                          className="css-bar-fill h-full rounded bg-emerald-400/70"
-                          style={{ width: `${(r.amount / maxAmt) * 100}%` }}
-                        />
-                      </div>
-                      <span className="w-20 text-right font-mono text-text-secondary">{formatCurrency(r.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            {(data.revenue_breakdown || []).length > 0 && (
+              <ResponsiveContainer width="100%" height={Math.max((data.revenue_breakdown || []).length * 32, 120)}>
+                <BarChart data={(data.revenue_breakdown || []).map((r: any) => ({ name: r.source, amount: r.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                  <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Revenue"]} cursor={{ fill: "rgba(52,211,153,0.08)" }} />
+                  <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#34D399" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -882,25 +845,16 @@ function FinancialView({ data }: { data: any }) {
             <h3 className="text-lg font-semibold text-text-primary">Expense Breakdown</h3>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const maxAmt = Math.max(...(data.expense_breakdown || []).map((e: any) => e.amount), 1);
-              return (
-                <div className="space-y-2">
-                  {(data.expense_breakdown || []).map((e: any) => (
-                    <div key={e.category} className="flex items-center gap-2 text-xs">
-                      <span className="w-28 text-text-secondary capitalize truncate">{e.category.replace(/_/g, " ")}</span>
-                      <div className="flex-1 h-4 bg-bastet-bg rounded overflow-hidden">
-                        <div
-                          className="css-bar-fill h-full rounded bg-status-error/60"
-                          style={{ width: `${(e.amount / maxAmt) * 100}%` }}
-                        />
-                      </div>
-                      <span className="w-20 text-right font-mono text-text-secondary">{formatCurrency(e.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            {(data.expense_breakdown || []).length > 0 && (
+              <ResponsiveContainer width="100%" height={Math.max((data.expense_breakdown || []).length * 32, 120)}>
+                <BarChart data={(data.expense_breakdown || []).map((e: any) => ({ name: e.category.replace(/_/g, " "), amount: e.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                  <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Expense"]} cursor={{ fill: "rgba(239,68,68,0.08)" }} />
+                  <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#EF4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

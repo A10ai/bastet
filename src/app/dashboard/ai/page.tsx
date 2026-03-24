@@ -26,6 +26,17 @@ import type {
   PricingRecommendation,
   OccupancyForecast,
 } from "@/lib/ai-engine";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from "recharts";
 
 interface AIData {
   insights: AIInsight[];
@@ -102,41 +113,97 @@ function HealthRing({ score }: { score: number }) {
   );
 }
 
+function getOccColor(pct: number): string {
+  if (pct > 85) return "#34D399";
+  if (pct > 60) return "#FBBF24";
+  return "#F87171";
+}
+
+const darkTooltipStyle = {
+  backgroundColor: "#0F1729",
+  border: "1px solid #1E2D44",
+  borderRadius: "8px",
+  color: "#E2E8F0",
+  fontSize: "12px",
+};
+
 function OccupancyChart({ forecast }: { forecast: OccupancyForecast[] }) {
-  const max = Math.max(...forecast.map((f) => f.predicted_occupancy), 100);
+  const chartData = forecast.map((f) => ({
+    name: new Date(f.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }),
+    occupancy: f.predicted_occupancy,
+    confidence: f.confidence,
+  }));
 
   return (
-    <div className="flex items-end gap-1 h-32">
-      {forecast.map((f, i) => {
-        const height = (f.predicted_occupancy / max) * 100;
-        const isWeekend = [0, 6].includes(new Date(f.date).getDay());
-        const day = new Date(f.date).toLocaleDateString("en-GB", { weekday: "short" });
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={chartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+        <XAxis
+          dataKey="name"
+          tick={{ fill: "#64748B", fontSize: 10 }}
+          axisLine={false}
+          tickLine={false}
+          interval={0}
+        />
+        <YAxis
+          domain={[0, 100]}
+          tick={{ fill: "#64748B", fontSize: 10 }}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: any) => `${v}%`}
+        />
+        <Tooltip
+          contentStyle={darkTooltipStyle}
+          formatter={(value: any) => [`${value}%`, "Occupancy"]}
+          labelStyle={{ color: "#94A3B8" }}
+        />
+        <Bar dataKey="occupancy" radius={[4, 4, 0, 0]}>
+          {chartData.map((entry, idx) => (
+            <Cell key={idx} fill={getOccColor(entry.occupancy)} fillOpacity={0.85} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
-        return (
-          <div key={f.date} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[9px] font-mono text-text-muted">
-              {f.predicted_occupancy}%
-            </span>
-            <div
-              className={cn(
-                "w-full rounded-t transition-all duration-300",
-                f.predicted_occupancy > 85
-                  ? "bg-emerald-400/80"
-                  : f.predicted_occupancy > 60
-                  ? "bg-bastet-gold/60"
-                  : "bg-red-400/50",
-                isWeekend && "opacity-80"
-              )}
-              style={{ height: `${height}%` }}
-              title={`${f.date}: ${f.predicted_occupancy}% (${f.confidence}% confidence)`}
-            />
-            {i < 7 && (
-              <span className="text-[9px] text-text-muted">{day}</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
+function InsightSeverityDonut({ insights }: { insights: AIInsight[] }) {
+  const counts: Record<string, number> = { critical: 0, warning: 0, opportunity: 0, info: 0 };
+  insights.forEach((ins) => { counts[ins.severity] = (counts[ins.severity] || 0) + 1; });
+  const COLORS: Record<string, string> = {
+    critical: "#F87171",
+    warning: "#FBBF24",
+    opportunity: "#34D399",
+    info: "#60A5FA",
+  };
+  const data = Object.entries(counts)
+    .filter(([, v]) => v > 0)
+    .map(([key, value]) => ({ name: key, value, fill: COLORS[key] }));
+
+  if (data.length === 0) return null;
+
+  return (
+    <ResponsiveContainer width="100%" height={180}>
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={45}
+          outerRadius={70}
+          paddingAngle={3}
+          dataKey="value"
+          stroke="none"
+        >
+          {data.map((entry, idx) => (
+            <Cell key={idx} fill={entry.fill} />
+          ))}
+        </Pie>
+        <Tooltip
+          contentStyle={darkTooltipStyle}
+          formatter={(value: any, name: any) => [value, name]}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -257,6 +324,45 @@ export default function AICommandCentre() {
           </Card>
         </div>
       </div>
+
+      {/* Insight Severity Breakdown */}
+      {data.insights.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-bastet-gold" />
+              <h3 className="text-lg font-semibold text-text-primary">
+                Insight Severity
+              </h3>
+            </div>
+            <span className="text-xs text-text-muted">
+              {data.insights.length} total
+            </span>
+          </CardHeader>
+          <CardContent>
+            <InsightSeverityDonut insights={data.insights} />
+            <div className="flex flex-wrap justify-center gap-4 mt-2">
+              {[
+                { key: "critical", color: "bg-red-400", label: "Critical" },
+                { key: "warning", color: "bg-amber-400", label: "Warning" },
+                { key: "opportunity", color: "bg-emerald-400", label: "Opportunity" },
+                { key: "info", color: "bg-blue-400", label: "Info" },
+              ].map((s) => {
+                const count = data.insights.filter((i) => i.severity === s.key).length;
+                if (count === 0) return null;
+                return (
+                  <div key={s.key} className="flex items-center gap-1.5">
+                    <div className={cn("w-2.5 h-2.5 rounded-full", s.color)} />
+                    <span className="text-xs text-text-muted">
+                      {s.label} ({count})
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Insights + Pricing side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

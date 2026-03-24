@@ -6,9 +6,27 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Filter, Loader2, Plus, Star, Zap } from "lucide-react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { HOUSEKEEPING_STATUSES, HOUSEKEEPING_TYPES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { HousekeepingTask } from "@/types";
+
+const HK_STATUS_COLORS: Record<string, string> = {
+  pending: "#22D3EE",
+  assigned: "#A78BFA",
+  in_progress: "#FBBF24",
+  completed: "#34D399",
+  verified: "#10B981",
+  cancelled: "#6B7280",
+  skipped: "#9CA3AF",
+};
+
+const FLOOR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 interface NextGuestInfo {
   [apartmentId: string]: {
@@ -166,6 +184,76 @@ export default function HousekeepingPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Charts */}
+      {tasks.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Status Donut */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Tasks by Status</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width={160} height={160}>
+                  <PieChart>
+                    <Pie
+                      data={HOUSEKEEPING_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => ({ name: s.replace("_", " "), value: statusCounts[s] || 0 }))}
+                      cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+                      paddingAngle={2} dataKey="value"
+                    >
+                      {HOUSEKEEPING_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => (
+                        <Cell key={s} fill={HK_STATUS_COLORS[s] || "#6B7280"} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-1.5">
+                  {HOUSEKEEPING_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => (
+                    <div key={s} className="flex items-center gap-2 text-xs">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: HK_STATUS_COLORS[s] || "#6B7280" }} />
+                      <span className="text-text-secondary capitalize">{s.replace("_", " ")}</span>
+                      <span className="font-mono text-text-muted ml-auto">{statusCounts[s]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Floor Breakdown */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Tasks by Floor</h3>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const floorMap: Record<string, number> = {};
+                tasks.forEach((t) => {
+                  const floor = t.apartment?.floor != null ? `Floor ${t.apartment.floor}` : "Unknown";
+                  floorMap[floor] = (floorMap[floor] || 0) + 1;
+                });
+                const floorData = Object.entries(floorMap).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })).map(([name, value]) => ({ name, value }));
+                return (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={floorData} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                      <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
+                        {floorData.map((_, i) => (
+                          <Cell key={i} fill={FLOOR_COLORS[i % FLOOR_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Status Filter Pills */}

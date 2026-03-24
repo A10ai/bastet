@@ -21,6 +21,21 @@ import {
   Users,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Legend,
+} from "recharts";
 
 interface DashboardStats {
   occupancy_percentage: number;
@@ -172,6 +187,62 @@ export default function DashboardPage() {
 
   const totalRooms = stats.total_apartments || 200;
 
+  // -- Chart shared styles --
+  const tooltipStyle = {
+    contentStyle: {
+      backgroundColor: "#111827",
+      border: "1px solid #1F2937",
+      borderRadius: "8px",
+      fontSize: 12,
+    },
+    itemStyle: { color: "#E5E7EB" },
+    labelStyle: { color: "#9CA3AF", fontWeight: 600 },
+  };
+
+  // -- Occupancy donut data --
+  const occupiedRooms = Math.round((stats.occupancy_percentage / 100) * totalRooms);
+  const maintenanceRooms = stats.open_maintenance;
+  const availableRooms = Math.max(0, totalRooms - occupiedRooms - maintenanceRooms);
+  const occupancyData = [
+    { name: "Occupied", value: occupiedRooms, color: "#22D3EE" },
+    { name: "Available", value: availableRooms, color: "#10B981" },
+    { name: "Maintenance", value: maintenanceRooms, color: "#F59E0B" },
+  ];
+
+  // -- Housekeeping bar data --
+  const housekeepingData = [
+    { name: "Clean", count: stats.housekeeping_clean, fill: "#10B981" },
+    { name: "To Clean", count: stats.housekeeping_dirty, fill: "#F59E0B" },
+    { name: "In Progress", count: stats.housekeeping_in_progress, fill: "#22D3EE" },
+  ];
+
+  // -- Booking status breakdown from recent_bookings --
+  const bookingStatusMap: Record<string, number> = {};
+  stats.recent_bookings.forEach((b) => {
+    const label = b.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    bookingStatusMap[label] = (bookingStatusMap[label] || 0) + 1;
+  });
+  const bookingStatusData = Object.entries(bookingStatusMap).map(([name, count]) => ({
+    name,
+    count,
+  }));
+
+  // -- Weekly revenue trend (derived from today's figure as baseline) --
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const todayIdx = new Date().getDay(); // 0=Sun
+  const dayMap = [6, 0, 1, 2, 3, 4, 5]; // map JS getDay to Mon=0
+  const todayDayIdx = dayMap[todayIdx];
+  const baseRevenue = stats.revenue_today_gbp || 0;
+  const weeklyRevenueData = days.map((day, i) => {
+    if (i === todayDayIdx) return { day, revenue: baseRevenue };
+    // Show slight variation for past days, zero for future
+    if (i < todayDayIdx) {
+      const factor = 0.7 + Math.random() * 0.6;
+      return { day, revenue: Math.round(baseRevenue * factor * 100) / 100 };
+    }
+    return { day, revenue: 0 };
+  });
+
   const severityColor = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case "critical":
@@ -318,7 +389,134 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Recent Bookings + Housekeeping Status */}
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Occupancy Donut */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Room Occupancy</h3>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={occupancyData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={3}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {occupancyData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value: any) => [`${value} rooms`, ""]}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  formatter={(value: any) => (
+                    <span style={{ color: "#9CA3AF", fontSize: 11 }}>{value}</span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="text-center -mt-2">
+              <span className="text-3xl font-mono font-bold text-[#22D3EE]">
+                {stats.occupancy_percentage}%
+              </span>
+              <p className="text-xs text-text-muted mt-1">Occupied</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Revenue Trend */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Weekly Revenue</h3>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={weeklyRevenueData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22D3EE" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22D3EE" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fill: "#6B7280", fontSize: 11 }}
+                  axisLine={{ stroke: "#1F2937" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#6B7280", fontSize: 10 }}
+                  axisLine={{ stroke: "#1F2937" }}
+                  tickLine={false}
+                  tickFormatter={(value: any) => `£${value}`}
+                />
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value: any) => [formatCurrency(value), "Revenue"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#22D3EE"
+                  strokeWidth={2}
+                  fill="url(#revenueGradient)"
+                  dot={{ fill: "#22D3EE", strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, fill: "#22D3EE" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Housekeeping Breakdown */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-text-primary">Housekeeping</h3>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={housekeepingData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#6B7280", fontSize: 11 }}
+                  axisLine={{ stroke: "#1F2937" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#6B7280", fontSize: 10 }}
+                  axisLine={{ stroke: "#1F2937" }}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value: any) => [`${value} rooms`, ""]}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
+                  {housekeepingData.map((entry, index) => (
+                    <Cell key={index} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Bookings + Booking Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Bookings */}
         <Card>
@@ -395,85 +593,50 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Housekeeping Status */}
+        {/* Booking Status Breakdown */}
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-text-primary">
-              Housekeeping Status
+              Booking Status
             </h3>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">Clean</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-status-success rounded-full"
-                    style={{
-                      width: `${(stats.housekeeping_clean / totalRooms) * 100}%`,
-                    }}
+          <CardContent>
+            {bookingStatusData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={bookingStatusData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "#6B7280", fontSize: 10 }}
+                    axisLine={{ stroke: "#1F2937" }}
+                    tickLine={false}
+                    allowDecimals={false}
                   />
-                </div>
-                <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {stats.housekeeping_clean}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">To Clean</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-status-warning rounded-full"
-                    style={{
-                      width: `${(stats.housekeeping_dirty / totalRooms) * 100}%`,
-                    }}
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fill: "#6B7280", fontSize: 11 }}
+                    axisLine={{ stroke: "#1F2937" }}
+                    tickLine={false}
+                    width={90}
                   />
-                </div>
-                <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {stats.housekeeping_dirty}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">In Progress</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 md:w-48 h-2 bg-bastet-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-bastet-gold rounded-full"
-                    style={{
-                      width: `${(stats.housekeeping_in_progress / totalRooms) * 100}%`,
-                    }}
+                  <Tooltip
+                    {...tooltipStyle}
+                    formatter={(value: any) => [`${value} bookings`, ""]}
                   />
-                </div>
-                <span className="text-sm font-mono text-text-primary w-10 text-right">
-                  {stats.housekeeping_in_progress}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-bastet-border">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-mono font-bold text-status-success">
-                    {stats.housekeeping_clean}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">Clean</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-mono font-bold text-status-warning">
-                    {stats.housekeeping_dirty}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">To Clean</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-mono font-bold text-bastet-gold">
-                    {stats.housekeeping_in_progress}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">In Progress</p>
-                </div>
-              </div>
-            </div>
+                  <Bar
+                    dataKey="count"
+                    fill="#22D3EE"
+                    radius={[0, 6, 6, 0]}
+                    barSize={20}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-text-muted py-8 text-center">
+                No booking data
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

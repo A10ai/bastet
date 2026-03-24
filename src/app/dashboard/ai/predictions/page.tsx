@@ -20,6 +20,21 @@ import {
   Minus,
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
+  LineChart,
+  Line,
+  Cell,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types matching prediction-model.ts
@@ -100,6 +115,14 @@ interface ComparisonResult {
 
 const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const darkTooltipStyle = {
+  backgroundColor: "#0F1729",
+  border: "1px solid #1E2D44",
+  borderRadius: "8px",
+  color: "#E2E8F0",
+  fontSize: "12px",
+};
+
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -177,149 +200,87 @@ function MetricRing({
 function ForecastChart({ predictions }: { predictions: Prediction[] }) {
   if (predictions.length === 0) return null;
 
-  const maxOcc = 100;
-  const chartHeight = 200;
-  const barWidth = 100 / predictions.length;
-
-  // Find today marker
   const todayStr = new Date().toISOString().split("T")[0];
-  const todayIdx = predictions.findIndex((p) => p.date === todayStr);
+
+  const chartData = predictions.map((p) => ({
+    name: formatShortDate(p.date),
+    occupancy: p.predicted_occupancy_pct,
+    low: p.confidence_low,
+    high: p.confidence_high,
+    isToday: p.date === todayStr,
+    day: p.day_of_week.slice(0, 3),
+  }));
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="min-w-[700px]">
-        {/* Y-axis labels */}
-        <div className="flex">
-          <div className="w-10 flex flex-col justify-between text-right pr-2" style={{ height: chartHeight }}>
-            <span className="text-[9px] font-mono text-text-muted">100%</span>
-            <span className="text-[9px] font-mono text-text-muted">75%</span>
-            <span className="text-[9px] font-mono text-text-muted">50%</span>
-            <span className="text-[9px] font-mono text-text-muted">25%</span>
-            <span className="text-[9px] font-mono text-text-muted">0%</span>
-          </div>
-
-          {/* Chart area */}
-          <div className="flex-1 relative" style={{ height: chartHeight }}>
-            {/* Grid lines */}
-            {[0, 25, 50, 75, 100].map((v) => (
-              <div
-                key={v}
-                className="absolute w-full border-t border-bastet-border/30"
-                style={{ top: `${100 - v}%` }}
-              />
-            ))}
-
-            {/* Confidence band + prediction bars */}
-            <div className="absolute inset-0 flex items-end">
-              {predictions.map((p, i) => {
-                const predH = (p.predicted_occupancy_pct / maxOcc) * 100;
-                const lowH = (p.confidence_low / maxOcc) * 100;
-                const highH = (p.confidence_high / maxOcc) * 100;
-                const isWeekend = p.day_of_week === "Saturday" || p.day_of_week === "Sunday";
-                const isToday = p.date === todayStr;
-
-                return (
-                  <div
-                    key={p.date}
-                    className="relative flex flex-col items-center justify-end h-full"
-                    style={{ width: `${barWidth}%` }}
-                    title={`${p.date} (${p.day_of_week})\nOccupancy: ${p.predicted_occupancy_pct}%\nRange: ${p.confidence_low}% - ${p.confidence_high}%\nRevenue: ${formatCurrency(p.predicted_revenue_gbp)}`}
-                  >
-                    {/* Confidence band (background) */}
-                    <div
-                      className="absolute w-[80%] rounded-sm bg-cyan-400/10"
-                      style={{
-                        bottom: `${lowH}%`,
-                        height: `${highH - lowH}%`,
-                      }}
-                    />
-
-                    {/* Prediction bar */}
-                    <div
-                      className={cn(
-                        "w-[60%] rounded-t-sm transition-all duration-300 relative z-10",
-                        isToday
-                          ? "bg-cyan-400"
-                          : p.predicted_occupancy_pct > 85
-                          ? "bg-emerald-400/80"
-                          : p.predicted_occupancy_pct > 60
-                          ? "bg-cyan-400/60"
-                          : p.predicted_occupancy_pct > 40
-                          ? "bg-amber-400/60"
-                          : "bg-red-400/50",
-                        isWeekend && "opacity-90"
-                      )}
-                      style={{ height: `${predH}%` }}
-                    />
-
-                    {/* Today marker */}
-                    {isToday && (
-                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20">
-                        <span className="text-[8px] font-bold text-cyan-400 bg-bastet-card px-1 rounded whitespace-nowrap">
-                          TODAY
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* X-axis labels */}
-        <div className="flex ml-10 mt-1">
-          {predictions.map((p, i) => {
-            // Only show every 3rd label on small screens
-            const show = i % 3 === 0 || p.date === todayStr;
-            return (
-              <div
-                key={p.date}
-                className="flex flex-col items-center"
-                style={{ width: `${barWidth}%` }}
-              >
-                {show && (
-                  <>
-                    <span className="text-[8px] font-mono text-text-muted">
-                      {formatShortDate(p.date)}
-                    </span>
-                    <span className={cn(
-                      "text-[7px]",
-                      (p.day_of_week === "Saturday" || p.day_of_week === "Sunday")
-                        ? "text-cyan-400/70"
-                        : "text-text-muted/50"
-                    )}>
-                      {p.day_of_week.slice(0, 3)}
-                    </span>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div>
+      <ResponsiveContainer width="100%" height={280}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="occGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#22D3EE" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="bandGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.1} />
+              <stop offset="100%" stopColor="#22D3EE" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2D44" />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#64748B", fontSize: 9 }}
+            axisLine={false}
+            tickLine={false}
+            interval={2}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v: any) => `${v}%`}
+          />
+          <Tooltip
+            contentStyle={darkTooltipStyle}
+            formatter={(value: any, name: any) => [
+              `${value}%`,
+              name === "occupancy"
+                ? "Occupancy"
+                : name === "high"
+                ? "High"
+                : "Low",
+            ]}
+            labelStyle={{ color: "#94A3B8" }}
+          />
+          <Area
+            type="monotone"
+            dataKey="high"
+            stroke="none"
+            fill="url(#bandGrad)"
+          />
+          <Area
+            type="monotone"
+            dataKey="occupancy"
+            stroke="#22D3EE"
+            strokeWidth={2.5}
+            fill="url(#occGrad)"
+            dot={false}
+            activeDot={{ fill: "#22D3EE", stroke: "#0F1729", strokeWidth: 2, r: 5 }}
+          />
+          <Area
+            type="monotone"
+            dataKey="low"
+            stroke="none"
+            fill="none"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-bastet-border">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-cyan-400" />
-          <span className="text-[10px] text-text-muted">Today</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-emerald-400/80" />
-          <span className="text-[10px] text-text-muted">&gt;85% High</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-cyan-400/60" />
-          <span className="text-[10px] text-text-muted">60-85% Normal</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-amber-400/60" />
-          <span className="text-[10px] text-text-muted">40-60% Moderate</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-red-400/50" />
-          <span className="text-[10px] text-text-muted">&lt;40% Low</span>
+          <div className="w-4 h-0.5 bg-cyan-400 rounded" />
+          <span className="text-[10px] text-text-muted">Predicted Occupancy</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-8 h-3 rounded bg-cyan-400/10" />
@@ -343,47 +304,50 @@ function BacktestChart({
     );
   }
 
-  const maxVal = Math.max(
-    ...predictions.map((p) => Math.max(p.predicted, p.actual)),
-    100
-  );
-  const barWidth = 100 / predictions.length;
+  const chartData = predictions.map((p) => ({
+    name: formatShortDate(p.date),
+    predicted: p.predicted,
+    actual: p.actual,
+  }));
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="min-w-[400px]">
-        <div className="flex items-end gap-0" style={{ height: 150 }}>
-          {predictions.map((p) => {
-            const predH = (p.predicted / maxVal) * 100;
-            const actH = (p.actual / maxVal) * 100;
-            return (
-              <div
-                key={p.date}
-                className="flex items-end gap-[1px] justify-center h-full"
-                style={{ width: `${barWidth}%` }}
-                title={`${p.date}\nPredicted: ${p.predicted}%\nActual: ${p.actual}%`}
-              >
-                <div
-                  className="w-[35%] rounded-t-sm bg-cyan-400/60"
-                  style={{ height: `${predH}%` }}
-                />
-                <div
-                  className="w-[35%] rounded-t-sm bg-emerald-400/60"
-                  style={{ height: `${actH}%` }}
-                />
-              </div>
-            );
-          })}
+    <div>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={chartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2D44" />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#64748B", fontSize: 9 }}
+            axisLine={false}
+            tickLine={false}
+            interval={Math.max(0, Math.floor(chartData.length / 6))}
+          />
+          <YAxis
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v: any) => `${v}%`}
+          />
+          <Tooltip
+            contentStyle={darkTooltipStyle}
+            formatter={(value: any, name: any) => [
+              `${value}%`,
+              name === "predicted" ? "Predicted" : "Actual",
+            ]}
+            labelStyle={{ color: "#94A3B8" }}
+          />
+          <Bar dataKey="predicted" fill="#22D3EE" fillOpacity={0.6} radius={[2, 2, 0, 0]} />
+          <Bar dataKey="actual" fill="#34D399" fillOpacity={0.6} radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex items-center gap-4 mt-3 pt-2 border-t border-bastet-border">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-cyan-400/60" />
+          <span className="text-[10px] text-text-muted">Predicted</span>
         </div>
-        <div className="flex items-center gap-4 mt-3 pt-2 border-t border-bastet-border">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-cyan-400/60" />
-            <span className="text-[10px] text-text-muted">Predicted</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-emerald-400/60" />
-            <span className="text-[10px] text-text-muted">Actual</span>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-emerald-400/60" />
+          <span className="text-[10px] text-text-muted">Actual</span>
         </div>
       </div>
     </div>
@@ -721,6 +685,73 @@ export default function PredictionsPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Revenue Prediction Chart */}
+      {predictions.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-lg font-semibold text-text-primary">
+                Revenue Prediction
+              </h3>
+            </div>
+            <span className="text-xs text-text-muted">Daily projected revenue</span>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart
+                data={predictions.map((p) => ({
+                  name: formatShortDate(p.date),
+                  revenue: p.predicted_revenue_gbp,
+                  occupancy: p.predicted_occupancy_pct,
+                }))}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#22D3EE" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1E2D44" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#64748B", fontSize: 9 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={2}
+                />
+                <YAxis
+                  tick={{ fill: "#64748B", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: any) =>
+                    v >= 1000 ? `\u00a3${(v / 1000).toFixed(1)}k` : `\u00a3${v}`
+                  }
+                />
+                <Tooltip
+                  contentStyle={darkTooltipStyle}
+                  formatter={(value: any, name: any) => [
+                    name === "revenue" ? formatCurrency(value) : `${value}%`,
+                    name === "revenue" ? "Revenue" : "Occupancy",
+                  ]}
+                  labelStyle={{ color: "#94A3B8" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#22D3EE"
+                  strokeWidth={2}
+                  fill="url(#revGrad)"
+                  dot={false}
+                  activeDot={{ fill: "#22D3EE", stroke: "#0F1729", strokeWidth: 2, r: 5 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       )}
 
       {/* C. Daily Prediction Table */}

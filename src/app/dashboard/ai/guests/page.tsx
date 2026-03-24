@@ -28,6 +28,17 @@ import type {
   GuestInsight,
   GuestIntelligenceData,
 } from "@/lib/guest-intelligence";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Tier badge colors (matching guests page)
@@ -85,6 +96,25 @@ function severityDot(severity: string): string {
   if (severity === "warning") return "bg-yellow-500";
   return "bg-cyan-400";
 }
+
+// ---------------------------------------------------------------------------
+// Dark tooltip style
+// ---------------------------------------------------------------------------
+
+const darkTooltipStyle = {
+  backgroundColor: "#0F1729",
+  border: "1px solid #1E2D44",
+  borderRadius: "8px",
+  color: "#E2E8F0",
+  fontSize: "12px",
+};
+
+const TIER_CHART_COLORS: Record<string, string> = {
+  bronze: "#F97316",
+  silver: "#94A3B8",
+  gold: "#FBBF24",
+  platinum: "#A78BFA",
+};
 
 // ---------------------------------------------------------------------------
 // Main Page
@@ -380,9 +410,61 @@ export default function GuestIntelligencePage() {
         </div>
       )}
 
+      {/* LTV Distribution */}
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-cyan-400" />
+            LTV Distribution
+          </h2>
+          <p className="text-xs text-text-muted">
+            Guest lifetime value spread across tiers
+          </p>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const ltvBuckets = [
+              { label: "0-500", min: 0, max: 500 },
+              { label: "500-1k", min: 500, max: 1000 },
+              { label: "1k-2k", min: 1000, max: 2000 },
+              { label: "2k-5k", min: 2000, max: 5000 },
+              { label: "5k+", min: 5000, max: Infinity },
+            ];
+            const bucketData = ltvBuckets.map((b) => ({
+              name: b.label,
+              count: scores.filter((g) => g.ltv >= b.min && g.ltv < b.max).length,
+            }));
+            return (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={bucketData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: "#64748B", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: "#64748B", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={darkTooltipStyle}
+                    formatter={(value: any) => [value, "Guests"]}
+                    labelStyle={{ color: "#94A3B8" }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#22D3EE" fillOpacity={0.8} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       {/* E. Segment Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Loyalty Tier Breakdown */}
+        {/* Loyalty Tier Breakdown - Donut */}
         <Card>
           <CardHeader className="pb-2">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
@@ -390,108 +472,117 @@ export default function GuestIntelligencePage() {
               Loyalty Tier Breakdown
             </h2>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {segments.loyalty_tiers.map((tier) => {
-              const maxCount = Math.max(
-                ...segments.loyalty_tiers.map((t) => t.count),
-                1
-              );
-              const maxRevenue = Math.max(
-                ...segments.loyalty_tiers.map((t) => t.total_revenue),
-                1
-              );
-              return (
-                <div key={tier.tier} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-primary capitalize">
-                      {tier.tier}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      {tier.count} guests | {formatCurrency(tier.total_revenue)}{" "}
-                      revenue
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <div className="h-2 bg-bastet-bg rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-cyan-500 rounded-full"
-                          style={{
-                            width: `${(tier.count / maxCount) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-text-muted">
-                        Guests
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="h-2 bg-bastet-bg rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{
-                            width: `${(tier.total_revenue / maxRevenue) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-text-muted">
-                        Revenue
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 text-[11px] text-text-muted">
-                    <span>Avg spend: {formatCurrency(tier.avg_spend)}</span>
-                    <span>Avg stays: {tier.avg_stays}</span>
-                  </div>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={segments.loyalty_tiers.map((tier) => ({
+                    name: tier.tier,
+                    value: tier.count,
+                    fill: TIER_CHART_COLORS[tier.tier] || "#22D3EE",
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {segments.loyalty_tiers.map((tier, idx) => (
+                    <Cell key={idx} fill={TIER_CHART_COLORS[tier.tier] || "#22D3EE"} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={darkTooltipStyle}
+                  formatter={(value: any, name: any) => [
+                    `${value} guests`,
+                    name.charAt(0).toUpperCase() + name.slice(1),
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap justify-center gap-4 mt-2">
+              {segments.loyalty_tiers.map((tier) => (
+                <div key={tier.tier} className="flex items-center gap-1.5">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: TIER_CHART_COLORS[tier.tier] || "#22D3EE" }}
+                  />
+                  <span className="text-xs text-text-muted capitalize">
+                    {tier.tier} ({tier.count})
+                  </span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {segments.loyalty_tiers.map((tier) => (
+                <div key={tier.tier} className="flex gap-4 text-[11px] text-text-muted">
+                  <span className="capitalize w-16 font-medium text-text-secondary">{tier.tier}</span>
+                  <span>{formatCurrency(tier.total_revenue)} revenue</span>
+                  <span>Avg spend: {formatCurrency(tier.avg_spend)}</span>
+                  <span>Avg stays: {tier.avg_stays}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Top Nationalities */}
+        {/* Top Nationalities - Bar Chart */}
         <Card>
           <CardHeader className="pb-2">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
               <Globe className="w-5 h-5 text-cyan-400" />
-              Top Nationalities
+              Guest Origin
             </h2>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {segments.top_nationalities.map((nat) => {
-              const maxCount = Math.max(
-                ...segments.top_nationalities.map((n) => n.count),
-                1
-              );
-              return (
-                <div key={nat.nationality} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-primary">
-                      {nat.nationality}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      {nat.count} guests | {formatCurrency(nat.total_revenue)}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-bastet-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-500/80 rounded-full"
-                      style={{
-                        width: `${(nat.count / maxCount) * 100}%`,
-                      }}
+          <CardContent>
+            {segments.top_nationalities.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={segments.top_nationalities.map((nat) => ({
+                      name: nat.nationality,
+                      guests: nat.count,
+                      revenue: nat.total_revenue,
+                    }))}
+                    layout="vertical"
+                    margin={{ top: 4, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <XAxis
+                      type="number"
+                      tick={{ fill: "#64748B", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                  </div>
-                </div>
-              );
-            })}
-            {segments.top_nationalities.length === 0 && (
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fill: "#94A3B8", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={80}
+                    />
+                    <Tooltip
+                      contentStyle={darkTooltipStyle}
+                      formatter={(value: any, name: any) => [
+                        name === "revenue" ? formatCurrency(value) : value,
+                        name === "revenue" ? "Revenue" : "Guests",
+                      ]}
+                      labelStyle={{ color: "#94A3B8" }}
+                    />
+                    <Bar dataKey="guests" fill="#22D3EE" fillOpacity={0.8} radius={[0, 4, 4, 0]} barSize={14} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
+            ) : (
               <p className="text-sm text-text-muted text-center py-4">
                 No nationality data available
               </p>
             )}
 
             {/* Avg LOS by tier */}
-            <div className="pt-4 border-t border-bastet-border">
+            <div className="pt-4 border-t border-bastet-border mt-4">
               <h3 className="text-sm font-medium text-text-secondary mb-2">
                 Avg Length of Stay by Tier
               </h3>

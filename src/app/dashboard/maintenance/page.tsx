@@ -6,9 +6,26 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Filter, Loader2, Plus, Search, AlertTriangle, Zap, RefreshCw } from "lucide-react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { MAINTENANCE_STATUSES } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import type { MaintenanceRequest } from "@/types";
+
+const STATUS_COLORS: Record<string, string> = {
+  open: "#22D3EE",
+  assigned: "#A78BFA",
+  in_progress: "#FBBF24",
+  on_hold: "#F97316",
+  completed: "#34D399",
+  cancelled: "#6B7280",
+};
+
+const CATEGORY_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 interface MaintenanceCrossData {
   [requestId: string]: {
@@ -195,6 +212,73 @@ export default function MaintenancePage() {
           className="w-full sm:max-w-sm pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
         />
       </div>
+
+      {/* Charts */}
+      {requests.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Status Donut */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Tickets by Status</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width={160} height={160}>
+                  <PieChart>
+                    <Pie
+                      data={MAINTENANCE_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => ({ name: s.replace("_", " "), value: statusCounts[s] || 0 }))}
+                      cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+                      paddingAngle={2} dataKey="value"
+                    >
+                      {MAINTENANCE_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => (
+                        <Cell key={s} fill={STATUS_COLORS[s] || "#6B7280"} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-1.5">
+                  {MAINTENANCE_STATUSES.filter((s) => (statusCounts[s] || 0) > 0).map((s) => (
+                    <div key={s} className="flex items-center gap-2 text-xs">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[s] || "#6B7280" }} />
+                      <span className="text-text-secondary capitalize">{s.replace("_", " ")}</span>
+                      <span className="font-mono text-text-muted ml-auto">{statusCounts[s]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Category Bar Chart */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Tickets by Category</h3>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const catMap: Record<string, number> = {};
+                requests.forEach((r) => { const c = r.category || "unknown"; catMap[c] = (catMap[c] || 0) + 1; });
+                const catData = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name: name.replace(/_/g, " "), value }));
+                return (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                      <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11, textTransform: "capitalize" } as any} axisLine={false} tickLine={false} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                        {catData.map((_, i) => (
+                          <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Status Filter Pills */}
       <div className="flex flex-wrap gap-1.5">

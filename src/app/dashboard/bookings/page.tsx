@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,19 @@ import {
   TrendingUp,
   Globe,
 } from "lucide-react";
+import {
+  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
+
+const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
+
+const darkTooltipStyle = {
+  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
+  itemStyle: { color: "#e2e8f0" },
+};
 
 const TIER_BADGE_COLORS: Record<string, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
@@ -212,6 +222,94 @@ export default function BookingsPage() {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Charts */}
+      {bookings.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Channel Donut */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Bookings by Channel</h3>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const channelMap: Record<string, number> = {};
+                bookings.forEach((b) => {
+                  const ch = b.channel?.name || "Unknown";
+                  channelMap[ch] = (channelMap[ch] || 0) + 1;
+                });
+                const channelData = Object.entries(channelMap).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+                return (
+                  <div className="flex items-center justify-center gap-6">
+                    <ResponsiveContainer width={160} height={160}>
+                      <PieChart>
+                        <Pie
+                          data={channelData}
+                          cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+                          paddingAngle={2} dataKey="value"
+                        >
+                          {channelData.map((_, i) => (
+                            <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Bookings"]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-1.5">
+                      {channelData.map((ch, i) => (
+                        <div key={ch.name} className="flex items-center gap-2 text-xs">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: CHANNEL_COLORS[i % CHANNEL_COLORS.length] }} />
+                          <span className="text-text-secondary">{ch.name}</span>
+                          <span className="font-mono text-text-muted ml-auto">{ch.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Bookings Trend */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold text-text-primary">Check-in Trend</h3>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const dayMap: Record<string, number> = {};
+                bookings.forEach((b) => {
+                  if (b.check_in) {
+                    const day = b.check_in.split("T")[0];
+                    dayMap[day] = (dayMap[day] || 0) + 1;
+                  }
+                });
+                const trendData = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0])).map(([date, count]) => ({
+                  date: date.slice(5),
+                  bookings: count,
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <AreaChart data={trendData} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                      <defs>
+                        <linearGradient id="bookingGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#22D3EE" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
+                      <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Bookings"]} />
+                      <Area type="monotone" dataKey="bookings" stroke="#22D3EE" strokeWidth={2} fill="url(#bookingGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>

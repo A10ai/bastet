@@ -29,6 +29,21 @@ import type {
   RevenueForecast,
   WhatIfResult,
 } from "@/lib/revenue-engine";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Legend,
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Channel colors
@@ -117,10 +132,22 @@ function StatCard({
 }
 
 // ---------------------------------------------------------------------------
-// Channel Stacked Bar
+// Dark tooltip style
 // ---------------------------------------------------------------------------
 
-function ChannelStackedBar({
+const darkTooltipStyle = {
+  backgroundColor: "#0F1729",
+  border: "1px solid #1E2D44",
+  borderRadius: "8px",
+  color: "#E2E8F0",
+  fontSize: "12px",
+};
+
+// ---------------------------------------------------------------------------
+// Channel Mix Donut
+// ---------------------------------------------------------------------------
+
+function ChannelMixDonut({
   channels,
 }: {
   channels: ChannelMixResult["channels"];
@@ -128,32 +155,38 @@ function ChannelStackedBar({
   const total = channels.reduce((s, c) => s + c.revenue_gbp, 0);
   if (total === 0) return null;
 
+  const data = channels.map((ch) => ({
+    name: ch.channel_name,
+    value: ch.revenue_gbp,
+    fill: getChannelColor(ch.channel_code),
+  }));
+
   return (
     <div className="space-y-3">
-      <div className="flex h-8 rounded-lg overflow-hidden">
-        {channels.map((ch) => {
-          const pct = (ch.revenue_gbp / total) * 100;
-          if (pct < 1) return null;
-          return (
-            <div
-              key={ch.channel_code}
-              className="relative group transition-all duration-300 hover:opacity-80"
-              style={{
-                width: `${pct}%`,
-                backgroundColor: getChannelColor(ch.channel_code),
-              }}
-              title={`${ch.channel_name}: ${Math.round(pct)}%`}
-            >
-              {pct > 8 && (
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-navy-950">
-                  {Math.round(pct)}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={55}
+            outerRadius={90}
+            paddingAngle={2}
+            dataKey="value"
+            stroke="none"
+          >
+            {data.map((entry, idx) => (
+              <Cell key={idx} fill={entry.fill} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={darkTooltipStyle}
+            formatter={(value: any, name: any) => [formatCurrency(value), name]}
+            labelStyle={{ color: "#94A3B8" }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
         {channels.map((ch) => (
           <div key={ch.channel_code} className="flex items-center gap-1.5">
             <div
@@ -197,44 +230,48 @@ function EfficiencyBar({ value }: { value: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// LOS Bar Chart (pure CSS)
+// LOS Bar Chart (Recharts)
 // ---------------------------------------------------------------------------
 
 function LOSBarChart({ analysis }: { analysis: LOSAnalysis }) {
-  const maxCount = Math.max(...analysis.brackets.map((b) => b.booking_count), 1);
+  const data = analysis.brackets.map((bracket) => {
+    const hasDiscount = analysis.discount_tiers.some(
+      (t) => bracket.min_nights >= t.min_nights
+    );
+    return {
+      name: bracket.label,
+      bookings: bracket.booking_count,
+      fill: hasDiscount ? "#34D399" : "#22D3EE",
+    };
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-2 h-48">
-        {analysis.brackets.map((bracket) => {
-          const heightPct = (bracket.booking_count / maxCount) * 100;
-          const hasDiscount = analysis.discount_tiers.some(
-            (t) => bracket.min_nights >= t.min_nights
-          );
-
-          return (
-            <div key={bracket.label} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs text-text-muted">
-                {bracket.booking_count}
-              </span>
-              <div className="w-full flex items-end justify-center" style={{ height: "160px" }}>
-                <div
-                  className={`w-full max-w-[48px] rounded-t-md transition-all duration-500 ${
-                    hasDiscount
-                      ? "bg-emerald-400/60 border border-emerald-400/30"
-                      : "bg-cyan-400/60 border border-cyan-400/30"
-                  }`}
-                  style={{ height: `${Math.max(4, heightPct)}%` }}
-                  title={`${bracket.label}: ${bracket.booking_count} bookings, ${formatCurrency(bracket.total_revenue_gbp)}`}
-                />
-              </div>
-              <span className="text-[10px] text-text-muted text-center leading-tight">
-                {bracket.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            contentStyle={darkTooltipStyle}
+            formatter={(value: any) => [value, "Bookings"]}
+            labelStyle={{ color: "#94A3B8" }}
+          />
+          <Bar dataKey="bookings" radius={[4, 4, 0, 0]}>
+            {data.map((entry, idx) => (
+              <Cell key={idx} fill={entry.fill} fillOpacity={0.7} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
       <div className="flex flex-wrap gap-3 text-xs text-text-muted">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-emerald-400/60 border border-emerald-400/30" />
@@ -250,131 +287,97 @@ function LOSBarChart({ analysis }: { analysis: LOSAnalysis }) {
 }
 
 // ---------------------------------------------------------------------------
-// Forecast Area Chart (pure SVG)
+// Forecast Area Chart (Recharts)
 // ---------------------------------------------------------------------------
 
 function ForecastChart({ forecast }: { forecast: RevenueForecast }) {
   const days = forecast.days;
   if (days.length === 0) return null;
 
-  const width = 800;
-  const height = 280;
-  const padding = { top: 20, right: 20, bottom: 40, left: 60 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
-
-  const maxRev = Math.max(...days.map((d) => d.projected_revenue_high), 1);
-  const maxCum = Math.max(...days.map((d) => d.cumulative_mid), 1);
-
-  const xScale = (i: number) => padding.left + (i / (days.length - 1)) * chartW;
-  const yScale = (v: number) => padding.top + chartH - (v / maxRev) * chartH;
-
-  // Build paths
-  const lowPath = days.map((d, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(d.projected_revenue_low)}`).join(" ");
-  const highPath = days.map((d, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(d.projected_revenue_high)}`).join(" ");
-  const midPath = days.map((d, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(d.projected_revenue_mid)}`).join(" ");
-  const confirmedPath = days.map((d, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(d.confirmed_revenue)}`).join(" ");
-
-  // Confidence band (high path forward, low path backward)
-  const bandPath =
-    days.map((d, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(d.projected_revenue_high)}`).join(" ") +
-    " " +
-    [...days].reverse().map((d, i) => `L${xScale(days.length - 1 - i)},${yScale(d.projected_revenue_low)}`).join(" ") +
-    " Z";
-
-  // Y-axis labels
-  const yTicks = 5;
-  const yLabels = Array.from({ length: yTicks + 1 }, (_, i) => {
-    const val = (maxRev / yTicks) * i;
-    return { val, y: yScale(val) };
-  });
-
-  // X-axis labels (every 5 days)
-  const xLabels = days
-    .filter((_, i) => i % 5 === 0 || i === days.length - 1)
-    .map((d, _, arr) => ({
-      label: d.date.slice(5),
-      x: xScale(days.indexOf(d)),
-    }));
+  const chartData = days.map((d) => ({
+    name: d.date.slice(5),
+    confirmed: d.confirmed_revenue,
+    projected: d.projected_revenue_mid,
+    low: d.projected_revenue_low,
+    high: d.projected_revenue_high,
+  }));
 
   return (
-    <div className="overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full min-w-[600px]"
-        role="img"
-        aria-label="30-day revenue forecast chart"
-      >
-        {/* Grid lines */}
-        {yLabels.map((tick, i) => (
-          <g key={i}>
-            <line
-              x1={padding.left}
-              y1={tick.y}
-              x2={width - padding.right}
-              y2={tick.y}
-              stroke="#1E2D44"
-              strokeWidth="1"
-              strokeDasharray={i === 0 ? "0" : "4,4"}
-            />
-            <text
-              x={padding.left - 8}
-              y={tick.y + 4}
-              textAnchor="end"
-              fill="#64748B"
-              fontSize="10"
-            >
-              {tick.val >= 1000
-                ? `\u00a3${(tick.val / 1000).toFixed(1)}k`
-                : `\u00a3${Math.round(tick.val)}`}
-            </text>
-          </g>
-        ))}
-
-        {/* X labels */}
-        {xLabels.map((tick, i) => (
-          <text
-            key={i}
-            x={tick.x}
-            y={height - 8}
-            textAnchor="middle"
-            fill="#64748B"
-            fontSize="10"
-          >
-            {tick.label}
-          </text>
-        ))}
-
-        {/* Confidence band */}
-        <path d={bandPath} fill="url(#bandGradient)" />
-
-        {/* Gradient definition */}
-        <defs>
-          <linearGradient id="bandGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#34D399" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#34D399" stopOpacity="0.03" />
-          </linearGradient>
-        </defs>
-
-        {/* Lines */}
-        <path d={confirmedPath} fill="none" stroke="#22D3EE" strokeWidth="2" strokeDasharray="6,4" />
-        <path d={midPath} fill="none" stroke="#34D399" strokeWidth="2.5" />
-
-        {/* Data points on mid line (every 5th) */}
-        {days
-          .filter((_, i) => i % 5 === 0)
-          .map((d, i) => (
-            <circle
-              key={i}
-              cx={xScale(days.indexOf(d))}
-              cy={yScale(d.projected_revenue_mid)}
-              r="3"
-              fill="#34D399"
-              stroke="#0F1729"
-              strokeWidth="1.5"
-            />
-          ))}
-      </svg>
+    <div>
+      <ResponsiveContainer width="100%" height={280}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="projectedGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#34D399" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#34D399" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="confirmedGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#22D3EE" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2D44" />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            interval={4}
+          />
+          <YAxis
+            tick={{ fill: "#64748B", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v: any) =>
+              v >= 1000 ? `\u00a3${(v / 1000).toFixed(1)}k` : `\u00a3${v}`
+            }
+          />
+          <Tooltip
+            contentStyle={darkTooltipStyle}
+            formatter={(value: any, name: any) => [
+              formatCurrency(value),
+              name === "projected"
+                ? "Projected"
+                : name === "confirmed"
+                ? "Confirmed"
+                : name === "high"
+                ? "High"
+                : "Low",
+            ]}
+            labelStyle={{ color: "#94A3B8" }}
+          />
+          <Area
+            type="monotone"
+            dataKey="high"
+            stroke="none"
+            fill="#34D399"
+            fillOpacity={0.08}
+          />
+          <Area
+            type="monotone"
+            dataKey="projected"
+            stroke="#34D399"
+            strokeWidth={2.5}
+            fill="url(#projectedGrad)"
+            dot={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="confirmed"
+            stroke="#22D3EE"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            fill="url(#confirmedGrad)"
+            dot={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="low"
+            stroke="none"
+            fill="none"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
 
       <div className="flex flex-wrap gap-4 mt-3 text-xs text-text-muted">
         <div className="flex items-center gap-1.5">
@@ -788,7 +791,7 @@ export default function RevenueCopilotPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <ChannelStackedBar channels={channel_mix.channels} />
+          <ChannelMixDonut channels={channel_mix.channels} />
 
           {/* Channel table */}
           <div className="overflow-x-auto">

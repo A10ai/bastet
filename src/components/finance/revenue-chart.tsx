@@ -1,10 +1,26 @@
 "use client";
 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { formatCurrency } from "@/lib/utils";
 
 interface RevenueChartProps {
   data: { month: string; revenue: number; expenses: number }[];
 }
+
+const darkTooltipStyle = {
+  backgroundColor: '#111827',
+  border: '1px solid #1F2937',
+  borderRadius: '8px',
+};
 
 export function RevenueChart({ data }: RevenueChartProps) {
   if (!data.length) {
@@ -15,56 +31,47 @@ export function RevenueChart({ data }: RevenueChartProps) {
     );
   }
 
-  const maxValue = Math.max(
-    ...data.map((d) => Math.max(d.revenue, d.expenses)),
-    1
-  );
-
   return (
-    <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-bastet-gold" />
-          <span className="text-text-secondary">Revenue</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-status-error/60" />
-          <span className="text-text-secondary">Expenses</span>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="flex items-end gap-2 h-48">
-        {data.map((d, i) => {
-          const revHeight = maxValue > 0 ? (d.revenue / maxValue) * 100 : 0;
-          const expHeight = maxValue > 0 ? (d.expenses / maxValue) * 100 : 0;
-
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex items-end gap-0.5 h-40">
-                {/* Revenue bar */}
-                <div className="flex-1 flex flex-col justify-end">
-                  <div
-                    className="w-full bg-bastet-gold rounded-t transition-all duration-300 min-h-[2px]"
-                    style={{ height: `${revHeight}%` }}
-                    title={`Revenue: ${formatCurrency(d.revenue)}`}
-                  />
-                </div>
-                {/* Expense bar */}
-                <div className="flex-1 flex flex-col justify-end">
-                  <div
-                    className="w-full bg-status-error/60 rounded-t transition-all duration-300 min-h-[2px]"
-                    style={{ height: `${expHeight}%` }}
-                    title={`Expenses: ${formatCurrency(d.expenses)}`}
-                  />
-                </div>
-              </div>
-              <span className="text-xs text-text-muted">{d.month}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+        <XAxis
+          dataKey="month"
+          tick={{ fill: '#6B7280', fontSize: 11 }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+          tickFormatter={(value: any) => `£${(value / 1000).toFixed(0)}k`}
+        />
+        <Tooltip
+          contentStyle={darkTooltipStyle}
+          labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
+          formatter={(value: any, name: any) => [
+            formatCurrency(value),
+            name === 'revenue' ? 'Revenue' : 'Expenses',
+          ]}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: 11, color: '#6B7280' }}
+        />
+        <Bar
+          dataKey="revenue"
+          name="Revenue"
+          fill="#22D3EE"
+          radius={[4, 4, 0, 0]}
+        />
+        <Bar
+          dataKey="expenses"
+          name="Expenses"
+          fill="#F87171"
+          radius={[4, 4, 0, 0]}
+          opacity={0.7}
+        />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }

@@ -1,28 +1,64 @@
 // Sidebar navigation items
-export const SIDEBAR_NAV = [
-  { label: "AI Brain", href: "/dashboard/ai/brain", icon: "Brain" },
-  { label: "AI Command Centre", href: "/dashboard/ai", icon: "BrainCircuit" },
-  { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
-  { label: "AI Scheduler", href: "/dashboard/ai/scheduler", icon: "Timer" },
-  { label: "Predictions", href: "/dashboard/ai/predictions", icon: "TrendingUp" },
-  { label: "Workflows", href: "/dashboard/ai/workflows", icon: "GitBranch" },
-  { label: "Event Bus", href: "/dashboard/ai/events", icon: "Activity" },
-  { label: "Energy", href: "/dashboard/energy", icon: "Zap" },
-  { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-  { label: "Apartments", href: "/dashboard/apartments", icon: "Building2" },
-  { label: "Bookings", href: "/dashboard/bookings", icon: "CalendarDays" },
-  { label: "Guests", href: "/dashboard/guests", icon: "Users" },
-  { label: "Guest Intelligence", href: "/dashboard/ai/guests", icon: "UserCheck" },
-  { label: "Revenue Copilot", href: "/dashboard/ai/revenue", icon: "LineChart" },
-  { label: "Reports", href: "/dashboard/reports", icon: "FileBarChart" },
-  { label: "Housekeeping", href: "/dashboard/housekeeping", icon: "Sparkles" },
-  { label: "Maintenance", href: "/dashboard/maintenance", icon: "Wrench" },
-  { label: "Finance", href: "/dashboard/finance", icon: "Wallet" },
-  { label: "Marketplace", href: "/dashboard/marketplace", icon: "Palmtree" },
-  { label: "Staff", href: "/dashboard/staff", icon: "UserCog" },
-  { label: "Admin", href: "/dashboard/admin", icon: "Shield" },
-  { label: "Settings", href: "/dashboard/settings", icon: "Settings" },
-] as const;
+export interface NavItem {
+  label: string;
+  href: string;
+  icon: string;
+}
+
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+export const SIDEBAR_NAV: NavGroup[] = [
+  {
+    label: "Overview",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+      { label: "Apartments", href: "/dashboard/apartments", icon: "Building2" },
+      { label: "Bookings", href: "/dashboard/bookings", icon: "CalendarDays" },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { label: "AI Brain", href: "/dashboard/ai/brain", icon: "Brain" },
+      { label: "AI Command Centre", href: "/dashboard/ai", icon: "BrainCircuit" },
+      { label: "Predictions", href: "/dashboard/ai/predictions", icon: "TrendingUp" },
+      { label: "Smart Automations", href: "/dashboard/ai/automations", icon: "Workflow" },
+      { label: "AI Scheduler", href: "/dashboard/ai/scheduler", icon: "Timer" },
+      { label: "Workflows", href: "/dashboard/ai/workflows", icon: "GitBranch" },
+      { label: "Event Bus", href: "/dashboard/ai/events", icon: "Activity" },
+    ],
+  },
+  {
+    label: "Guests",
+    items: [
+      { label: "Guests", href: "/dashboard/guests", icon: "Users" },
+      { label: "Guest Intelligence", href: "/dashboard/ai/guests", icon: "UserCheck" },
+      { label: "Revenue Copilot", href: "/dashboard/ai/revenue", icon: "LineChart" },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "Housekeeping", href: "/dashboard/housekeeping", icon: "Sparkles" },
+      { label: "Maintenance", href: "/dashboard/maintenance", icon: "Wrench" },
+      { label: "Energy", href: "/dashboard/energy", icon: "Zap" },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { label: "Finance", href: "/dashboard/finance", icon: "Wallet" },
+      { label: "Reports", href: "/dashboard/reports", icon: "FileBarChart" },
+      { label: "Marketplace", href: "/dashboard/marketplace", icon: "Palmtree" },
+      { label: "Staff", href: "/dashboard/staff", icon: "UserCog" },
+      { label: "Admin", href: "/dashboard/admin", icon: "Shield" },
+      { label: "Settings", href: "/dashboard/settings", icon: "Settings" },
+    ],
+  },
+];
 
 // Business rules
 export const LENGTH_OF_STAY_DISCOUNTS = [

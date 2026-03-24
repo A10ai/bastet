@@ -14,6 +14,18 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { cn } from "@/lib/utils";
 import type {
   EnergyOverview,
@@ -335,147 +347,112 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 24-Hour Timeline Chart (SVG)
+// Recharts tooltip style
+// ---------------------------------------------------------------------------
+
+const darkTooltipStyle = {
+  backgroundColor: '#111827',
+  border: '1px solid #1F2937',
+  borderRadius: '8px',
+};
+
+// ---------------------------------------------------------------------------
+// Hourly Consumption Bar Chart (Recharts)
+// ---------------------------------------------------------------------------
+
+function HourlyConsumptionChart({ data }: { data: TimelinePoint[] }) {
+  if (data.length === 0) return null;
+
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+        <XAxis
+          dataKey="label"
+          tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+          interval={2}
+        />
+        <YAxis
+          tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+          unit=" kWh"
+        />
+        <Tooltip
+          contentStyle={darkTooltipStyle}
+          labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
+          formatter={(value: any) => [`${value} kWh`]}
+        />
+        <Bar dataKey="occupied_kwh" name="Occupied" fill="#22D3EE" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="vacant_kwh" name="Vacant Waste" fill="#F87171" radius={[3, 3, 0, 0]} opacity={0.7} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Daily Trend Area Chart (Recharts)
 // ---------------------------------------------------------------------------
 
 function TimelineChart({ data }: { data: TimelinePoint[] }) {
   if (data.length === 0) return null;
 
-  const width = 800;
-  const height = 200;
-  const padLeft = 45;
-  const padRight = 15;
-  const padTop = 10;
-  const padBottom = 30;
-  const chartW = width - padLeft - padRight;
-  const chartH = height - padTop - padBottom;
-
-  const maxKwh = Math.max(...data.map((d) => d.total_kwh), 1);
-  const yScale = chartH / (maxKwh * 1.15); // 15% headroom
-
-  function x(i: number): number {
-    return padLeft + (i / (data.length - 1)) * chartW;
-  }
-
-  function y(val: number): number {
-    return padTop + chartH - val * yScale;
-  }
-
-  // Build SVG path for occupied area
-  const occupiedPath = data
-    .map((d, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(d.occupied_kwh)}`)
-    .join(" ");
-  const occupiedArea = `${occupiedPath} L${x(data.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
-
-  // Build SVG path for total (occupied + waste) area
-  const totalPath = data
-    .map((d, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(d.total_kwh)}`)
-    .join(" ");
-  const totalArea = `${totalPath} L${x(data.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
-
-  // Waste area between occupied and total
-  const wasteAreaTop = data
-    .map((d, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(d.total_kwh)}`)
-    .join(" ");
-  const wasteAreaBottom = data
-    .slice()
-    .reverse()
-    .map((d, i) => `L${x(data.length - 1 - i)},${y(d.occupied_kwh)}`)
-    .join(" ");
-  const wasteArea = `${wasteAreaTop} ${wasteAreaBottom} Z`;
-
-  // Y-axis ticks
-  const yTicks = 5;
-  const yTickStep = Math.ceil(maxKwh / yTicks);
-
   return (
-    <div className="w-full overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full min-w-[600px]"
-        role="img"
-        aria-label="24-hour energy consumption chart"
-      >
-        {/* Grid lines */}
-        {Array.from({ length: yTicks + 1 }, (_, i) => {
-          const val = i * yTickStep;
-          if (val > maxKwh * 1.15) return null;
-          return (
-            <g key={`grid-${i}`}>
-              <line
-                x1={padLeft}
-                y1={y(val)}
-                x2={width - padRight}
-                y2={y(val)}
-                stroke="currentColor"
-                strokeOpacity={0.08}
-                strokeDasharray="4 4"
-              />
-              <text
-                x={padLeft - 8}
-                y={y(val) + 3}
-                textAnchor="end"
-                className="fill-text-muted"
-                fontSize="10"
-                fontFamily="monospace"
-              >
-                {val}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Occupied area (cyan) */}
-        <path d={occupiedArea} fill="rgba(34,211,238,0.25)" />
-        <path
-          d={occupiedPath}
-          fill="none"
-          stroke="rgba(34,211,238,0.8)"
-          strokeWidth="2"
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <defs>
+          <linearGradient id="gradOccupied" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#22D3EE" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#22D3EE" stopOpacity={0.02} />
+          </linearGradient>
+          <linearGradient id="gradWaste" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#F87171" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#F87171" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+        <XAxis
+          dataKey="label"
+          tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+          interval={2}
         />
-
-        {/* Waste area (red) */}
-        <path d={wasteArea} fill="rgba(248,113,113,0.25)" />
-        <path
-          d={totalPath}
-          fill="none"
-          stroke="rgba(248,113,113,0.7)"
-          strokeWidth="1.5"
+        <YAxis
+          tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
+          axisLine={{ stroke: '#1F2937' }}
+          tickLine={false}
+          unit=" kWh"
+        />
+        <Tooltip
+          contentStyle={darkTooltipStyle}
+          labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
+          formatter={(value: any) => [`${value} kWh`]}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: 11, color: '#6B7280' }}
+        />
+        <Area
+          type="monotone"
+          dataKey="occupied_kwh"
+          name="Occupied Usage"
+          stroke="#22D3EE"
+          strokeWidth={2}
+          fill="url(#gradOccupied)"
+        />
+        <Area
+          type="monotone"
+          dataKey="total_kwh"
+          name="Total (incl. waste)"
+          stroke="#F87171"
+          strokeWidth={1.5}
           strokeDasharray="4 2"
+          fill="url(#gradWaste)"
         />
-
-        {/* X-axis labels */}
-        {data.map((d, i) => {
-          if (i % 3 !== 0 && i !== data.length - 1) return null;
-          return (
-            <text
-              key={`x-${i}`}
-              x={x(i)}
-              y={height - 8}
-              textAnchor="middle"
-              className="fill-text-muted"
-              fontSize="10"
-              fontFamily="monospace"
-            >
-              {d.label}
-            </text>
-          );
-        })}
-
-        {/* Y-axis label */}
-        <text
-          x={12}
-          y={padTop + chartH / 2}
-          textAnchor="middle"
-          className="fill-text-muted"
-          fontSize="9"
-          fontFamily="monospace"
-          transform={`rotate(-90, 12, ${padTop + chartH / 2})`}
-        >
-          kWh
-        </text>
-      </svg>
-    </div>
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -889,26 +866,29 @@ export default function EnergyDashboard() {
         </Card>
       </div>
 
-      {/* D. 24-Hour Consumption Chart */}
+      {/* D. Hourly Consumption Bars */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            <h3 className="text-lg font-semibold text-text-primary">
+              Hourly Consumption
+            </h3>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <HourlyConsumptionChart data={timeline} />
+        </CardContent>
+      </Card>
+
+      {/* E. Daily Trend Area Chart */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingDown className="w-4 h-4 text-cyan-400" />
             <h3 className="text-lg font-semibold text-text-primary">
-              24-Hour Consumption Pattern
+              24-Hour Consumption Trend
             </h3>
-          </div>
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1.5 rounded bg-cyan-400/60" />
-              <span className="text-[10px] text-text-muted">
-                Occupied usage
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1.5 rounded bg-red-400/60" />
-              <span className="text-[10px] text-text-muted">Vacant waste</span>
-            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -916,7 +896,7 @@ export default function EnergyDashboard() {
         </CardContent>
       </Card>
 
-      {/* E. Recommendations + F. Quick Actions */}
+      {/* F. Recommendations + G. Quick Actions */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <Card>

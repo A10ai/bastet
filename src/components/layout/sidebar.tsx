@@ -118,34 +118,46 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {SIDEBAR_NAV.map((item) => {
-          const Icon = iconMap[item.icon];
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" &&
-              !SIDEBAR_NAV.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
-              pathname.startsWith(item.href));
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onMobileClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-bastet-gold-muted text-bastet-gold"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg",
-                !showLabels && "justify-center px-2"
+      <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+        {(() => {
+          const allItems = SIDEBAR_NAV.flatMap((g) => g.items);
+          return SIDEBAR_NAV.map((group) => (
+            <div key={group.label}>
+              {showLabels && (
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted px-3 pt-4 pb-1">
+                  {group.label}
+                </div>
               )}
-              title={!showLabels ? item.label : undefined}
-            >
-              {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
-              {showLabels && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+              {group.items.map((item) => {
+                const Icon = iconMap[item.icon];
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    !allItems.some((other) => other.href !== item.href && other.href.startsWith(item.href)) &&
+                    pathname.startsWith(item.href));
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onMobileClose}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-bastet-gold-muted text-bastet-gold"
+                        : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg",
+                      !showLabels && "justify-center px-2"
+                    )}
+                    title={!showLabels ? item.label : undefined}
+                  >
+                    {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
+                    {showLabels && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ));
+        })()}
       </nav>
 
       {/* Collapse toggle - desktop only */}

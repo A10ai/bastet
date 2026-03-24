@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { RevenueChart } from "@/components/finance/revenue-chart";
@@ -17,9 +17,26 @@ import {
   ArrowRight,
   Zap,
   Globe,
+  PieChart as PieChartIcon,
 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
+
+const darkTooltipStyle = {
+  backgroundColor: '#111827',
+  border: '1px solid #1F2937',
+  borderRadius: '8px',
+};
+
+const DONUT_COLORS = ['#22D3EE', '#F87171', '#FBBF24', '#34D399', '#A78BFA'];
 
 interface ChannelAnalysis {
   direct_pct: number;
@@ -90,6 +107,23 @@ export default function FinancePage() {
     };
     fetchEnergy();
   }, []);
+
+  // Build expense breakdown for donut chart from available data
+  const expenseBreakdown = useMemo(() => {
+    const total = summary?.expenses_gbp || 0;
+    if (total <= 0) return [];
+
+    const commission = channelAnalysis?.commission_cost_gbp || 0;
+    const energy = (energyCost || 0) * 30; // monthly estimate
+    const remaining = Math.max(0, total - commission - energy);
+
+    const items: { name: string; value: number }[] = [];
+    if (remaining > 0) items.push({ name: 'Operations', value: Math.round(remaining) });
+    if (commission > 0) items.push({ name: 'OTA Commission', value: Math.round(commission) });
+    if (energy > 0) items.push({ name: 'Energy', value: Math.round(energy) });
+
+    return items;
+  }, [summary, channelAnalysis, energyCost]);
 
   if (loading) {
     return (
@@ -315,6 +349,47 @@ export default function FinancePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Expense Breakdown Donut */}
+      {expenseBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-text-muted" />
+              <h3 className="text-lg font-semibold text-text-primary">Expense Breakdown</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={expenseBreakdown}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={110}
+                  paddingAngle={3}
+                  dataKey="value"
+                  nameKey="name"
+                  stroke="none"
+                >
+                  {expenseBreakdown.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={darkTooltipStyle}
+                  labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
+                  formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, color: '#6B7280' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Energy Cost Line */}
       {energyCost != null && energyCost > 0 && (
