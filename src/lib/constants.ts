@@ -36,6 +36,7 @@ export const SIDEBAR_NAV: NavGroup[] = [
     label: "Guests",
     items: [
       { label: "Guests", href: "/dashboard/guests", icon: "Users" },
+      { label: "Guest Messaging", href: "/dashboard/messaging", icon: "MessageSquare" },
       { label: "Guest Intelligence", href: "/dashboard/ai/guests", icon: "UserCheck" },
       { label: "Revenue Copilot", href: "/dashboard/ai/revenue", icon: "LineChart" },
     ],

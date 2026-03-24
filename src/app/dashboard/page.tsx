@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard/widgets/stat-card";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -19,7 +19,9 @@ import {
   AlertTriangle,
   Star,
   Users,
+  Radio,
 } from "lucide-react";
+import { useRealtimeSubscription } from "@/hooks/use-realtime";
 import { formatCurrency } from "@/lib/utils";
 import {
   PieChart,
@@ -97,18 +99,28 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [guestAlerts, setGuestAlerts] = useState<GuestAlerts | null>(null);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/dashboard/stats");
+      const json = await res.json();
+      setStats(json.data);
+    } catch {
+      // Silently handle
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Realtime: re-fetch when key tables change
+  const REALTIME_TABLES = useMemo(() => [
+    "bookings", "apartments", "housekeeping_tasks",
+    "maintenance_requests", "invoices", "guests",
+  ], []);
+
+  const { connected: realtimeConnected, lastUpdate: realtimeLastUpdate } =
+    useRealtimeSubscription(REALTIME_TABLES, fetchStats, 3000);
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch("/api/v1/dashboard/stats");
-        const json = await res.json();
-        setStats(json.data);
-      } catch {
-        // Silently handle
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
 
     // Fetch AI cross-data in parallel — all fail gracefully
@@ -265,6 +277,18 @@ export default function DashboardPage() {
         <p className="text-sm text-text-secondary mt-1">
           HospitAI — Bastet Hurghada
         </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <div className={`w-2 h-2 rounded-full ${realtimeConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+        <span className="text-[10px] text-text-muted flex items-center gap-1">
+          <Radio className="w-2.5 h-2.5" />
+          {realtimeConnected ? "Live" : "Connecting..."}
+        </span>
+        {realtimeLastUpdate && (
+          <span className="text-[10px] text-text-muted">
+            &middot; {realtimeLastUpdate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </div>
 
       {/* AI Intelligence Row */}

@@ -42,7 +42,6 @@ import {
   CartesianGrid,
   BarChart,
   Bar,
-  Legend,
 } from "recharts";
 
 // ---------------------------------------------------------------------------
