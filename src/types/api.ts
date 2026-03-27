@@ -70,6 +70,50 @@ export interface RevenueBySourceItem {
   percentage: number;
 }
 
+export interface RevenueByRoomTypeItem {
+  type: string;
+  bookings: number;
+  revenue_gbp: number;
+  avg_rate: number;
+  avg_nights: number;
+}
+
+export interface RevenueByChannelItem {
+  source: string;
+  bookings: number;
+  revenue_gbp: number;
+  percentage: number;
+}
+
+export interface AccountsReceivableBucket {
+  count: number;
+  total: number;
+}
+
+export interface AccountsReceivable {
+  current: AccountsReceivableBucket;
+  days_30: AccountsReceivableBucket;
+  days_60: AccountsReceivableBucket;
+  days_90_plus: AccountsReceivableBucket;
+}
+
+export interface GrossOperatingProfit {
+  gop_gbp: number;
+  gop_margin_pct: number;
+}
+
+export interface CporTrendItem {
+  month: string;
+  cpor_gbp: number;
+}
+
+export interface DepartmentCostItem {
+  department: string;
+  budget_gbp: number;
+  actual_gbp: number;
+  variance_pct: number;
+}
+
 export interface FinancialSummary {
   revenue_gbp: number;
   expenses_gbp: number;
@@ -94,4 +138,10 @@ export interface FinancialSummary {
   ytd_expenses_gbp: number;
   ytd_net_profit_gbp: number;
   r_and_d_total_gbp: number;
+  revenue_by_room_type: RevenueByRoomTypeItem[];
+  revenue_by_channel: RevenueByChannelItem[];
+  accounts_receivable: AccountsReceivable;
+  gop: GrossOperatingProfit;
+  cpor_trend: CporTrendItem[];
+  department_costs: DepartmentCostItem[];
 }
