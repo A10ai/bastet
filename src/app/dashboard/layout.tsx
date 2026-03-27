@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { AuthProvider } from "@/providers/auth-provider";
+import { PropertyProvider } from "@/providers/property-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
@@ -12,7 +13,9 @@ export default function DashboardLayout({
   return (
     <ThemeProvider>
       <AuthProvider>
-        <DashboardShell>{children}</DashboardShell>
+        <PropertyProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </PropertyProvider>
       </AuthProvider>
     </ThemeProvider>
   );
