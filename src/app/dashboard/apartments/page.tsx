@@ -5,7 +5,19 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Eye, Filter, Loader2 } from "lucide-react";
+import { Building2, Eye, Filter, Loader2, Home, CheckCircle, Wrench } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { APARTMENT_STATUSES } from "@/lib/constants";
 import type { Apartment } from "@/types";
 
@@ -136,6 +148,42 @@ export default function ApartmentsPage() {
     {} as Record<string, number>
   );
 
+  // Chart: status breakdown donut
+  const STATUS_COLORS: Record<string, string> = {
+    available: "#22D3EE",
+    occupied: "#34D399",
+    maintenance: "#FBBF24",
+    cleaning: "#A78BFA",
+    blocked: "#F87171",
+    out_of_service: "#6B7280",
+  };
+
+  const statusChartData = APARTMENT_STATUSES.map((s) => ({
+    name: s.replace("_", " "),
+    value: statusCounts[s] || 0,
+    key: s,
+  })).filter((d) => d.value > 0);
+
+  // Chart: apartments by floor
+  const floorCounts: Record<string, number> = {};
+  for (const apt of apartments) {
+    const label = floorLabel(apt.floor);
+    floorCounts[label] = (floorCounts[label] || 0) + 1;
+  }
+  const floorChartData = Object.entries(floorCounts)
+    .sort(([a], [b]) => {
+      const fa = a === "Ground" ? 0 : parseInt(a.replace("Floor ", ""));
+      const fb = b === "Ground" ? 0 : parseInt(b.replace("Floor ", ""));
+      return fa - fb;
+    })
+    .map(([name, value]) => ({ name, value }));
+
+  // Stat card helpers
+  const totalCount = apartments.length;
+  const occupiedCount = statusCounts["occupied"] || 0;
+  const availableCount = statusCounts["available"] || 0;
+  const maintenanceCount = (statusCounts["maintenance"] || 0) + (statusCounts["out_of_service"] || 0);
+
   const energyBadge = (status?: string) => {
     switch (status) {
       case "active":
@@ -212,6 +260,144 @@ export default function ApartmentsPage() {
           ))}
         </div>
       </div>
+
+      {/* Stat Cards */}
+      {!loading && apartments.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-400/10">
+                  <Home className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-text-primary">{totalCount}</p>
+                  <p className="text-xs text-text-muted">Total Units</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-400/10">
+                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-emerald-400">{occupiedCount}</p>
+                  <p className="text-xs text-text-muted">Occupied</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-400/10">
+                  <Building2 className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-cyan-400">{availableCount}</p>
+                  <p className="text-xs text-text-muted">Available</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-400/10">
+                  <Wrench className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-400">{maintenanceCount}</p>
+                  <p className="text-xs text-text-muted">Maintenance</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Charts */}
+      {!loading && apartments.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Status Donut */}
+          <Card>
+            <CardContent className="pt-5 pb-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Status Breakdown</h3>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={90}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {statusChartData.map((entry: any) => (
+                        <Cell key={entry.key} fill={STATUS_COLORS[entry.key] || "#6B7280"} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1a1a2e",
+                        border: "1px solid #2a2a4a",
+                        borderRadius: "8px",
+                        color: "#e2e8f0",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: any, name: any) => [value, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {statusChartData.map((entry: any) => (
+                  <div key={entry.key} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block"
+                      style={{ backgroundColor: STATUS_COLORS[entry.key] || "#6B7280" }}
+                    />
+                    <span className="capitalize">{entry.name}</span>
+                    <span className="text-text-muted">({entry.value})</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Floor Bar Chart */}
+          <Card>
+            <CardContent className="pt-5 pb-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Units by Floor</h3>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={floorChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1a1a2e",
+                        border: "1px solid #2a2a4a",
+                        borderRadius: "8px",
+                        color: "#e2e8f0",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: any) => [value, "Units"]}
+                    />
+                    <Bar dataKey="value" fill="#22D3EE" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Apartments Table */}
       <Card>

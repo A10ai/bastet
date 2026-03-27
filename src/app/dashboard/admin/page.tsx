@@ -19,6 +19,18 @@ import {
   XCircle,
   AlertTriangle,
 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 interface Toast {
   id: number;
@@ -110,6 +122,32 @@ export default function AdminOverviewPage() {
   }
 
   const totalRecords = Object.values(tableCounts).reduce((a, b) => a + b, 0);
+
+  // Chart data: top tables for donut
+  const TABLE_COLORS = [
+    "#22D3EE", "#06B6D4", "#0891B2", "#0E7490", "#155E75",
+    "#164E63", "#34D399", "#6EE7B7", "#A7F3D0", "#99F6E4",
+  ];
+
+  const topTables = Object.entries(tableCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([name, value]) => ({ name, value }));
+
+  const otherCount = Object.entries(tableCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(8)
+    .reduce((sum, [, v]) => sum + v, 0);
+
+  const donutData = otherCount > 0
+    ? [...topTables, { name: "Other", value: otherCount }]
+    : topTables;
+
+  // Bar chart: all tables sorted
+  const barData = Object.entries(tableCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([name, value]) => ({ name, value }));
 
   const quickLinks = [
     {
@@ -253,6 +291,98 @@ export default function AdminOverviewPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Charts */}
+      {!loading && Object.keys(tableCounts).length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Database Breakdown Donut */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-display font-semibold text-text-primary">
+                Record Distribution
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {donutData.map((_: any, i: number) => (
+                        <Cell key={i} fill={TABLE_COLORS[i % TABLE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1a1a2e",
+                        border: "1px solid #2a2a4a",
+                        borderRadius: "8px",
+                        color: "#e2e8f0",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: any) => [Number(value).toLocaleString(), "Records"]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                {donutData.map((entry: any, i: number) => (
+                  <div key={entry.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block"
+                      style={{ backgroundColor: TABLE_COLORS[i % TABLE_COLORS.length] }}
+                    />
+                    {entry.name}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top Tables Bar Chart */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-display font-semibold text-text-primary">
+                Top Tables by Records
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" horizontal={false} />
+                    <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fill: "#94a3b8", fontSize: 11 }}
+                      width={90}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1a1a2e",
+                        border: "1px solid #2a2a4a",
+                        borderRadius: "8px",
+                        color: "#e2e8f0",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: any) => [Number(value).toLocaleString(), "Records"]}
+                    />
+                    <Bar dataKey="value" fill="#22D3EE" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <Card>
