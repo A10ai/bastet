@@ -53,7 +53,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           >
             <Building2 className="w-4 h-4 text-bastet-gold shrink-0" />
             <span>
-              HospitAI — {activeProperty?.name || "Loading..."}
+              HospitAI{activeProperty?.name ? ` — ${activeProperty.name}` : ""}
             </span>
             {hasMultiple && (
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
