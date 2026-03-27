@@ -120,7 +120,7 @@ export default function LoginPage() {
         </Suspense>
 
         <p className="text-center text-text-muted text-xs mt-6">
-          HospitAI — Bastet Hurghada
+          HospitAI
         </p>
       </div>
     </div>

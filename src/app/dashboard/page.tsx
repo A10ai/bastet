@@ -22,6 +22,7 @@ import {
   Radio,
 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/use-realtime";
+import { useProperty } from "@/providers/property-provider";
 import { formatCurrency } from "@/lib/utils";
 import {
   PieChart,
@@ -91,6 +92,7 @@ interface GuestAlerts {
 }
 
 export default function DashboardPage() {
+  const { activeProperty } = useProperty();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [brainStatus, setBrainStatus] = useState<AIBrainStatus | null>(null);
@@ -275,7 +277,7 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-sm text-text-secondary mt-1">
-          HospitAI — Bastet Hurghada
+          HospitAI — {activeProperty?.name || "Loading..."}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">

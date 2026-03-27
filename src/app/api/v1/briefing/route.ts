@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { getActivePropertyId } from "@/lib/api-property";
 import { format, startOfWeek } from "date-fns";
 import { calculateHealthScore } from "@/lib/ai-engine";
 
@@ -34,6 +35,18 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
+
+    // Resolve active property name
+    const propertyId = await getActivePropertyId(request);
+    let propertyName = "Property";
+    if (propertyId) {
+      const { data: propData } = await supabase
+        .from("properties")
+        .select("name")
+        .eq("id", propertyId)
+        .single();
+      if (propData?.name) propertyName = propData.name;
+    }
 
     const now = new Date();
     const today = format(now, "yyyy-MM-dd");
@@ -363,7 +376,7 @@ export async function GET(request: NextRequest) {
       data: {
         greeting: getGreeting(),
         date: today,
-        property: "Bastet Hurghada",
+        property: propertyName,
         sections: {
           occupancy: occupancySection,
           revenue: revenueSection,

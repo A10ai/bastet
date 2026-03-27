@@ -1,49 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { getActivePropertyId } from "@/lib/api-property";
 
 // ---------------------------------------------------------------------------
-// Templates
+// Templates — use {property_name} placeholder, resolved at request time
 // ---------------------------------------------------------------------------
 
-const MESSAGE_TEMPLATES = [
-  {
-    id: "pre_arrival",
-    name: "Pre-Arrival Welcome",
-    subject: "Your Stay at Bastet Hurghada",
-    body: "Dear {guest_name},\n\nWe're looking forward to welcoming you tomorrow! Your apartment {apartment_number} on Floor {floor} is being prepared.\n\nCheck-in time: 2:00 PM\nWi-Fi: BastetGuest / Welcome2026\n\nNeed airport transfer? Reply to this message.\n\nWarm regards,\nBastet Hurghada",
-  },
-  {
-    id: "check_in",
-    name: "Check-In Confirmation",
-    subject: "Welcome to Bastet Hurghada!",
-    body: "Dear {guest_name},\n\nWelcome! You're checked into apartment {apartment_number}.\n\n🔑 Your digital key is active\n📶 Wi-Fi: BastetGuest / Welcome2026\n🏊 Pool hours: 7AM - 10PM\n🍽️ Breakfast: 7AM - 10:30AM\n\nNeed anything? Just reply here.\n\nEnjoy your stay!\nBastet Hurghada Team",
-  },
-  {
-    id: "mid_stay",
-    name: "Mid-Stay Check",
-    subject: "How's your stay?",
-    body: "Dear {guest_name},\n\nHope you're enjoying Bastet Hurghada! Just checking in.\n\nWould you like:\n- Room cleaning today?\n- Restaurant recommendations?\n- Excursion bookings?\n\nWe're here to help.\n\nBastet Hurghada Team",
-  },
-  {
-    id: "check_out",
-    name: "Checkout Reminder",
-    subject: "Checkout Tomorrow",
-    body: "Dear {guest_name},\n\nJust a reminder that checkout is tomorrow by 11:00 AM.\n\nWould you like:\n- Late checkout? (Subject to availability)\n- Airport transfer?\n- To extend your stay?\n\nYour invoice will be ready at reception.\n\nThank you for staying with us!\nBastet Hurghada",
-  },
-  {
-    id: "post_stay",
-    name: "Post-Stay Thank You",
-    subject: "Thank you for staying with us!",
-    body: "Dear {guest_name},\n\nThank you for choosing Bastet Hurghada!\n\nWe'd love your feedback — it takes just 2 minutes:\n{review_link}\n\nBook direct for 10% off your next stay: hospitai.uk\n\nWe hope to see you again!\nBastet Hurghada Team",
-  },
-  {
-    id: "special_offer",
-    name: "Special Offer",
-    subject: "Exclusive Offer from Bastet Hurghada",
-    body: "Dear {guest_name},\n\nAs a valued guest, we'd like to offer you an exclusive rate for your next visit.\n\n{offer_details}\n\nBook direct at hospitai.uk or reply to this message.\n\nBastet Hurghada Team",
-  },
-];
+function getMessageTemplates(propertyName: string) {
+  return [
+    {
+      id: "pre_arrival",
+      name: "Pre-Arrival Welcome",
+      subject: `Your Stay at ${propertyName}`,
+      body: `Dear {guest_name},\n\nWe're looking forward to welcoming you tomorrow! Your apartment {apartment_number} on Floor {floor} is being prepared.\n\nCheck-in time: 2:00 PM\nWi-Fi: BastetGuest / Welcome2026\n\nNeed airport transfer? Reply to this message.\n\nWarm regards,\n${propertyName}`,
+    },
+    {
+      id: "check_in",
+      name: "Check-In Confirmation",
+      subject: `Welcome to ${propertyName}!`,
+      body: `Dear {guest_name},\n\nWelcome! You're checked into apartment {apartment_number}.\n\n🔑 Your digital key is active\n📶 Wi-Fi: BastetGuest / Welcome2026\n🏊 Pool hours: 7AM - 10PM\n🍽️ Breakfast: 7AM - 10:30AM\n\nNeed anything? Just reply here.\n\nEnjoy your stay!\n${propertyName} Team`,
+    },
+    {
+      id: "mid_stay",
+      name: "Mid-Stay Check",
+      subject: "How's your stay?",
+      body: `Dear {guest_name},\n\nHope you're enjoying ${propertyName}! Just checking in.\n\nWould you like:\n- Room cleaning today?\n- Restaurant recommendations?\n- Excursion bookings?\n\nWe're here to help.\n\n${propertyName} Team`,
+    },
+    {
+      id: "check_out",
+      name: "Checkout Reminder",
+      subject: "Checkout Tomorrow",
+      body: `Dear {guest_name},\n\nJust a reminder that checkout is tomorrow by 11:00 AM.\n\nWould you like:\n- Late checkout? (Subject to availability)\n- Airport transfer?\n- To extend your stay?\n\nYour invoice will be ready at reception.\n\nThank you for staying with us!\n${propertyName}`,
+    },
+    {
+      id: "post_stay",
+      name: "Post-Stay Thank You",
+      subject: "Thank you for staying with us!",
+      body: `Dear {guest_name},\n\nThank you for choosing ${propertyName}!\n\nWe'd love your feedback — it takes just 2 minutes:\n{review_link}\n\nBook direct for 10% off your next stay: hospitai.uk\n\nWe hope to see you again!\n${propertyName} Team`,
+    },
+    {
+      id: "special_offer",
+      name: "Special Offer",
+      subject: `Exclusive Offer from ${propertyName}`,
+      body: `Dear {guest_name},\n\nAs a valued guest, we'd like to offer you an exclusive rate for your next visit.\n\n{offer_details}\n\nBook direct at hospitai.uk or reply to this message.\n\n${propertyName} Team`,
+    },
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,6 +79,18 @@ export async function GET(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type");
+
+    // Resolve active property name for templates
+    const propertyId = await getActivePropertyId(request);
+    let propertyName = "Property";
+    if (propertyId) {
+      const { data: propData } = await supabase
+        .from("properties")
+        .select("name")
+        .eq("id", propertyId)
+        .single();
+      if (propData?.name) propertyName = propData.name;
+    }
 
     // ----- overview -----
     if (type === "overview") {
@@ -161,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // ----- templates -----
     if (type === "templates") {
-      return NextResponse.json({ data: MESSAGE_TEMPLATES });
+      return NextResponse.json({ data: getMessageTemplates(propertyName) });
     }
 
     // ----- history -----
