@@ -18,9 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bastet PMS — Property Management System",
+  title: "HospitAI — The AI Operating System for Hotels",
   description:
-    "Property Management System for Bastet Aparthotels, Hurghada, Egypt",
+    "AI-powered property management for aparthotels and extended-stay properties.",
 };
 
 export default function RootLayout({
