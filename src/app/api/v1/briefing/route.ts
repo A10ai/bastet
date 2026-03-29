@@ -351,15 +351,8 @@ export async function GET(request: NextRequest) {
       total_apartments: totalApartments,
     });
 
-    // Dimension scores for breakdown
-    const occupancyScore =
-      occupancyPct >= 70 && occupancyPct <= 90
-        ? 100
-        : occupancyPct >= 50
-          ? 80
-          : occupancyPct >= 30
-            ? 60
-            : 40;
+    // Dimension scores — show actual percentages, not health scores
+    const occupancyScore = Math.round(occupancyPct);
 
     const maintenanceScore = Math.max(0, 100 - urgentMaintenance * 20 - (openMaintenance - urgentMaintenance) * 5);
     const housekeepingScore =
