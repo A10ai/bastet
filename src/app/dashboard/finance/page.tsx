@@ -304,7 +304,7 @@ export default function FinancePage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-text-muted">Revenue</p>
+                  <p className="text-xs text-text-muted">Revenue (This Month)</p>
                   <ChangeIndicator value={summary?.revenue_vs_last_month_pct} />
                 </div>
                 <p className="text-lg font-semibold font-mono text-text-primary">
@@ -324,7 +324,7 @@ export default function FinancePage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-text-muted">Expenses</p>
+                  <p className="text-xs text-text-muted">Expenses (This Month)</p>
                   <ChangeIndicator value={summary?.expenses_vs_last_month_pct != null ? -summary.expenses_vs_last_month_pct : null} />
                 </div>
                 <p className="text-lg font-semibold font-mono text-text-primary">
