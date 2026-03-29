@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Revenue: sum of bookings.total_amount_gbp for checked_in/checked_out bookings this month
     const { data: revenueBookings } = await supabase
       .from("bookings")
-      .select("total_amount_gbp")
+      .select("total_amount_gbp, nights")
       .in("status", ["checked_in", "checked_out"])
       .gte("check_in", monthStart)
       .lte("check_in", monthEnd);
@@ -57,8 +57,11 @@ export async function GET(request: NextRequest) {
         ? Math.round(((occupiedCount || 0) / totalApartments) * 100)
         : 0;
 
-    // ADR: revenue / occupied apartment-nights
-    const occupiedNights = (revenueBookings || []).length;
+    // ADR: revenue / total occupied room-nights
+    const occupiedNights = (revenueBookings || []).reduce(
+      (sum, b) => sum + (b.nights || 0),
+      0
+    );
     const adr = occupiedNights > 0 ? revenue / occupiedNights : 0;
 
     // RevPAA: revenue / total apartment-nights in month
