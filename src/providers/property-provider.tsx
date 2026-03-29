@@ -40,15 +40,7 @@ const PropertyContext = createContext<PropertyContextValue>({
 });
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
-  let staff: any = null;
-  let authLoading = true;
-  try {
-    const auth = useAuth();
-    staff = auth.staff;
-    authLoading = auth.loading;
-  } catch {
-    authLoading = false;
-  }
+  const { staff, loading: authLoading } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

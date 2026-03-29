@@ -177,8 +177,8 @@ export default function BriefingPage() {
     );
   }
 
-  const health = data.health_score;
-  const healthMeta = getHealthLabel(health.overall);
+  const health = data.health_score || { overall: 0, dimensions: {} };
+  const healthMeta = getHealthLabel(health.overall || 0);
   const actions = (data.top_actions || []).slice(0, 5);
   const arrivalItem = data.sections.guests?.items?.find((i) =>
     /arrival/i.test(i.text)
@@ -243,7 +243,7 @@ export default function BriefingPage() {
               <span className="text-lg text-text-secondary mb-1">/100</span>
             </div>
             <div className="space-y-3">
-              {Object.entries(health.dimensions).map(([key, value]) => (
+              {Object.entries(health.dimensions || {}).map(([key, value]) => (
                 <div key={key}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-text-secondary capitalize">
