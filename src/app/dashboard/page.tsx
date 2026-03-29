@@ -277,7 +277,7 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-sm text-text-secondary mt-1">
-          HospitAI — {activeProperty?.name || "Loading..."}
+          HospitAI{activeProperty?.name ? ` — ${activeProperty.name}` : ""}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
