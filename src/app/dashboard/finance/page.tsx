@@ -452,14 +452,14 @@ export default function FinancePage() {
                 </div>
                 <div>
                   <p className="text-sm text-text-muted mb-0.5">Gross Operating Profit</p>
-                  <p className={`text-3xl font-bold font-mono ${summary.gop.gop_gbp >= 0 ? "text-cyan-400" : "text-status-error"}`}>
+                  <p className={`text-lg font-bold font-mono ${summary.gop.gop_gbp >= 0 ? "text-cyan-400" : "text-status-error"}`}>
                     {formatCurrency(summary.gop.gop_gbp)}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-xs text-text-muted mb-0.5">GOP Margin</p>
-                <p className={`text-2xl font-bold font-mono ${summary.gop.gop_margin_pct >= 0 ? "text-cyan-400" : "text-status-error"}`}>
+                <p className={`text-lg font-bold font-mono ${summary.gop.gop_margin_pct >= 0 ? "text-cyan-400" : "text-status-error"}`}>
                   {summary.gop.gop_margin_pct.toFixed(1)}%
                 </p>
                 <p className="text-[10px] text-text-muted mt-0.5">Excl. depreciation, interest, tax</p>

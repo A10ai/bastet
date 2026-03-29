@@ -132,7 +132,7 @@ export default function AuditPage() {
         <Card>
           <CardContent>
             <p className="text-xs text-text-muted">Total Entries</p>
-            <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+            <p className="text-lg font-mono font-bold text-text-primary mt-1">
               {stats?.total_entries || 0}
             </p>
           </CardContent>
@@ -140,7 +140,7 @@ export default function AuditPage() {
         <Card>
           <CardContent>
             <p className="text-xs text-text-muted">Today</p>
-            <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+            <p className="text-lg font-mono font-bold text-text-primary mt-1">
               {stats?.today_entries || 0}
             </p>
           </CardContent>
@@ -148,7 +148,7 @@ export default function AuditPage() {
         <Card>
           <CardContent>
             <p className="text-xs text-text-muted">AI Decisions</p>
-            <p className="text-2xl font-mono font-bold text-bastet-gold mt-1">
+            <p className="text-lg font-mono font-bold text-bastet-gold mt-1">
               {stats?.recent_ai_decisions || 0}
             </p>
           </CardContent>
@@ -156,7 +156,7 @@ export default function AuditPage() {
         <Card>
           <CardContent>
             <p className="text-xs text-text-muted">Categories</p>
-            <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+            <p className="text-lg font-mono font-bold text-text-primary mt-1">
               {Object.keys(stats?.by_category || {}).length}
             </p>
           </CardContent>

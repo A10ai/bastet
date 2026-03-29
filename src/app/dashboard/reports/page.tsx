@@ -653,15 +653,15 @@ function OperationsView({ data }: { data: any }) {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-text-primary">{hk.total_tasks || 0}</p>
+              <p className="text-lg font-semibold font-mono text-text-primary">{hk.total_tasks || 0}</p>
               <p className="text-xs text-text-muted">Total Tasks</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-status-success">{hk.completed || 0}</p>
+              <p className="text-lg font-semibold font-mono text-status-success">{hk.completed || 0}</p>
               <p className="text-xs text-text-muted">Completed</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-cyan-400">{hk.avg_completion_minutes || 0}m</p>
+              <p className="text-lg font-semibold font-mono text-cyan-400">{hk.avg_completion_minutes || 0}m</p>
               <p className="text-xs text-text-muted">Avg Completion</p>
             </div>
           </div>
@@ -708,19 +708,19 @@ function OperationsView({ data }: { data: any }) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-text-primary">{mx.opened || 0}</p>
+              <p className="text-lg font-semibold font-mono text-text-primary">{mx.opened || 0}</p>
               <p className="text-xs text-text-muted">Opened</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-status-success">{mx.resolved || 0}</p>
+              <p className="text-lg font-semibold font-mono text-status-success">{mx.resolved || 0}</p>
               <p className="text-xs text-text-muted">Resolved</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-cyan-400">{mx.avg_resolution_hours || 0}h</p>
+              <p className="text-lg font-semibold font-mono text-cyan-400">{mx.avg_resolution_hours || 0}h</p>
               <p className="text-xs text-text-muted">Avg Resolution</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold font-mono text-status-warning">{formatCurrency(mx.total_cost || 0)}</p>
+              <p className="text-lg font-semibold font-mono text-status-warning">{formatCurrency(mx.total_cost || 0)}</p>
               <p className="text-xs text-text-muted">Total Cost</p>
             </div>
           </div>
@@ -868,13 +868,13 @@ function FinancialView({ data }: { data: any }) {
           <CardContent>
             <div className="flex items-center gap-6">
               <div className="text-center">
-                <p className="text-3xl font-semibold font-mono text-status-warning">
+                <p className="text-lg font-semibold font-mono text-status-warning">
                   {data.outstanding_invoices?.count || 0}
                 </p>
                 <p className="text-xs text-text-muted">Invoices</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-semibold font-mono text-status-warning">
+                <p className="text-lg font-semibold font-mono text-status-warning">
                   {formatCurrency(data.outstanding_invoices?.value || 0)}
                 </p>
                 <p className="text-xs text-text-muted">Total Value</p>

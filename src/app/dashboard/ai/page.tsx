@@ -102,7 +102,7 @@ function HealthRing({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-mono font-bold text-text-primary">
+        <span className="text-lg font-mono font-bold text-text-primary">
           {score}
         </span>
         <span className="text-[10px] text-text-muted uppercase tracking-wider">
@@ -281,7 +281,7 @@ export default function AICommandCentre() {
           <Card>
             <CardContent>
               <p className="text-xs text-text-muted">Active Insights</p>
-              <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+              <p className="text-lg font-mono font-bold text-text-primary mt-1">
                 {data.stats.total_insights}
               </p>
               <p className="text-xs text-text-muted mt-1">
@@ -292,7 +292,7 @@ export default function AICommandCentre() {
           <Card>
             <CardContent>
               <p className="text-xs text-text-muted">Revenue Opportunity</p>
-              <p className="text-2xl font-mono font-bold text-emerald-400 mt-1">
+              <p className="text-lg font-mono font-bold text-emerald-400 mt-1">
                 {formatCurrency(data.stats.revenue_opportunity)}
               </p>
               <p className="text-xs text-text-muted mt-1">next 7 days</p>
@@ -301,7 +301,7 @@ export default function AICommandCentre() {
           <Card>
             <CardContent>
               <p className="text-xs text-text-muted">Energy Savings</p>
-              <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+              <p className="text-lg font-mono font-bold text-text-primary mt-1">
                 {data.stats.energy_savings_potential > 0
                   ? formatCurrency(data.stats.energy_savings_potential)
                   : "Optimal"}
@@ -316,7 +316,7 @@ export default function AICommandCentre() {
           <Card>
             <CardContent>
               <p className="text-xs text-text-muted">7-Day Occupancy</p>
-              <p className="text-2xl font-mono font-bold text-text-primary mt-1">
+              <p className="text-lg font-mono font-bold text-text-primary mt-1">
                 {data.stats.predicted_occupancy_7d}%
               </p>
               <p className="text-xs text-text-muted mt-1">AI forecast</p>

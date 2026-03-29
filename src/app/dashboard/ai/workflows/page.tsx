@@ -741,7 +741,7 @@ export default function WorkflowsPage() {
             <CardContent className="py-5 text-center">
               <Activity className="w-5 h-5 text-cyan-400 mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">Active Workflows</p>
-              <p className="text-2xl font-mono font-bold text-text-primary">
+              <p className="text-lg font-mono font-bold text-text-primary">
                 {(stats.by_status.pending || 0) +
                   (stats.by_status.in_progress || 0) +
                   (stats.by_status.approved || 0)}
@@ -753,7 +753,7 @@ export default function WorkflowsPage() {
               <ShieldCheck className="w-5 h-5 text-amber-400 mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">Awaiting Approval</p>
               <p className={cn(
-                "text-2xl font-mono font-bold",
+                "text-lg font-mono font-bold",
                 (stats.by_status.awaiting_approval || 0) > 0 ? "text-amber-400" : "text-text-primary"
               )}>
                 {stats.by_status.awaiting_approval || 0}
@@ -764,7 +764,7 @@ export default function WorkflowsPage() {
             <CardContent className="py-5 text-center">
               <CheckCircle className="w-5 h-5 text-status-success mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">Completed This Week</p>
-              <p className="text-2xl font-mono font-bold text-text-primary">
+              <p className="text-lg font-mono font-bold text-text-primary">
                 {stats.completed_this_week}
               </p>
             </CardContent>
@@ -773,7 +773,7 @@ export default function WorkflowsPage() {
             <CardContent className="py-5 text-center">
               <Timer className="w-5 h-5 text-cyan-400 mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">Avg Completion</p>
-              <p className="text-2xl font-mono font-bold text-text-primary">
+              <p className="text-lg font-mono font-bold text-text-primary">
                 {stats.avg_completion_hours !== null
                   ? stats.avg_completion_hours < 1
                     ? `${Math.round(stats.avg_completion_hours * 60)}m`

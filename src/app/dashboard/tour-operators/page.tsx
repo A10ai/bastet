@@ -129,7 +129,7 @@ function StatCard({
           {label}
         </p>
         <div className="flex items-baseline gap-1.5 mt-2">
-          <span className={cn("text-2xl font-mono font-bold", color)}>
+          <span className={cn("text-lg font-mono font-bold", color)}>
             {value}
           </span>
           {unit && (

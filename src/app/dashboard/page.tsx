@@ -453,7 +453,7 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="text-center -mt-2">
-              <span className="text-3xl font-mono font-bold text-[#22D3EE]">
+              <span className="text-lg font-mono font-bold text-[#22D3EE]">
                 {stats.occupancy_percentage}%
               </span>
               <p className="text-xs text-text-muted mt-1">Occupied</p>

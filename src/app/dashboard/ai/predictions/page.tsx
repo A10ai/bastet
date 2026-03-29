@@ -643,7 +643,7 @@ export default function PredictionsPage() {
             <CardContent className="py-5 text-center">
               <DollarSign className="w-5 h-5 text-cyan-400 mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">30-Day Revenue Forecast</p>
-              <p className="text-2xl font-mono font-bold text-text-primary">
+              <p className="text-lg font-mono font-bold text-text-primary">
                 {formatCurrency(summary.total_revenue_gbp)}
               </p>
               <p className="text-xs text-text-muted mt-1">
@@ -656,7 +656,7 @@ export default function PredictionsPage() {
             <CardContent className="py-5 text-center">
               <Target className="w-5 h-5 text-cyan-400 mx-auto mb-2" />
               <p className="text-xs text-text-muted mb-1">Avg Predicted Occupancy</p>
-              <p className="text-2xl font-mono font-bold text-text-primary">
+              <p className="text-lg font-mono font-bold text-text-primary">
                 {summary.avg_occupancy_pct}%
               </p>
               <p className="text-xs text-text-muted mt-1">
