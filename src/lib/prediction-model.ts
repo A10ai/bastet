@@ -180,7 +180,7 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
     .from("apartments")
     .select("id", { count: "exact", head: true });
 
-  const totalApartments = aptCount || 270;
+  const totalApartments = aptCount || 320;
 
   // Get all bookings (active/past)
   const { data: bookings } = await supabase

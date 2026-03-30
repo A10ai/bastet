@@ -660,7 +660,7 @@ export default function PredictionsPage() {
                 {summary.avg_occupancy_pct}%
               </p>
               <p className="text-xs text-text-muted mt-1">
-                {Math.round((summary.avg_occupancy_pct / 100) * (model?.total_apartments || 270))} of {model?.total_apartments || 270} units
+                {Math.round((summary.avg_occupancy_pct / 100) * (model?.total_apartments || 320))} of {model?.total_apartments || 320} units
               </p>
             </CardContent>
           </Card>

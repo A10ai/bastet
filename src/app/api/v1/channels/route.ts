@@ -14,12 +14,12 @@ const CHANNEL_COMMISSIONS: Record<string, number> = {
 
 // Hardcoded OTA connection definitions
 const OTA_CONNECTIONS = [
-  { id: "booking_com", name: "Booking.com", logo: "B", status: "connected", commission: 15, last_sync: "2026-03-24T10:00:00Z", listings: 270 },
+  { id: "booking_com", name: "Booking.com", logo: "B", status: "connected", commission: 15, last_sync: "2026-03-24T10:00:00Z", listings: 320 },
   { id: "airbnb", name: "Airbnb", logo: "A", status: "connected", commission: 14, last_sync: "2026-03-24T09:30:00Z", listings: 100 },
   { id: "expedia", name: "Expedia", logo: "E", status: "available", commission: 18, last_sync: null, listings: 0 },
   { id: "tripadvisor", name: "TripAdvisor", logo: "T", status: "available", commission: 12, last_sync: null, listings: 0 },
   { id: "agoda", name: "Agoda", logo: "AG", status: "available", commission: 15, last_sync: null, listings: 0 },
-  { id: "direct", name: "Direct (hospitai.uk)", logo: "H", status: "connected", commission: 0, last_sync: "2026-03-24T12:00:00Z", listings: 270 },
+  { id: "direct", name: "Direct (hospitai.uk)", logo: "H", status: "connected", commission: 0, last_sync: "2026-03-24T12:00:00Z", listings: 320 },
 ];
 
 // Map channel names/codes to OTA connection ids for active_bookings lookup

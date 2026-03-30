@@ -189,7 +189,7 @@ async function executeScheduledCycle() {
         open_maintenance: 0,
         urgent_maintenance: 0,
         housekeeping_dirty: 0,
-        total_apartments: 270,
+        total_apartments: 320,
         revenue_today: 0,
         arrivals_today: 0,
         departures_today: 0,
