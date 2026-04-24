@@ -1,8 +1,8 @@
 /**
  * HospitAI Chat Intelligence
  *
- * Parses natural language queries and routes them to the correct
- * data source. Returns structured answers from live operational data.
+ * Uses Claude API with live property data for intelligent, natural responses.
+ * Falls back to rule-based intent matching if no API key.
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -93,12 +93,141 @@ function getTimeframe(msg: string): "today" | "tomorrow" | "week" | "month" {
 }
 
 /**
+ * Gather a live data snapshot for Claude context.
+ */
+async function gatherPropertyContext(supabase: SupabaseClient): Promise<string> {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
+
+  try {
+    const [
+      { data: apartments },
+      { data: bookingsToday },
+      { data: arrivalsToday },
+      { data: departuresToday },
+      { data: arrivalsTomorrow },
+      { data: maintenance },
+      { data: housekeeping },
+      { data: types },
+      { data: recentGuests },
+    ] = await Promise.all([
+      supabase.from("apartments").select("id, number, status, floor"),
+      supabase.from("bookings").select("id, reference, status, check_in, check_out, total_amount_gbp, nights, guest_name, special_requests, apartment:apartments(number)").eq("status", "checked_in").lte("check_in", today).gt("check_out", today),
+      supabase.from("bookings").select("id, reference, check_in, nights, guest_name, special_requests, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed", "checked_in"]).eq("check_in", today),
+      supabase.from("bookings").select("id, guest_name, apartment:apartments(number)").in("status", ["checked_in", "checked_out"]).eq("check_out", today),
+      supabase.from("bookings").select("id, guest_name, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed"]).eq("check_in", tomorrow),
+      supabase.from("maintenance_requests").select("id, title, priority, status, category").in("status", ["open", "assigned", "in_progress"]).order("priority", { ascending: true }).limit(15),
+      supabase.from("housekeeping_tasks").select("id, status, type, apartment:apartments(number)").eq("scheduled_date", today),
+      supabase.from("apartment_types").select("name, base_rate_gbp"),
+      supabase.from("guests").select("first_name, last_name, loyalty_tier, total_spend_gbp, vip_status").or("vip_status.eq.true,loyalty_tier.eq.platinum,loyalty_tier.eq.gold").order("total_spend_gbp", { ascending: false }).limit(10),
+    ]);
+
+    const total = apartments?.length || 0;
+    const occupied = apartments?.filter((a) => a.status === "occupied").length || 0;
+    const available = apartments?.filter((a) => a.status === "available").length || 0;
+    const cleaning = apartments?.filter((a) => a.status === "cleaning").length || 0;
+    const maint = apartments?.filter((a) => a.status === "maintenance").length || 0;
+    const occPct = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
+    const dailyRev = (bookingsToday || []).reduce((s, b) => s + (b.nights > 0 ? b.total_amount_gbp / b.nights : 0), 0);
+
+    const hkPending = housekeeping?.filter((t) => t.status === "pending" || t.status === "assigned").length || 0;
+    const hkInProgress = housekeeping?.filter((t) => t.status === "in_progress").length || 0;
+    const hkCompleted = housekeeping?.filter((t) => t.status === "completed" || t.status === "verified").length || 0;
+
+    const urgentMaint = maintenance?.filter((r) => r.priority === "urgent" || r.priority === "emergency") || [];
+
+    return JSON.stringify({
+      date: today,
+      occupancy: { total, occupied, available, cleaning, maintenance: maint, percent: occPct },
+      revenue: { today: Math.round(dailyRev), active_bookings: bookingsToday?.length || 0 },
+      arrivals: { today: arrivalsToday?.length || 0, tomorrow: arrivalsTomorrow?.length || 0, today_details: arrivalsToday?.slice(0, 10) },
+      departures: { today: departuresToday?.length || 0, details: departuresToday?.slice(0, 10) },
+      housekeeping: { pending: hkPending, in_progress: hkInProgress, completed: hkCompleted },
+      maintenance: { open: maintenance?.length || 0, urgent: urgentMaint.length, details: maintenance?.slice(0, 10) },
+      rates: types || [],
+      vip_guests: recentGuests?.slice(0, 5) || [],
+    }, null, 1);
+  } catch {
+    return "{}";
+  }
+}
+
+/**
+ * Call Claude API for intelligent chat response.
+ */
+async function callClaudeChat(message: string, context: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const systemPrompt = `You are HospitAI Assistant — the AI operations assistant for a serviced apartment property. You have access to live property data provided below.
+
+Rules:
+- Answer questions conversationally but concisely
+- Always use the REAL data provided — never make up numbers
+- Use markdown formatting (bold, bullets) for readability
+- Include specific numbers and names from the data
+- If the data doesn't contain what's needed, say so honestly
+- Give actionable recommendations when relevant
+- Be professional but warm — you're a GM's right-hand AI
+- Use £ for currency
+- Keep responses focused — don't dump all data unless asked for a full overview
+- When suggesting actions, be specific (e.g., "increase studio rates from £45 to £52" not just "increase rates")`;
+
+  const userMessage = `Live Property Data:\n${context}\n\nUser Question: ${message}`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("[AI Chat] Claude API error:", res.status, await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const textBlock = data.content?.find((c: { type: string }) => c.type === "text");
+    return textBlock?.text || null;
+  } catch (err) {
+    console.error("[AI Chat] Claude API call failed:", err);
+    return null;
+  }
+}
+
+/**
  * Process a chat message and return an AI response with live data.
  */
 export async function processChat(
   message: string,
   supabase: SupabaseClient
 ): Promise<ChatMessage> {
+  // Try Claude-powered response first
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (apiKey) {
+    try {
+      const context = await gatherPropertyContext(supabase);
+      const claudeResponse = await callClaudeChat(message, context);
+      if (claudeResponse) {
+        return reply(claudeResponse);
+      }
+    } catch (err) {
+      console.error("[AI Chat] Claude chat failed, falling back to rule-based:", err);
+    }
+  }
+
+  // Fallback to rule-based responses
   const intent = parseIntent(message);
   const today = format(new Date(), "yyyy-MM-dd");
   const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
