@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/api-auth";
 import { apiError, handleDbError } from "@/lib/api-error";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   const auth = await requireRole(request, ["owner", "admin"]);
@@ -130,6 +131,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await logAudit(supabase, {
+      action: "admin.user.create",
+      category: "settings",
+      resource_type: "staff",
+      resource_id: staffData?.id,
+      description: `Created staff user ${email}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data: staffData }, { status: 201 });
   } catch {
     return NextResponse.json(
@@ -169,6 +179,16 @@ export async function PUT(request: NextRequest) {
     if (error) {
       return handleDbError(error, "admin-users-update");
     }
+
+    await logAudit(supabase, {
+      action: "admin.user.update",
+      category: "settings",
+      resource_type: "staff",
+      resource_id: data?.id || id,
+      description: `Updated staff user ${id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data });
   } catch {
     return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
@@ -218,6 +238,14 @@ export async function DELETE(request: NextRequest) {
         // Auth admin may not be available
       }
     }
+
+    await logAudit(supabase, {
+      action: "admin.user.deactivate",
+      category: "settings",
+      resource_type: "staff",
+      resource_id: id,
+      description: `Deactivated staff user ${id}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch {

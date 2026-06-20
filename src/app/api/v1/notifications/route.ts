@@ -8,6 +8,7 @@ import {
   markRead,
   markAllRead,
 } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/notifications
@@ -117,6 +118,13 @@ export async function POST(request: NextRequest) {
           );
         }
         const success = await markRead(supabase, body.id);
+        await logAudit(supabase, {
+          action: "notification.mark_read",
+          category: "system",
+          resource_type: "notification",
+          resource_id: body.id,
+          description: `Marked notification ${body.id} as read`,
+        });
         return NextResponse.json({ success });
       }
 
@@ -128,6 +136,13 @@ export async function POST(request: NextRequest) {
           );
         }
         const success = await markAllRead(supabase, staffId);
+        await logAudit(supabase, {
+          action: "notification.mark_all_read",
+          category: "system",
+          resource_type: "notification",
+          resource_id: staffId,
+          description: `Marked all notifications as read for staff ${staffId}`,
+        });
         return NextResponse.json({ success });
       }
 
@@ -146,6 +161,13 @@ export async function POST(request: NextRequest) {
           type: type || "info",
           category: category || null,
           link: link || null,
+        });
+        await logAudit(supabase, {
+          action: "notification.create",
+          category: "system",
+          resource_type: "notification",
+          description: `Created notification: ${title}`,
+          new_data: body,
         });
         return NextResponse.json({ notifications });
       }

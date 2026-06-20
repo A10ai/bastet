@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,6 +54,16 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "apartment.create",
+      category: "settings",
+      resource_type: "apartment",
+      resource_id: data?.id,
+      description: `Created apartment ${data?.number || ""}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

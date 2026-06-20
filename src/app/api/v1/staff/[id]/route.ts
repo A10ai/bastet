@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -64,6 +65,16 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "staff.update",
+      category: "settings",
+      resource_type: "staff",
+      resource_id: data?.id || params.id,
+      description: `Updated staff member ${params.id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

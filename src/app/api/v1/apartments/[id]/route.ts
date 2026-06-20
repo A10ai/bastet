@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -50,6 +51,16 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "apartment.update",
+      category: "settings",
+      resource_type: "apartment",
+      resource_id: data?.id || params.id,
+      description: `Updated apartment ${params.id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -73,6 +84,15 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "apartment.delete",
+      category: "settings",
+      resource_type: "apartment",
+      resource_id: params.id,
+      description: `Deleted apartment ${params.id}`,
+    });
+
     return NextResponse.json({ message: "Apartment deleted" });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

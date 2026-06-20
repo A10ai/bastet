@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,15 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "property.create",
+      category: "settings",
+      resource_type: "property",
+      resource_id: data?.id,
+      description: `Created property ${data?.name || ""}`,
+      new_data: body,
+    });
 
     return NextResponse.json({ data }, { status: 201 });
   } catch {
@@ -100,6 +110,16 @@ export async function PUT(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "property.update",
+      category: "settings",
+      resource_type: "property",
+      resource_id: data?.id || id,
+      description: `Updated property ${id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
