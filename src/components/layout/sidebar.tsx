@@ -128,7 +128,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto" aria-label="Main navigation">
         {(() => {
           const allItems = SIDEBAR_NAV.flatMap((g) => g.items);
           return SIDEBAR_NAV.map((group) => (
@@ -175,6 +175,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg transition-colors"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           {collapsed ? (
             <ChevronRight className="w-4 h-4" />
