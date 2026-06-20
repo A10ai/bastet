@@ -17,6 +17,7 @@ import { createNotification } from "@/lib/notifications";
 import { logAudit, logAuditBatch } from "@/lib/audit";
 import { createWorkflowFromBrainDecision } from "@/lib/workflow-engine";
 import { anonymizeSnapshot } from "@/lib/pii-anonymizer";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -119,7 +120,12 @@ interface DataSnapshot {
 // In-memory config (persists across requests in the same server process)
 // ---------------------------------------------------------------------------
 
-let brainConfig: BrainConfig = {
+// ---------------------------------------------------------------------------
+// Brain Config — persisted to database (migration 00017)
+// Replaces in-memory state that was lost on every serverless invocation.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_CONFIG: BrainConfig = {
   mode: "supervised",
   enabled: true,
   cycle_interval_minutes: 30,
@@ -129,13 +135,83 @@ let brainConfig: BrainConfig = {
   total_executed: 0,
 };
 
-export function getBrainConfig(): BrainConfig {
-  return { ...brainConfig };
+// In-memory cache (short-lived, falls back to DB)
+let cachedConfig: BrainConfig | null = null;
+let configCacheTime = 0;
+const CONFIG_CACHE_TTL = 10_000; // 10 seconds
+
+/**
+ * Get brain config from DB (with short-lived in-memory cache for performance).
+ * Falls back to defaults if DB is unavailable.
+ */
+export async function getBrainConfig(): Promise<BrainConfig> {
+  // Use cache if fresh
+  if (cachedConfig && Date.now() - configCacheTime < CONFIG_CACHE_TTL) {
+    return { ...cachedConfig };
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("brain_config")
+      .select("*")
+      .eq("id", 1)
+      .single();
+
+    if (error || !data) return { ...DEFAULT_CONFIG };
+
+    const config: BrainConfig = {
+      mode: data.mode as "supervised" | "autonomous",
+      enabled: data.enabled,
+      cycle_interval_minutes: data.cycle_interval_minutes,
+      last_cycle: data.last_cycle,
+      total_cycles: data.total_cycles,
+      total_decisions: data.total_decisions,
+      total_executed: data.total_executed,
+    };
+
+    cachedConfig = config;
+    configCacheTime = Date.now();
+    return { ...config };
+  } catch {
+    return { ...DEFAULT_CONFIG };
+  }
 }
 
-export function updateBrainConfig(updates: Partial<BrainConfig>): BrainConfig {
-  brainConfig = { ...brainConfig, ...updates };
-  return { ...brainConfig };
+/**
+ * Update brain config in the database.
+ * Returns the updated config.
+ */
+export async function updateBrainConfig(
+  updates: Partial<BrainConfig>
+): Promise<BrainConfig> {
+  const current = await getBrainConfig();
+  const updated = { ...current, ...updates };
+
+  try {
+    const supabase = createAdminClient();
+    await supabase
+      .from("brain_config")
+      .update({
+        mode: updated.mode,
+        enabled: updated.enabled,
+        cycle_interval_minutes: updated.cycle_interval_minutes,
+        last_cycle: updated.last_cycle,
+        total_cycles: updated.total_cycles,
+        total_decisions: updated.total_decisions,
+        total_executed: updated.total_executed,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", 1);
+  } catch {
+    // Non-critical — config update may fail, but we still return the updated value
+  }
+
+  // Update cache
+  cachedConfig = updated;
+  configCacheTime = Date.now();
+
+  return { ...updated };
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +658,7 @@ function runRuleBasedAnalysis(snapshot: DataSnapshot): ClaudeResponse {
 export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycleResult> {
   const cycleTimestamp = new Date().toISOString();
   const cycleId = `cycle-${Date.now()}`;
-  const mode = brainConfig.mode;
+  const mode = (await getBrainConfig()).mode;
 
   // 1. Gather data snapshot
   const snapshot = await gatherDataSnapshot(supabase);
@@ -669,15 +745,15 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     }
   }
 
-  // 4. Update config stats
+  // 4. Update config stats (persisted to DB)
   const autoExecutedCount = storedDecisions.filter((d) => d.executed).length;
-  brainConfig = {
-    ...brainConfig,
+  const currentConfig = await getBrainConfig();
+  await updateBrainConfig({
     last_cycle: cycleTimestamp,
-    total_cycles: brainConfig.total_cycles + 1,
-    total_decisions: brainConfig.total_decisions + storedDecisions.length,
-    total_executed: brainConfig.total_executed + autoExecutedCount,
-  };
+    total_cycles: currentConfig.total_cycles + 1,
+    total_decisions: currentConfig.total_decisions + storedDecisions.length,
+    total_executed: currentConfig.total_executed + autoExecutedCount,
+  });
 
   // 5. Create notification summarising the brain cycle
   if (storedDecisions.length > 0) {

@@ -1,0 +1,64 @@
+# HospitAI Edge Box — Docker Compose
+# Deploys Next.js app + PostgreSQL + Supabase local stack
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - PROPERTY_ID=${PROPERTY_ID}
+      - DATABASE_URL=postgresql://hospitai:hospitai@db:5432/hospitai
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hospitai-net
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=hospitai
+      - POSTGRES_PASSWORD=hospitai
+      - POSTGRES_DB=hospitai
+    volumes:
+      - hospitai-db:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hospitai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - hospitai-net
+    ports:
+      - "5432:5432"
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - hospitai-mqtt:/mosquitto/data
+    restart: unless-stopped
+    networks:
+      - hospitai-net
+
+volumes:
+  hospitai-db:
+  hospitai-mqtt:
+
+networks:
+  hospitai-net:
+    driver: bridge

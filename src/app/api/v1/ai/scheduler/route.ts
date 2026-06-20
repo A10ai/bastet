@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       last_run: lastSchedulerRun,
       total_cycles: totalCycles,
       is_running: schedulerTimer !== null,
-      brain_config: getBrainConfig(),
+      brain_config: await getBrainConfig(),
     },
   });
 }
@@ -139,7 +139,7 @@ async function executeScheduledCycle() {
 
   try {
     // 1. Run AI Brain cycle
-    const brainConfig = getBrainConfig();
+    const brainConfig = await getBrainConfig();
     if (brainConfig.enabled) {
       try {
         const brainResult = await runBrainCycle(supabase);

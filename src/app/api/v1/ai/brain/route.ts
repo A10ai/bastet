@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
-    const config = getBrainConfig();
+    const config = await getBrainConfig();
     const history = await getBrainHistory(supabase, 10);
 
     return NextResponse.json({ data: { config, history } });
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "run_cycle": {
-        const config = getBrainConfig();
+        const config = await getBrainConfig();
         if (!config.enabled) {
           return NextResponse.json(
             { error: "Brain is disabled" },
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
           safeUpdates.cycle_interval_minutes = config.cycle_interval_minutes;
         }
 
-        const updated = updateBrainConfig(safeUpdates);
+        const updated = await updateBrainConfig(safeUpdates);
         return NextResponse.json({ data: { config: updated } });
       }
 
@@ -118,8 +118,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Update config stats
-        const config = getBrainConfig();
-        updateBrainConfig({ total_executed: config.total_executed + 1 });
+        const config = await getBrainConfig();
+        await updateBrainConfig({ total_executed: config.total_executed + 1 });
 
         return NextResponse.json({ data: { approved: true, decision_id } });
       }
