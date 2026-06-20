@@ -278,7 +278,7 @@ export async function getRevenueReport(
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, booking_ref, apartment_id, guest_id, check_in, check_out, total_amount_gbp, channel, nights, guests(first_name, last_name), apartments(unit_number)")
+    .select("id, reference, apartment_id, guest_id, check_in, check_out, total_amount_gbp, channel, nights, guests(first_name, last_name), apartments(number)")
     .in("status", ["confirmed", "checked_in", "checked_out"])
     .lte("check_in", dateTo)
     .gte("check_out", dateFrom)
@@ -339,9 +339,9 @@ export async function getRevenueReport(
 
   // Top 10 bookings
   const topBookings = (bookings || []).slice(0, 10).map((b) => ({
-    ref: b.booking_ref || "N/A",
+    ref: b.reference || "N/A",
     guest_name: `${(b.guests as any)?.first_name || ""} ${(b.guests as any)?.last_name || ""}`.trim() || "Guest",
-    apartment: (b.apartments as any)?.unit_number || "N/A",
+    apartment: (b.apartments as any)?.number || "N/A",
     amount: round2(b.total_amount_gbp || 0),
     nights: b.nights || 0,
   }));

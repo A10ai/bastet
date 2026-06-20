@@ -574,7 +574,7 @@ export async function getEnergyRecommendations(
   const { data: todayArrivals } = await supabase
     .from("bookings")
     .select("id, apartment_id, apartments(number)")
-    .eq("check_in_date", today)
+    .eq("check_in", today)
     .in("status", ["confirmed", "pending"]);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */

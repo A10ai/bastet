@@ -147,25 +147,6 @@ function linearRegression(xs: number[], ys: number[]): { slope: number; intercep
   return { slope, intercept };
 }
 
-/** Pearson correlation coefficient */
-function _correlation(xs: number[], ys: number[]): number {
-  const n = xs.length;
-  if (n < 3) return 0;
-  const mx = mean(xs);
-  const my = mean(ys);
-  let num = 0;
-  let denX = 0;
-  let denY = 0;
-  for (let i = 0; i < n; i++) {
-    const dx = xs[i] - mx;
-    const dy = ys[i] - my;
-    num += dx * dy;
-    denX += dx * dx;
-    denY += dy * dy;
-  }
-  const den = Math.sqrt(denX * denY);
-  return den === 0 ? 0 : num / den;
-}
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -180,7 +161,7 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
     .from("apartments")
     .select("id", { count: "exact", head: true });
 
-  const totalApartments = aptCount || 320;
+  const totalApartments = aptCount || 0;
 
   // Get all bookings (active/past)
   const { data: bookings } = await supabase

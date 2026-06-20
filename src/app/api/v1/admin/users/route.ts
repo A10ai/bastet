@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    // Use admin client for staff listing (RLS would scope to single property)
+    const supabase = createAdminClient();
 
     const { data: staffList, error } = await supabase
       .from("staff")
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Try to get auth users list (requires service role)
+    // Get auth users list (requires service role)
     const authUsers: Record<string, unknown> = {};
     try {
       const { data: authData } = await supabase.auth.admin.listUsers();
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const {
       first_name,
@@ -142,7 +143,7 @@ export async function PUT(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -177,7 +178,7 @@ export async function DELETE(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { searchParams } = request.nextUrl;
     const id = searchParams.get("id");
 

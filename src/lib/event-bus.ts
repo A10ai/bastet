@@ -147,7 +147,7 @@ registerHandler("booking.checked_out", async (event, supabase) => {
     .select("id")
     .eq("apartment_id", apartment_id)
     .in("status", ["confirmed", "pending"])
-    .lte("check_in_date", cutoff.toISOString().split("T")[0])
+    .lte("check_in", cutoff.toISOString().split("T")[0])
     .limit(1);
 
   if (!upcomingBookings || upcomingBookings.length === 0) {
@@ -417,7 +417,7 @@ registerHandler("housekeeping.completed", async (event, supabase) => {
     .from("bookings")
     .select("id, guest_id")
     .eq("apartment_id", apartment_id)
-    .eq("check_in_date", today)
+    .eq("check_in", today)
     .eq("status", "confirmed")
     .limit(1);
 

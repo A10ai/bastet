@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         .from("housekeeping_tasks")
         .select("status")
         .eq("scheduled_date", today),
-      supabase.from("apartment_types").select("name, base_rate_gbp"),
+      supabase.from("apartment_types").select("name, base_weekly_rate_gbp"),
       supabase
         .from("bookings")
         .select("total_amount_gbp, nights")
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     // Average rate
     const rates = (ratesRes.data || []).map((r) => ({
       type: r.name,
-      rate: r.base_rate_gbp,
+      rate: r.base_weekly_rate_gbp,
     }));
     const avgRate =
       rates.length > 0

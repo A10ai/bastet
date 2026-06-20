@@ -77,7 +77,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
               address: "",
               city: "Hurghada",
               country: "Egypt",
-              total_apartments: 320,
+              total_apartments: 0,
               status: "active",
             }]);
           }
@@ -96,7 +96,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
             address: "",
             city: "Hurghada",
             country: "Egypt",
-            total_apartments: 320,
+            total_apartments: 0,
             status: "active",
           }]);
         }

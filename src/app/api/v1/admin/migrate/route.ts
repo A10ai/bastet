@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAuth } from "@/lib/api-auth";
 
 /**
  * Migration status checker.
@@ -7,7 +8,11 @@ import { createClient } from "@supabase/supabase-js";
  *
  * GET /api/v1/admin/migrate
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Require authentication — this endpoint exposes DB schema details
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.error!;
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -5,7 +5,11 @@ import { getActivePropertyId } from "@/lib/api-property";
 
 // ---------------------------------------------------------------------------
 // Templates — use {property_name} placeholder, resolved at request time
+// Wi-Fi credentials from env var (never hardcode secrets in source)
 // ---------------------------------------------------------------------------
+
+const WIFI_SSID = process.env.WIFI_SSID || "GuestWiFi";
+const WIFI_PASSWORD = process.env.WIFI_PASSWORD || "ContactReception";
 
 function getMessageTemplates(propertyName: string) {
   return [
@@ -13,13 +17,13 @@ function getMessageTemplates(propertyName: string) {
       id: "pre_arrival",
       name: "Pre-Arrival Welcome",
       subject: `Your Stay at ${propertyName}`,
-      body: `Dear {guest_name},\n\nWe're looking forward to welcoming you tomorrow! Your apartment {apartment_number} on Floor {floor} is being prepared.\n\nCheck-in time: 2:00 PM\nWi-Fi: BastetGuest / Welcome2026\n\nNeed airport transfer? Reply to this message.\n\nWarm regards,\n${propertyName}`,
+      body: `Dear {guest_name},\n\nWe're looking forward to welcoming you tomorrow! Your apartment {apartment_number} on Floor {floor} is being prepared.\n\nCheck-in time: 2:00 PM\nWi-Fi: ${WIFI_SSID} / ${WIFI_PASSWORD}\n\nNeed airport transfer? Reply to this message.\n\nWarm regards,\n${propertyName}`,
     },
     {
       id: "check_in",
       name: "Check-In Confirmation",
       subject: `Welcome to ${propertyName}!`,
-      body: `Dear {guest_name},\n\nWelcome! You're checked into apartment {apartment_number}.\n\n🔑 Your digital key is active\n📶 Wi-Fi: BastetGuest / Welcome2026\n🏊 Pool hours: 7AM - 10PM\n🍽️ Breakfast: 7AM - 10:30AM\n\nNeed anything? Just reply here.\n\nEnjoy your stay!\n${propertyName} Team`,
+      body: `Dear {guest_name},\n\nWelcome! You're checked into apartment {apartment_number}.\n\n🔑 Your digital key is active\n📶 Wi-Fi: ${WIFI_SSID} / ${WIFI_PASSWORD}\n🏊 Pool hours: 7AM - 10PM\n🍽️ Breakfast: 7AM - 10:30AM\n\nNeed anything? Just reply here.\n\nEnjoy your stay!\n${propertyName} Team`,
     },
     {
       id: "mid_stay",

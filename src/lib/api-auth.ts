@@ -1,8 +1,12 @@
+import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Verify that the request has a valid Supabase auth session.
+ * Always validates the session via supabase.auth.getSession() —
+ * no cookie-presence or referer shortcuts.
+ *
  * Usage:
  *   const auth = await requireAuth(request);
  *   if (!auth.authenticated) return auth.error!;
@@ -11,29 +15,6 @@ export async function requireAuth(
   request: NextRequest
 ): Promise<{ authenticated: boolean; error?: NextResponse }> {
   try {
-    // Check if any Supabase auth cookie exists
-    const cookies = request.cookies.getAll();
-    const hasAuthCookie = cookies.some(
-      (c) =>
-        c.name.includes("auth-token") ||
-        c.name.includes("sb-") ||
-        c.name.includes("supabase")
-    );
-
-    // If request comes from the same origin (browser navigation / fetch from dashboard)
-    // and has auth cookies, allow it
-    const referer = request.headers.get("referer") || "";
-    const host = request.headers.get("host") || "";
-    const isInternalRequest =
-      referer.includes(host) ||
-      referer.includes("hospitai") ||
-      referer.includes("localhost");
-
-    if (hasAuthCookie && isInternalRequest) {
-      return { authenticated: true };
-    }
-
-    // Full session validation for external requests
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 
 const ALLOWED_TABLES = [
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { searchParams } = request.nextUrl;
     const table = searchParams.get("table");
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const { table, row } = body;
 
@@ -196,7 +196,7 @@ export async function PUT(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const { table, id, updates } = body;
 
@@ -238,7 +238,7 @@ export async function DELETE(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { searchParams } = request.nextUrl;
     const table = searchParams.get("table");
     const id = searchParams.get("id");

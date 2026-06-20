@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * HospitAI Chat Intelligence
  *
@@ -112,13 +113,13 @@ async function gatherPropertyContext(supabase: SupabaseClient): Promise<string> 
       { data: recentGuests },
     ] = await Promise.all([
       supabase.from("apartments").select("id, number, status, floor"),
-      supabase.from("bookings").select("id, reference, status, check_in, check_out, total_amount_gbp, nights, guest_name, special_requests, apartment:apartments(number)").eq("status", "checked_in").lte("check_in", today).gt("check_out", today),
-      supabase.from("bookings").select("id, reference, check_in, nights, guest_name, special_requests, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed", "checked_in"]).eq("check_in", today),
-      supabase.from("bookings").select("id, guest_name, apartment:apartments(number)").in("status", ["checked_in", "checked_out"]).eq("check_out", today),
-      supabase.from("bookings").select("id, guest_name, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed"]).eq("check_in", tomorrow),
+      supabase.from("bookings").select("id, reference, status, check_in, check_out, total_amount_gbp, nights, special_requests, apartment:apartments(number), guest:guests(first_name, last_name)").eq("status", "checked_in").lte("check_in", today).gt("check_out", today),
+      supabase.from("bookings").select("id, reference, check_in, nights, special_requests, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed", "checked_in"]).eq("check_in", today),
+      supabase.from("bookings").select("id, apartment:apartments(number), guest:guests(first_name, last_name)").in("status", ["checked_in", "checked_out"]).eq("check_out", today),
+      supabase.from("bookings").select("id, apartment:apartments(number), guest:guests(first_name, last_name, loyalty_tier, vip_status)").in("status", ["confirmed"]).eq("check_in", tomorrow),
       supabase.from("maintenance_requests").select("id, title, priority, status, category").in("status", ["open", "assigned", "in_progress"]).order("priority", { ascending: true }).limit(15),
       supabase.from("housekeeping_tasks").select("id, status, type, apartment:apartments(number)").eq("scheduled_date", today),
-      supabase.from("apartment_types").select("name, base_rate_gbp"),
+      supabase.from("apartment_types").select("name, base_weekly_rate_gbp"),
       supabase.from("guests").select("first_name, last_name, loyalty_tier, total_spend_gbp, vip_status").or("vip_status.eq.true,loyalty_tier.eq.platinum,loyalty_tier.eq.gold").order("total_spend_gbp", { ascending: false }).limit(10),
     ]);
 
@@ -160,7 +161,7 @@ async function callClaudeChat(message: string, context: string): Promise<string 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const systemPrompt = `You are HospitAI Assistant — the AI operations assistant for **Bastet Aparthotels**, a 320-unit serviced apartment property in Kawthar District, Hurghada, Egypt. The property is also referred to as "Bastet" or "the property". It has studios, 1-bed apartments, 2-bed apartments, and penthouses across 5 floors.
+  const systemPrompt = `You are HospitAI Assistant — the AI operations assistant for **Bastet Aparthotels**, a serviced apartment property in Kawthar District, Hurghada, Egypt. The property is also referred to as "Bastet" or "the property". It has studios, 1-bed apartments, 2-bed apartments, and penthouses across 5 floors.
 
 You have access to live property data provided below.
 
@@ -477,7 +478,7 @@ export async function processChat(
       case "check_pricing": {
         const { data: types } = await supabase
           .from("apartment_types")
-          .select("name, base_rate_gbp");
+          .select("name, base_weekly_rate_gbp");
         const { data: apartments } = await supabase
           .from("apartments")
           .select("status");
@@ -490,10 +491,10 @@ export async function processChat(
 
         (types || []).forEach((t) => {
           const mult = occ >= 85 ? 1.15 : occ >= 70 ? 1.05 : occ >= 50 ? 1.0 : 0.9;
-          const suggested = Math.round(t.base_rate_gbp * mult);
-          const diff = suggested - t.base_rate_gbp;
+          const suggested = Math.round(t.base_weekly_rate_gbp * mult);
+          const diff = suggested - t.base_weekly_rate_gbp;
           const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
-          response += `**${t.name}**: £${t.base_rate_gbp}/night → AI suggests £${suggested}/night ${arrow}\n`;
+          response += `**${t.name}**: £${t.base_weekly_rate_gbp}/night → AI suggests £${suggested}/night ${arrow}\n`;
         });
 
         response += occ >= 85

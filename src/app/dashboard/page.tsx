@@ -199,7 +199,7 @@ export default function DashboardPage() {
     );
   }
 
-  const totalRooms = stats.total_apartments || 200;
+  const totalRooms = stats.total_apartments || 0;
 
   // -- Chart shared styles --
   const tooltipStyle = {
@@ -251,7 +251,8 @@ export default function DashboardPage() {
     if (i === todayDayIdx) return { day, revenue: baseRevenue };
     // Show slight variation for past days, zero for future
     if (i < todayDayIdx) {
-      const factor = 0.7 + Math.random() * 0.6;
+      // Deterministic variation based on day index (no Math.random in render)
+      const factor = 0.7 + ((i * 37 + 13) % 60) / 100;
       return { day, revenue: Math.round(baseRevenue * factor * 100) / 100 };
     }
     return { day, revenue: 0 };

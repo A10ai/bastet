@@ -1,5 +1,6 @@
+import "server-only";
 /**
- * HospitAI Brain -- Hybrid Intelligence Engine
+ * HospitAI AI Brain — Daily Operations Intelligence
  *
  * Gathers a full property data snapshot from Supabase, sends it to
  * Claude API (Anthropic) for reasoning, or falls back to rule-based
@@ -165,14 +166,14 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
     // Today's arrivals
     supabase
       .from("bookings")
-      .select("id, check_in_date, apartments(number), guests(first_name, last_name, loyalty_tier)")
-      .eq("check_in_date", today)
+      .select("id, check_in, apartments(number), guests(first_name, last_name, loyalty_tier)")
+      .eq("check_in", today)
       .in("status", ["confirmed", "pending"]),
     // Today's departures
     supabase
       .from("bookings")
-      .select("id, check_out_date, apartments(number), guests(first_name, last_name)")
-      .eq("check_out_date", today)
+      .select("id, check_out, apartments(number), guests(first_name, last_name)")
+      .eq("check_out", today)
       .in("status", ["checked_in", "confirmed"]),
     // Open maintenance
     supabase
@@ -202,26 +203,26 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
       .eq("status", "completed")
       .gte("updated_at", today),
     // Current rates
-    supabase.from("apartment_types").select("name, base_rate_gbp"),
+    supabase.from("apartment_types").select("name, base_weekly_rate_gbp"),
     // Revenue today
     supabase
       .from("bookings")
-      .select("total_price_gbp")
-      .eq("check_in_date", today)
+      .select("total_amount_gbp")
+      .eq("check_in", today)
       .in("status", ["confirmed", "checked_in"]),
     // Revenue this week
     supabase
       .from("bookings")
-      .select("total_price_gbp")
-      .gte("check_in_date", weekAgo)
-      .lte("check_in_date", today)
+      .select("total_amount_gbp")
+      .gte("check_in", weekAgo)
+      .lte("check_in", today)
       .in("status", ["confirmed", "checked_in", "checked_out"]),
     // Revenue this month
     supabase
       .from("bookings")
-      .select("total_price_gbp")
-      .gte("check_in_date", monthStart)
-      .lte("check_in_date", today)
+      .select("total_amount_gbp")
+      .gte("check_in", monthStart)
+      .lte("check_in", today)
       .in("status", ["confirmed", "checked_in", "checked_out"]),
   ]);
 
@@ -240,7 +241,7 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
     id: b.id,
     guest_name: b.guests ? `${b.guests.first_name} ${b.guests.last_name}` : "Unknown",
     apartment_number: b.apartments?.number || "TBD",
-    check_in_date: b.check_in_date,
+    check_in_date: b.check_in,
   }));
 
   // VIP arrivals
@@ -257,7 +258,7 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
     id: b.id,
     guest_name: b.guests ? `${b.guests.first_name} ${b.guests.last_name}` : "Unknown",
     apartment_number: b.apartments?.number || "TBD",
-    check_out_date: b.check_out_date,
+    check_out_date: b.check_out,
   }));
 
   // Maintenance categories
@@ -269,12 +270,12 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
 
   // Revenue sums
   const sumField = (rows: any[] | null) =>
-    (rows || []).reduce((sum: number, r: any) => sum + (r.total_price_gbp || 0), 0);
+    (rows || []).reduce((sum: number, r: any) => sum + (r.total_amount_gbp || 0), 0);
 
   // Rates
   const currentRates = (ratesResult.data || []).map((r: any) => ({
     type_name: r.name,
-    rate: r.base_rate_gbp,
+    rate: r.base_weekly_rate_gbp,
   }));
 
   // Estimated energy waste: ~£8/unit/day for HVAC in vacant units

@@ -1,4 +1,4 @@
-# Bastet PMS — R&D Technical Log
+# HospitAI — R&D Technical Log
 
 > This log documents technical decisions and innovations that qualify for UK R&D tax credit claims under the SME scheme. Each entry records the technical uncertainty, approach taken, and resolution.
 

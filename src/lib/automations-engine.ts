@@ -79,7 +79,7 @@ async function runAutoPricing(
   const occupancy = Math.round((occupied / total) * 100);
 
   // Only act when crossing thresholds
-  if (occupancy <= 85 && occupancy >= 50) {
+  if (occupancy < 85 && occupancy >= 50) {
     results.push({
       action: "pricing_check",
       description: `Occupancy at ${occupancy}% — within normal band (50-85%). No rate adjustment needed.`,
@@ -103,12 +103,12 @@ async function runAutoPricing(
   // Fetch apartment types and update rates
   const { data: types } = await supabase
     .from("apartment_types")
-    .select("id, name, base_rate_gbp");
+    .select("id, name, base_weekly_rate_gbp");
 
   if (!types || types.length === 0) return results;
 
   for (const aptType of types) {
-    const currentRate = aptType.base_rate_gbp as number | null;
+    const currentRate = aptType.base_weekly_rate_gbp as number | null;
     if (!currentRate || currentRate <= 0) continue;
 
     const newRate = Math.round(currentRate * multiplier);
@@ -116,7 +116,7 @@ async function runAutoPricing(
 
     const { error } = await supabase
       .from("apartment_types")
-      .update({ base_rate_gbp: newRate })
+      .update({ base_weekly_rate_gbp: newRate })
       .eq("id", aptType.id);
 
     if (!error) {

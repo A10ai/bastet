@@ -502,28 +502,6 @@ export interface StaffSchedule {
   created_at: string;
 }
 
-// Notifications
-export interface Notification {
-  id: string;
-  staff_id: string | null;
-  title: string;
-  message: string;
-  type: "info" | "success" | "warning" | "error" | "ai_decision";
-  category:
-    | "booking"
-    | "housekeeping"
-    | "maintenance"
-    | "energy"
-    | "guest"
-    | "pricing"
-    | "brain"
-    | "system"
-    | null;
-  link: string | null;
-  read: boolean;
-  created_at: string;
-}
-
 // Module 5: Finance
 export interface Invoice {
   id: string;

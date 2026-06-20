@@ -444,13 +444,13 @@ async function executeStepAction(
       // Get old rate for audit
       const { data: oldType } = await supabase
         .from("apartment_types")
-        .select("base_rate_gbp, name")
+        .select("base_weekly_rate_gbp, name")
         .eq("id", typeId)
         .single();
 
       const { error } = await supabase
         .from("apartment_types")
-        .update({ base_rate_gbp: newRate })
+        .update({ base_weekly_rate_gbp: newRate })
         .eq("id", typeId);
 
       if (error) throw new Error(`Failed to update rate: ${error.message}`);
@@ -458,7 +458,7 @@ async function executeStepAction(
       return {
         type_id: typeId,
         type_name: oldType?.name || "unknown",
-        old_rate: oldType?.base_rate_gbp,
+        old_rate: oldType?.base_weekly_rate_gbp,
         new_rate: newRate,
       };
     }
@@ -773,7 +773,7 @@ export async function createWorkflowFromBrainDecision(
       // For pricing decisions, create rate update steps for each apartment type
       const { data: types } = await supabase
         .from("apartment_types")
-        .select("id, name, base_rate_gbp");
+        .select("id, name, base_weekly_rate_gbp");
 
       if (types && types.length > 0) {
         // Parse percentage from action text (e.g., "Increase rates by 12-18%")
@@ -783,7 +783,7 @@ export async function createWorkflowFromBrainDecision(
         const multiplier = isIncrease ? 1 + pct / 100 : 1 - pct / 100;
 
         for (const t of types) {
-          const newRate = Math.round(((t as any).base_rate_gbp || 0) * multiplier * 100) / 100;
+          const newRate = Math.round(((t as any).base_weekly_rate_gbp || 0) * multiplier * 100) / 100;
           steps.push({
             title: `Adjust ${(t as any).name} rate to ${newRate.toFixed(2)}`,
             action_type: "update_rate",

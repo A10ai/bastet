@@ -423,7 +423,7 @@ export async function getRatePerformance(
 ): Promise<RatePerformanceItem[]> {
   const { data: types } = await supabase
     .from("apartment_types")
-    .select("id, name, slug, base_rate_gbp");
+    .select("id, name, slug, base_weekly_rate_gbp");
 
   const { data: apartments } = await supabase
     .from("apartments")
@@ -437,8 +437,8 @@ export async function getRatePerformance(
     )
     .in("status", ["checked_in", "checked_out", "confirmed"]);
 
-  const typeMap = new Map<string, { name: string; base_rate_gbp: number }>();
-  (types || []).forEach((t) => typeMap.set(t.id, { name: t.name, base_rate_gbp: t.base_rate_gbp }));
+  const typeMap = new Map<string, { name: string; base_weekly_rate_gbp: number }>();
+  (types || []).forEach((t) => typeMap.set(t.id, { name: t.name, base_weekly_rate_gbp: t.base_weekly_rate_gbp }));
 
   // Map apartment -> type
   const aptTypeMap = new Map<string, string>();
@@ -480,8 +480,8 @@ export async function getRatePerformance(
     const avgActualRate = stats.totalNights > 0
       ? stats.totalRate / stats.totalNights
       : 0;
-    const rateEfficiency = info.base_rate_gbp > 0
-      ? avgActualRate / info.base_rate_gbp
+    const rateEfficiency = info.base_weekly_rate_gbp > 0
+      ? avgActualRate / info.base_weekly_rate_gbp
       : 0;
     const revpau = totalAvailableNights > 0
       ? stats.totalRevenue / totalAvailableNights
@@ -506,7 +506,7 @@ export async function getRatePerformance(
     results.push({
       apartment_type_id: typeId,
       apartment_type_name: info.name,
-      base_rate_gbp: info.base_rate_gbp,
+      base_rate_gbp: info.base_weekly_rate_gbp,
       avg_actual_rate_gbp: Math.round(avgActualRate * 100) / 100,
       occupancy_pct: Math.round(occupancyPct * 10) / 10,
       rate_efficiency: Math.round(rateEfficiency * 100) / 100,
