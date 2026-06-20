@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent } from "@/lib/event-bus";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -57,6 +58,15 @@ export async function POST(
       apartment_id: booking.apartment_id,
       guest_id: null,
     }, supabase);
+
+    await logAudit(supabase, {
+      action: "booking.checkin",
+      category: "booking",
+      resource_type: "booking",
+      resource_id: updated?.id || params.id,
+      description: `Checked in booking ${params.id}`,
+      new_data: { status: "checked_in" },
+    });
 
     return NextResponse.json({ data: updated });
   } catch {

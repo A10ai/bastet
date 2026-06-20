@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { useAIInsights } from "@/hooks/use-api";
 import { Badge } from "@/components/ui/badge";
 import {
   BrainCircuit,
@@ -208,23 +208,8 @@ function InsightSeverityDonut({ insights }: { insights: AIInsight[] }) {
 }
 
 export default function AICommandCentre() {
-  const [data, setData] = useState<AIData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAI = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/insights");
-        const json = await res.json();
-        setData(json.data);
-      } catch {
-        // Handle silently
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAI();
-  }, []);
+  const { data: raw, isLoading: loading } = useAIInsights();
+  const data = raw as AIData | undefined;
 
   if (loading) {
     return (

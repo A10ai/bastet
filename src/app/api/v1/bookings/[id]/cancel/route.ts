@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -47,6 +48,15 @@ export async function POST(
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+
+    await logAudit(supabase, {
+      action: "booking.cancel",
+      category: "booking",
+      resource_type: "booking",
+      resource_id: updated?.id || params.id,
+      description: `Cancelled booking ${params.id}`,
+      new_data: body,
+    });
 
     return NextResponse.json({ data: updated });
   } catch {

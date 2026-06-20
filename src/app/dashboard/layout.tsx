@@ -5,6 +5,7 @@ import { PropertyProvider } from "@/providers/property-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { CookieConsent } from "@/components/cookies/cookie-consent";
+import { CSRFTokenProvider } from "@/components/CSRFTokenProvider";
 
 export default function DashboardLayout({
   children,
@@ -15,7 +16,9 @@ export default function DashboardLayout({
     <ThemeProvider>
       <AuthProvider>
         <PropertyProvider>
-          <DashboardShell>{children}</DashboardShell>
+          <CSRFTokenProvider>
+            <DashboardShell>{children}</DashboardShell>
+          </CSRFTokenProvider>
           <CookieConsent />
         </PropertyProvider>
       </AuthProvider>

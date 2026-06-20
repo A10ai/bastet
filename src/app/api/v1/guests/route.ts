@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -110,6 +111,15 @@ export async function POST(request: NextRequest) {
     await supabase.from("guest_preferences").insert({
       guest_id: guest.id,
       contact_language: language,
+    });
+
+    await logAudit(supabase, {
+      action: "guest.create",
+      category: "guest",
+      resource_type: "guest",
+      resource_id: guest.id,
+      description: `Created guest ${first_name} ${last_name}`,
+      new_data: body,
     });
 
     return NextResponse.json({ data: guest }, { status: 201 });

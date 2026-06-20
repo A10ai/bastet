@@ -9,6 +9,7 @@ import {
   checkAvailability,
   convertCurrency,
 } from "@/lib/booking-engine";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -166,6 +167,16 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "booking.create",
+      category: "booking",
+      resource_type: "booking",
+      resource_id: data?.id,
+      description: `Created booking ${data?.reference} for apartment ${apartment_id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -53,6 +54,15 @@ export async function POST(
         .update({ status: "available" })
         .eq("id", req.apartment_id);
     }
+
+    await logAudit(supabase, {
+      action: "maintenance.resolve",
+      category: "maintenance",
+      resource_type: "maintenance_request",
+      resource_id: data?.id || params.id,
+      description: `Resolved maintenance request ${params.id}`,
+      new_data: body,
+    });
 
     return NextResponse.json({ data });
   } catch {

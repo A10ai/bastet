@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard/widgets/stat-card";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -39,6 +39,14 @@ import {
   Area,
   Legend,
 } from "recharts";
+import {
+  useDashboardStats,
+  useAIBrain,
+  useAIEnergy,
+  useAIRevenue,
+  useAIInsights,
+  useAIGuests,
+} from "@/hooks/use-api";
 
 interface DashboardStats {
   occupancy_percentage: number;
@@ -93,95 +101,51 @@ interface GuestAlerts {
 
 export default function DashboardPage() {
   const { activeProperty } = useProperty();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [brainStatus, setBrainStatus] = useState<AIBrainStatus | null>(null);
-  const [energySavings, setEnergySavings] = useState<EnergySavings | null>(null);
-  const [revenueOpp, setRevenueOpp] = useState<RevenueOpportunity | null>(null);
-  const [insights, setInsights] = useState<AIInsight[]>([]);
-  const [guestAlerts, setGuestAlerts] = useState<GuestAlerts | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch("/api/v1/dashboard/stats");
-      const json = await res.json();
-      setStats(json.data);
-    } catch {
-      // Silently handle
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Realtime: re-fetch when key tables change
   const REALTIME_TABLES = useMemo(() => [
     "bookings", "apartments", "housekeeping_tasks",
     "maintenance_requests", "invoices", "guests",
   ], []);
 
+  const { data: stats, isLoading: loading } = useDashboardStats(REALTIME_TABLES) as {
+    data: DashboardStats | undefined;
+    isLoading: boolean;
+  };
+  const { data: brainStatusRaw } = useAIBrain();
+  const { data: energyRaw } = useAIEnergy();
+  const { data: revenueRaw } = useAIRevenue();
+  const { data: insightsRaw } = useAIInsights();
+  const { data: guestsRaw } = useAIGuests();
+
+  // Realtime connection indicator
   const { connected: realtimeConnected, lastUpdate: realtimeLastUpdate } =
-    useRealtimeSubscription(REALTIME_TABLES, fetchStats, 3000);
+    useRealtimeSubscription(REALTIME_TABLES, () => {}, 3000);
 
-  useEffect(() => {
-    fetchStats();
-
-    // Fetch AI cross-data in parallel — all fail gracefully
-    const fetchAI = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/brain");
-        const json = await res.json();
-        setBrainStatus(json.data || json);
-      } catch { /* — */ }
-    };
-    const fetchEnergy = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/energy");
-        const json = await res.json();
-        const d = json.data || json;
-        setEnergySavings({
-          daily_savings_potential_gbp: d.overview?.daily_savings_potential_gbp ?? d.daily_savings_potential_gbp,
-          waste_kwh: d.overview?.waste_kwh ?? d.waste_kwh,
-        });
-      } catch { /* — */ }
-    };
-    const fetchRevenue = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/revenue");
-        const json = await res.json();
-        const d = json.data || json;
-        setRevenueOpp({
-          adr_gbp: d.adr_gbp ?? d.adr,
-          revpar_gbp: d.revpar_gbp ?? d.revpar,
-          channel_optimization_savings_gbp: d.channel_optimization_savings_gbp ?? d.channel_savings,
-        });
-      } catch { /* — */ }
-    };
-    const fetchInsights = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/insights");
-        const json = await res.json();
-        const list = json.data || json.insights || [];
-        setInsights(Array.isArray(list) ? list.slice(0, 3) : []);
-      } catch { /* — */ }
-    };
-    const fetchGuestAlerts = async () => {
-      try {
-        const res = await fetch("/api/v1/ai/guests");
-        const json = await res.json();
-        const d = json.data || json;
-        setGuestAlerts({
-          vip_arrivals_today: d.vip_arrivals_today ?? d.vip_arrivals ?? 0,
-          at_risk_guests: d.at_risk_guests ?? d.at_risk ?? 0,
-        });
-      } catch { /* — */ }
-    };
-
-    fetchAI();
-    fetchEnergy();
-    fetchRevenue();
-    fetchInsights();
-    fetchGuestAlerts();
-  }, []);
+  // Normalize AI data
+  const brainStatus: AIBrainStatus | null = brainStatusRaw as AIBrainStatus | null;
+  const energySavings: EnergySavings | null = energyRaw
+    ? {
+        daily_savings_potential_gbp: (energyRaw as any).overview?.daily_savings_potential_gbp ?? (energyRaw as any).daily_savings_potential_gbp,
+        waste_kwh: (energyRaw as any).overview?.waste_kwh ?? (energyRaw as any).waste_kwh,
+      }
+    : null;
+  const revenueOpp: RevenueOpportunity | null = revenueRaw
+    ? {
+        adr_gbp: (revenueRaw as any).adr_gbp ?? (revenueRaw as any).adr,
+        revpar_gbp: (revenueRaw as any).revpar_gbp ?? (revenueRaw as any).revpar,
+        channel_optimization_savings_gbp: (revenueRaw as any).channel_optimization_savings_gbp ?? (revenueRaw as any).channel_savings,
+      }
+    : null;
+  const insights: AIInsight[] = (() => {
+    const list = (insightsRaw as any)?.insights || (insightsRaw as any) || [];
+    return Array.isArray(list) ? list.slice(0, 3) : [];
+  })();
+  const guestAlerts: GuestAlerts | null = guestsRaw
+    ? {
+        vip_arrivals_today: (guestsRaw as any).vip_arrivals_today ?? (guestsRaw as any).vip_arrivals ?? 0,
+        at_risk_guests: (guestsRaw as any).at_risk_guests ?? (guestsRaw as any).at_risk ?? 0,
+      }
+    : null;
 
   if (loading) {
     return (

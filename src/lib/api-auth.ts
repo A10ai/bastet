@@ -2,6 +2,7 @@ import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isMutatingMethod, validateCsrfToken, CSRF_HEADER_NAME, CSRF_COOKIE_NAME } from "@/lib/csrf";
 
 /**
  * HospitAI Role Hierarchy
@@ -37,6 +38,27 @@ const ROLE_LEVELS: Record<StaffRole, number> = {
 export async function requireAuth(
   request: NextRequest
 ): Promise<{ authenticated: boolean; error?: NextResponse }> {
+  // CSRF check: mutating requests (POST/PUT/DELETE/PATCH) must send a valid
+  // X-CSRF-Token header matching the hospitai-csrf cookie. GET requests are
+  // never CSRF-validated.
+  if (isMutatingMethod(request.method)) {
+    if (!validateCsrfToken(request)) {
+      return {
+        authenticated: false,
+        error: NextResponse.json(
+          {
+            error: {
+              code: "CSRF_TOKEN_INVALID",
+              message:
+                `Missing or invalid CSRF token. Send the ${CSRF_HEADER_NAME} header matching the ${CSRF_COOKIE_NAME} cookie.`,
+            },
+          },
+          { status: 403 }
+        ),
+      };
+    }
+  }
+
   try {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

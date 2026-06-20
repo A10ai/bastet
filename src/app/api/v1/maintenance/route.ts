@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent } from "@/lib/event-bus";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,6 +130,15 @@ export async function POST(request: NextRequest) {
         title,
       }, supabase);
     }
+
+    await logAudit(supabase, {
+      action: "maintenance.create",
+      category: "maintenance",
+      resource_type: "maintenance_request",
+      resource_id: data?.id,
+      description: `Created maintenance request: ${title}`,
+      new_data: body,
+    });
 
     return NextResponse.json({ data }, { status: 201 });
   } catch {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -47,6 +48,16 @@ export async function POST(
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
+
+      await logAudit(supabase, {
+        action: "housekeeping.verify",
+        category: "housekeeping",
+        resource_type: "housekeeping_task",
+        resource_id: data?.id || params.id,
+        description: `Verified housekeeping task ${params.id} as passed`,
+        new_data: body,
+      });
+
       return NextResponse.json({ data });
     } else {
       // Verification failed — issue found
@@ -75,6 +86,15 @@ export async function POST(
         .from("apartments")
         .update({ status: "cleaning" })
         .eq("id", task.apartment_id);
+
+      await logAudit(supabase, {
+        action: "housekeeping.verify",
+        category: "housekeeping",
+        resource_type: "housekeeping_task",
+        resource_id: data?.id || params.id,
+        description: `Housekeeping task ${params.id} verification failed - issue found`,
+        new_data: body,
+      });
 
       return NextResponse.json({ data });
     }

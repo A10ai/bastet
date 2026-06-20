@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -71,6 +72,16 @@ export async function POST(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "housekeeping.assign",
+      category: "housekeeping",
+      resource_type: "housekeeping_task",
+      resource_id: data?.id || params.id,
+      description: `Assigned housekeeping task ${params.id} to staff ${staff_id}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

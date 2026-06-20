@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { POINTS_PER_GBP_ROOM } from "@/lib/constants";
 import { emitEvent } from "@/lib/event-bus";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -110,6 +111,15 @@ export async function POST(
       apartment_id: booking.apartment_id,
       guest_id: booking.guest_id,
     }, supabase);
+
+    await logAudit(supabase, {
+      action: "booking.checkout",
+      category: "booking",
+      resource_type: "booking",
+      resource_id: updated?.id || params.id,
+      description: `Checked out booking ${params.id}`,
+      new_data: { status: "checked_out" },
+    });
 
     return NextResponse.json({ data: updated });
   } catch {

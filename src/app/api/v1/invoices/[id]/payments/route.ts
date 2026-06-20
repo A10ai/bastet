@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getInvoicePaymentStatus } from "@/lib/finance-engine";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -119,6 +120,15 @@ export async function POST(
       .from("invoices")
       .update(updateData)
       .eq("id", params.id);
+
+    await logAudit(supabase, {
+      action: "invoice.payment",
+      category: "finance",
+      resource_type: "payment",
+      resource_id: payment?.id,
+      description: `Recorded payment of ${amount_gbp} GBP for invoice ${params.id}`,
+      new_data: body,
+    });
 
     return NextResponse.json({ data: payment }, { status: 201 });
   } catch {

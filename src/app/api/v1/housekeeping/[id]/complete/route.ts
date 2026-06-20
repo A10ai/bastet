@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent } from "@/lib/event-bus";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -55,6 +56,15 @@ export async function POST(
       task_id: params.id,
       apartment_id: task.apartment_id,
     }, supabase);
+
+    await logAudit(supabase, {
+      action: "housekeeping.complete",
+      category: "housekeeping",
+      resource_type: "housekeeping_task",
+      resource_id: data?.id || params.id,
+      description: `Completed housekeeping task ${params.id}`,
+      new_data: { status: "completed" },
+    });
 
     return NextResponse.json({ data });
   } catch {

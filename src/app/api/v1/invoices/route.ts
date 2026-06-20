@@ -6,6 +6,7 @@ import {
   calculateInvoiceTotals,
 } from "@/lib/finance-engine";
 import { convertCurrency } from "@/lib/booking-engine";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -144,6 +145,16 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    await logAudit(supabase, {
+      action: "invoice.create",
+      category: "finance",
+      resource_type: "invoice",
+      resource_id: data?.id,
+      description: `Created invoice ${data?.invoice_number}`,
+      new_data: body,
+    });
+
     return NextResponse.json({ data }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
