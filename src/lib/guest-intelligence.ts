@@ -297,9 +297,10 @@ export async function getGuestScores(
 // ---------------------------------------------------------------------------
 
 export async function getChurnRiskGuests(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  precomputedScores?: GuestScore[]
 ): Promise<ChurnRiskGuest[]> {
-  const scores = await getGuestScores(supabase);
+  const scores = precomputedScores ?? await getGuestScores(supabase);
   const now = new Date();
 
   return scores
@@ -340,9 +341,10 @@ export async function getChurnRiskGuests(
 // ---------------------------------------------------------------------------
 
 export async function getUpsellOpportunities(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  precomputedScores?: GuestScore[]
 ): Promise<UpsellOpportunity[]> {
-  const scores = await getGuestScores(supabase);
+  const scores = precomputedScores ?? await getGuestScores(supabase);
 
   // Fetch bookings with apartment types for room upgrade analysis
   const { data: bookings } = await supabase
@@ -518,9 +520,10 @@ export async function getGuestSegmentAnalysis(
 // ---------------------------------------------------------------------------
 
 export async function getGuestPredictions(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  precomputedScores?: GuestScore[]
 ): Promise<GuestPrediction[]> {
-  const scores = await getGuestScores(supabase);
+  const scores = precomputedScores ?? await getGuestScores(supabase);
   const top20 = scores.slice(0, 20);
 
   return top20.map((s) => {
@@ -580,9 +583,10 @@ export async function getGuestPredictions(
 // ---------------------------------------------------------------------------
 
 export async function getGuestInsights(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  precomputedScores?: GuestScore[]
 ): Promise<GuestInsight[]> {
-  const scores = await getGuestScores(supabase);
+  const scores = precomputedScores ?? await getGuestScores(supabase);
   const segments = await getGuestSegmentAnalysis(supabase);
   const insights: GuestInsight[] = [];
   let id = 1;
@@ -696,13 +700,15 @@ function formatGBP(amount: number): string {
 export async function getAllGuestIntelligence(
   supabase: SupabaseClient
 ): Promise<GuestIntelligenceData> {
-  const [scores, churnRisks, upsellOpportunities, segments, predictions, insights] = await Promise.all([
-    getGuestScores(supabase),
-    getChurnRiskGuests(supabase),
-    getUpsellOpportunities(supabase),
+  // Fetch scores ONCE and pass to all consumers (was 5x redundant before)
+  const scores = await getGuestScores(supabase);
+
+  const [churnRisks, upsellOpportunities, segments, predictions, insights] = await Promise.all([
+    getChurnRiskGuests(supabase, scores),
+    getUpsellOpportunities(supabase, scores),
     getGuestSegmentAnalysis(supabase),
-    getGuestPredictions(supabase),
-    getGuestInsights(supabase),
+    getGuestPredictions(supabase, scores),
+    getGuestInsights(supabase, scores),
   ]);
 
   return {

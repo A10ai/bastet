@@ -68,11 +68,17 @@ export function calculateBookingTotal(
 }
 
 /**
- * Get the next booking reference by querying the last one and incrementing.
+ * Get the next booking reference using a DB sequence (race-condition free).
+ * Falls back to query-last-then-increment if the DB sequence function doesn't exist.
  */
 export async function getNextBookingReference(
   supabase: SupabaseClient
 ): Promise<string> {
+  // Try DB sequence first (migration 00016)
+  const { data: seqResult } = await supabase.rpc("next_booking_reference");
+  if (seqResult) return seqResult as string;
+
+  // Fallback: query-last-then-increment (race condition possible but better than crash)
   const year = new Date().getFullYear().toString().slice(-2);
   const prefix = `BAS-HRG-${year}`;
 

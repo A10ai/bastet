@@ -2,11 +2,17 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { generateInvoiceNumber } from "./utils";
 
 /**
- * Get the next invoice number by querying the last one and incrementing.
+ * Get the next invoice number using a DB sequence (race-condition free).
+ * Falls back to query-last-then-increment if the DB sequence function doesn't exist.
  */
 export async function getNextInvoiceNumber(
   supabase: SupabaseClient
 ): Promise<string> {
+  // Try DB sequence first (migration 00016)
+  const { data: seqResult } = await supabase.rpc("next_invoice_number");
+  if (seqResult) return seqResult as string;
+
+  // Fallback: query-last-then-increment
   const year = new Date().getFullYear().toString().slice(-2);
   const prefix = `INV-HRG-${year}`;
 

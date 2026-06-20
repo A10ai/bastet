@@ -59,6 +59,33 @@ export async function logAudit(
 }
 
 /**
+ * Log multiple actions to the audit trail in a single insert.
+ */
+export async function logAuditBatch(
+  supabase: SupabaseClient,
+  entries: AuditEntry[]
+): Promise<void> {
+  if (entries.length === 0) return;
+  try {
+    const rows = entries.map((entry) => ({
+      user_id: entry.user_id || "system",
+      user_email: entry.user_email || "system@hospitai.uk",
+      action: entry.action,
+      category: entry.category,
+      resource_type: entry.resource_type,
+      resource_id: entry.resource_id,
+      description: entry.description,
+      old_data: entry.old_data || null,
+      new_data: entry.new_data || null,
+      metadata: entry.metadata || {},
+    }));
+    await supabase.from("audit_log").insert(rows);
+  } catch {
+    console.error("[Audit] Failed to batch log:", entries.length, "entries");
+  }
+}
+
+/**
  * Get audit log entries with filters.
  */
 export async function getAuditLog(

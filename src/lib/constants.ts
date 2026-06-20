@@ -206,6 +206,30 @@ export const PAYMENT_METHODS = [
   "cheque",
 ] as const;
 
+// ── Shared query constants (reduces duplication across lib files) ──────────
+
+/** Booking statuses considered "active" for revenue/occupancy calculations */
+export const ACTIVE_BOOKING_STATUSES = [
+  "confirmed",
+  "checked_in",
+  "checked_out",
+] as const;
+
+/** Booking statuses considered "current" (in-house) */
+export const IN_HOUSE_BOOKING_STATUSES = [
+  "confirmed",
+  "checked_in",
+] as const;
+
+/** Maintenance priorities */
+export const MAINTENANCE_PRIORITIES = [
+  "low",
+  "normal",
+  "high",
+  "urgent",
+  "emergency",
+] as const;
+
 export const EXPENSE_CATEGORIES = [
   "utilities",
   "staff",

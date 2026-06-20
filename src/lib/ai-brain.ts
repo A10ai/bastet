@@ -14,7 +14,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
-import { logAudit } from "@/lib/audit";
+import { logAudit, logAuditBatch } from "@/lib/audit";
 import { createWorkflowFromBrainDecision } from "@/lib/workflow-engine";
 import { anonymizeSnapshot } from "@/lib/pii-anonymizer";
 
@@ -590,66 +590,22 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
   // 2. Get decisions -- try Claude API first, fall back to rules
   let analysisResult = await callClaudeAPI(snapshot);
   if (!analysisResult) {
-    console.log("[AI Brain] Using rule-based fallback analysis");
+    console.warn("[AI Brain] Using rule-based fallback analysis");
     analysisResult = runRuleBasedAnalysis(snapshot);
   }
 
-  // 3. Store decisions in database and build response
+  // 3. Store decisions in database (batch insert)
   const storedDecisions: BrainDecision[] = [];
 
-  for (const raw of analysisResult.decisions) {
-    // Validate category
-    const validCategories = ["pricing", "operations", "energy", "guest", "maintenance", "revenue"];
+  const validCategories = ["pricing", "operations", "energy", "guest", "maintenance", "revenue"];
+  const decisionRows = analysisResult.decisions.map((raw) => {
     const category = validCategories.includes(raw.category)
       ? (raw.category as BrainDecision["category"])
       : "operations";
-
-    // In autonomous mode, auto-execute high-confidence decisions
     const shouldAutoExecute =
       mode === "autonomous" && raw.auto_executable && raw.confidence >= 75;
-
-    const { data: inserted, error: insertErr } = await supabase
-      .from("brain_decisions")
-      .insert({
-        cycle_id: cycleId,
-        category,
-        action: raw.action,
-        reasoning: raw.reasoning,
-        confidence: Math.max(0, Math.min(100, Math.round(raw.confidence))),
-        impact_estimate: raw.impact_estimate || "",
-        auto_executable: raw.auto_executable || false,
-        executed: shouldAutoExecute,
-        approved: shouldAutoExecute ? true : null,
-        mode,
-        event_type: raw.event_type || null,
-        event_payload: raw.event_payload || {},
-        data_snapshot: snapshot as unknown as Record<string, unknown>,
-        summary: analysisResult!.summary,
-      })
-      .select("*")
-      .single();
-
-    if (insertErr || !inserted) {
-      console.error("[AI Brain] Failed to store decision:", insertErr?.message);
-      continue;
-    }
-
-    // If autonomous + auto-execute, emit the event
-    if (shouldAutoExecute && raw.event_type) {
-      try {
-        await emitEvent(
-          raw.event_type as EventType,
-          "ai_brain",
-          raw.event_payload || {},
-          supabase
-        );
-      } catch (err) {
-        console.error("[AI Brain] Failed to emit event on auto-execute:", err);
-      }
-    }
-
-    storedDecisions.push({
-      id: inserted.id,
+    return {
+      cycle_id: cycleId,
       category,
       action: raw.action,
       reasoning: raw.reasoning,
@@ -658,10 +614,59 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
       auto_executable: raw.auto_executable || false,
       executed: shouldAutoExecute,
       approved: shouldAutoExecute ? true : null,
-      created_at: inserted.created_at,
-      event_type: raw.event_type as EventType | undefined,
-      event_payload: raw.event_payload,
-    });
+      mode,
+      event_type: raw.event_type || null,
+      event_payload: raw.event_payload || {},
+      data_snapshot: snapshot as unknown as Record<string, unknown>,
+      summary: analysisResult!.summary,
+    };
+  });
+
+  if (decisionRows.length > 0) {
+    const { data: insertedRows, error: batchErr } = await supabase
+      .from("brain_decisions")
+      .insert(decisionRows)
+      .select("*");
+
+    if (batchErr || !insertedRows) {
+      console.error("[AI Brain] Batch insert failed:", batchErr?.message);
+    } else {
+      // Emit events for auto-executable decisions and build storedDecisions
+      const emitPromises: Promise<unknown>[] = [];
+      for (let i = 0; i < insertedRows.length; i++) {
+        const inserted = insertedRows[i];
+        const raw = analysisResult.decisions[i];
+
+        if (mode === "autonomous" && raw.auto_executable && raw.confidence >= 75 && raw.event_type) {
+          emitPromises.push(
+            emitEvent(
+              raw.event_type as EventType,
+              "ai_brain",
+              raw.event_payload || {},
+              supabase
+            ).catch((err) => {
+              console.error("[AI Brain] Failed to emit event on auto-execute:", err);
+            })
+          );
+        }
+
+        storedDecisions.push({
+          id: inserted.id,
+          category: inserted.category as BrainDecision["category"],
+          action: inserted.action,
+          reasoning: inserted.reasoning,
+          confidence: inserted.confidence,
+          impact_estimate: inserted.impact_estimate || "",
+          auto_executable: inserted.auto_executable || false,
+          executed: inserted.executed || false,
+          approved: inserted.approved,
+          created_at: inserted.created_at,
+          event_type: raw.event_type as EventType | undefined,
+          event_payload: raw.event_payload,
+        });
+      }
+      await Promise.all(emitPromises);
+    }
   }
 
   // 4. Update config stats
@@ -702,31 +707,30 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     },
   });
 
-  // Audit each decision
-  for (const decision of storedDecisions) {
-    await logAudit(supabase, {
-      action: decision.executed ? "ai_decision_executed" : "ai_decision_proposed",
-      category: "ai_decision",
-      resource_type: "brain_decision",
-      resource_id: decision.id,
-      description: `[${decision.category}] ${decision.action} — ${decision.reasoning}`,
-      new_data: {
-        confidence: decision.confidence,
-        auto_executable: decision.auto_executable,
-        executed: decision.executed,
-        impact: decision.impact_estimate,
-      },
-    });
-  }
+  // Audit each decision (batch insert)
+  const auditEntries = storedDecisions.map((decision) => ({
+    action: decision.executed ? "ai_decision_executed" : "ai_decision_proposed",
+    category: "ai_decision" as const,
+    resource_type: "brain_decision",
+    resource_id: decision.id,
+    description: `[${decision.category}] ${decision.action} — ${decision.reasoning}`,
+    new_data: {
+      confidence: decision.confidence,
+      auto_executable: decision.auto_executable,
+      executed: decision.executed,
+      impact: decision.impact_estimate,
+    },
+  }));
+  await logAuditBatch(supabase, auditEntries);
 
   // 6. Auto-create workflows for each decision
-  for (const decision of storedDecisions) {
-    try {
-      await createWorkflowFromBrainDecision(supabase, decision, mode);
-    } catch (err) {
-      console.error("[AI Brain] Failed to create workflow for decision:", decision.id, err);
-    }
-  }
+  await Promise.all(
+    storedDecisions.map((decision) =>
+      createWorkflowFromBrainDecision(supabase, decision, mode).catch((err) => {
+        console.error("[AI Brain] Failed to create workflow for decision:", decision.id, err);
+      })
+    )
+  );
 
   return {
     cycle_id: cycleId,

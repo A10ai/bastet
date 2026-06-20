@@ -127,19 +127,44 @@ export async function getOccupancyReport(
     .lte("check_in", dateTo)
     .gte("check_out", dateFrom);
 
-  // Calculate daily occupancy
+  // Calculate daily occupancy — precompute date→occupied-apartments map (O(n*d) not O(n²))
   const days = daysBetween(dateFrom, dateTo);
   const daily: OccupancyReport["daily"] = [];
 
+  // Build date strings once
+  const dateStrings: string[] = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(dateFrom);
     d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split("T")[0];
+    dateStrings.push(d.toISOString().split("T")[0]);
+  }
 
-    const occupied = (bookings || []).filter((b) => {
-      return b.check_in <= dateStr && b.check_out > dateStr;
-    }).length;
+  // Precompute: for each date, which apartment IDs are occupied
+  const occupiedByDate = new Map<string, Set<string>>();
+  for (const dateStr of dateStrings) {
+    occupiedByDate.set(dateStr, new Set());
+  }
+  for (const b of bookings || []) {
+    for (const dateStr of dateStrings) {
+      if (b.check_in <= dateStr && b.check_out > dateStr) {
+        occupiedByDate.get(dateStr)!.add(b.apartment_id);
+      }
+    }
+  }
 
+  // Precompute apartment→group maps for building, floor, type
+  const aptToBuilding = new Map<string, string>();
+  const aptToFloor = new Map<string, number>();
+  const aptToType = new Map<string, string>();
+  for (const apt of apartments || []) {
+    aptToBuilding.set(apt.id, (apt.buildings as any)?.name || "Unknown");
+    aptToFloor.set(apt.id, (apt as any).floor ?? 0);
+    aptToType.set(apt.id, (apt.apartment_types as any)?.name || "Unknown");
+  }
+
+  // Daily occupancy
+  for (const dateStr of dateStrings) {
+    const occupied = occupiedByDate.get(dateStr)!.size;
     const occ = totalApartments > 0 ? round2((occupied / totalApartments) * 100) : 0;
     daily.push({ date: dateStr, occupancy: occ, occupied, total: totalApartments });
   }
@@ -152,10 +177,10 @@ export async function getOccupancyReport(
   const peakDay = sorted[0] || null;
   const lowDay = sorted[sorted.length - 1] || null;
 
-  // By building
+  // By building — use precomputed maps (no re-filtering bookings)
   const buildingMap = new Map<string, { total: number; name: string }>();
   for (const apt of apartments || []) {
-    const name = (apt.buildings as any)?.name || "Unknown";
+    const name = aptToBuilding.get(apt.id)!;
     const entry = buildingMap.get(name) || { total: 0, name };
     entry.total++;
     buildingMap.set(name, entry);
@@ -163,24 +188,24 @@ export async function getOccupancyReport(
 
   const byBuilding: OccupancyReport["by_building"] = [];
   for (const [name, info] of Array.from(buildingMap)) {
-    const buildingAptIds = (apartments || [])
-      .filter((a) => (a.buildings as any)?.name === name)
-      .map((a) => a.id);
+    const buildingAptIds = new Set(
+      (apartments || []).filter((a) => aptToBuilding.get(a.id) === name).map((a) => a.id)
+    );
     let totalOccDays = 0;
-    for (const d of daily) {
-      const occ = (bookings || []).filter(
-        (b) => buildingAptIds.includes(b.apartment_id) && b.check_in <= d.date && b.check_out > d.date
-      ).length;
-      totalOccDays += occ;
+    for (const dateStr of dateStrings) {
+      const occSet = occupiedByDate.get(dateStr)!;
+      for (const aptId of occSet) {
+        if (buildingAptIds.has(aptId)) totalOccDays++;
+      }
     }
     const avgOcc = info.total * days > 0 ? round2((totalOccDays / (info.total * days)) * 100) : 0;
     byBuilding.push({ building_name: name, occupancy: avgOcc, occupied: totalOccDays, total: info.total * days });
   }
 
-  // By floor
+  // By floor — use precomputed maps
   const floorMap = new Map<number, { total: number; floor: number }>();
   for (const apt of apartments || []) {
-    const f = (apt as any).floor ?? 0;
+    const f = aptToFloor.get(apt.id)!;
     const entry = floorMap.get(f) || { total: 0, floor: f };
     entry.total++;
     floorMap.set(f, entry);
@@ -188,25 +213,25 @@ export async function getOccupancyReport(
 
   const byFloor: OccupancyReport["by_floor"] = [];
   for (const [f, info] of Array.from(floorMap)) {
-    const floorAptIds = (apartments || [])
-      .filter((a) => ((a as any).floor ?? 0) === f)
-      .map((a) => a.id);
+    const floorAptIds = new Set(
+      (apartments || []).filter((a) => aptToFloor.get(a.id) === f).map((a) => a.id)
+    );
     let totalOccDays = 0;
-    for (const d of daily) {
-      const occ = (bookings || []).filter(
-        (b) => floorAptIds.includes(b.apartment_id) && b.check_in <= d.date && b.check_out > d.date
-      ).length;
-      totalOccDays += occ;
+    for (const dateStr of dateStrings) {
+      const occSet = occupiedByDate.get(dateStr)!;
+      for (const aptId of occSet) {
+        if (floorAptIds.has(aptId)) totalOccDays++;
+      }
     }
     const avgOcc = info.total * days > 0 ? round2((totalOccDays / (info.total * days)) * 100) : 0;
     byFloor.push({ floor_label: floorLabelFn(f), occupancy: avgOcc, occupied: totalOccDays, total: info.total * days });
   }
   byFloor.sort((a, b) => a.floor_label.localeCompare(b.floor_label));
 
-  // By apartment type
+  // By apartment type — use precomputed maps
   const typeMap = new Map<string, { total: number; name: string }>();
   for (const apt of apartments || []) {
-    const name = (apt.apartment_types as any)?.name || "Unknown";
+    const name = aptToType.get(apt.id)!;
     const entry = typeMap.get(name) || { total: 0, name };
     entry.total++;
     typeMap.set(name, entry);
@@ -214,15 +239,15 @@ export async function getOccupancyReport(
 
   const byType: OccupancyReport["by_apartment_type"] = [];
   for (const [name, info] of Array.from(typeMap)) {
-    const typeAptIds = (apartments || [])
-      .filter((a) => (a.apartment_types as any)?.name === name)
-      .map((a) => a.id);
+    const typeAptIds = new Set(
+      (apartments || []).filter((a) => aptToType.get(a.id) === name).map((a) => a.id)
+    );
     let totalOccDays = 0;
-    for (const d of daily) {
-      const occ = (bookings || []).filter(
-        (b) => typeAptIds.includes(b.apartment_id) && b.check_in <= d.date && b.check_out > d.date
-      ).length;
-      totalOccDays += occ;
+    for (const dateStr of dateStrings) {
+      const occSet = occupiedByDate.get(dateStr)!;
+      for (const aptId of occSet) {
+        if (typeAptIds.has(aptId)) totalOccDays++;
+      }
     }
     const avgOcc = info.total * days > 0 ? round2((totalOccDays / (info.total * days)) * 100) : 0;
     byType.push({ type_name: name, occupancy: avgOcc, occupied: totalOccDays, total: info.total * days });
