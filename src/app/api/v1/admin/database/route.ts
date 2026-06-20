@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole } from "@/lib/api-auth";
+import { apiError, handleDbError } from "@/lib/api-error";
 
 const ALLOWED_TABLES = [
   "properties",
@@ -51,7 +52,7 @@ const ALLOWED_TABLES = [
 ];
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "admin-db-query");
     }
 
     return NextResponse.json({
@@ -152,7 +153,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "admin-db-insert");
     }
     return NextResponse.json({ data }, { status: 201 });
   } catch {
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -222,7 +223,7 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "admin-db-update");
     }
     return NextResponse.json({ data });
   } catch {
@@ -234,7 +235,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -260,7 +261,7 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase.from(table).delete().eq("id", id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "admin-db-delete");
     }
     return NextResponse.json({ success: true });
   } catch {

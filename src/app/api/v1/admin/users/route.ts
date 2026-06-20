@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole } from "@/lib/api-auth";
+import { apiError, handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "admin-users-list");
     }
 
     // Get auth users list (requires service role)
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -148,33 +149,34 @@ export async function PUT(request: NextRequest) {
     const { id, ...updates } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Staff id is required" },
-        { status: 400 }
-      );
+      return apiError("VALIDATION_ERROR", "Staff id is required", 400);
+    }
+
+    // Validate updates against allowlist schema (prevents mass-assignment of role/is_active/property_id)
+    const { validateBody, formatZodErrors, updateStaffSchema } = await import("@/lib/validation");
+    const validation = validateBody(updateStaffSchema, updates);
+    if (!validation.success) {
+      return apiError("VALIDATION_ERROR", formatZodErrors(validation.error), 400);
     }
 
     const { data, error } = await supabase
       .from("staff")
-      .update(updates)
+      .update(validation.data)
       .eq("id", id)
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "admin-users-update");
     }
     return NextResponse.json({ data });
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
@@ -203,7 +205,7 @@ export async function DELETE(request: NextRequest) {
       .eq("id", id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "admin-users-delete");
     }
 
     // Ban auth user if exists

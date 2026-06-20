@@ -16,6 +16,7 @@ import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import { createWorkflowFromBrainDecision } from "@/lib/workflow-engine";
+import { anonymizeSnapshot } from "@/lib/pii-anonymizer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -363,7 +364,7 @@ Respond ONLY with valid JSON in this exact format:
   "summary": "One paragraph executive summary of the property state and key recommendations."
 }`;
 
-  const userMessage = `Property Data Snapshot (${new Date().toISOString()}):\n\n${JSON.stringify(snapshot, null, 2)}`;
+  const userMessage = `Property Data Snapshot (${new Date().toISOString()}):\n\n${JSON.stringify(anonymizeSnapshot(snapshot as unknown as Record<string, unknown>), null, 2)}`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {

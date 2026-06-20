@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { apiError } from "@/lib/api-error";
+import { validateBody, formatZodErrors, loginSchema } from "@/lib/validation";
+import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  try {
-    const { email, password } = await request.json();
+  // Rate limit login attempts: 5 per 15 minutes per IP
+  const ip = getClientIp(request);
+  const rl = rateLimit(`login:${ip}`, RATE_LIMITS.LOGIN);
+  if (!rl.allowed) {
+    return apiError(
+      "RATE_LIMITED",
+      "Too many login attempts. Please try again in a few minutes.",
+      429
+    );
+  }
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
+  try {
+    const body = await request.json();
+    const validation = validateBody(loginSchema, body);
+    if (!validation.success) {
+      return apiError("VALIDATION_ERROR", formatZodErrors(validation.error), 400);
     }
 
-    // 1. Verify the email belongs to an active staff member (quick check,
-    //    before attempting auth — avoids unnecessary auth calls for unknown emails)
+    const { email, password } = validation.data;
+
+    // 1. Verify the email belongs to an active staff member (quick check)
     const adminSupabase = createAdminClient();
     const { data: staffMember, error: staffError } = await adminSupabase
       .from("staff")
@@ -24,14 +36,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (staffError || !staffMember) {
-      return NextResponse.json(
-        { error: "Invalid credentials or inactive account" },
-        { status: 401 }
-      );
+      return apiError("INVALID_CREDENTIALS", "Invalid credentials or inactive account", 401);
     }
 
     // 2. Verify the password via Supabase Auth
-    //    Build an SSR client that can set cookies on the response
     const response = NextResponse.next();
 
     const supabase = createServerClient(
@@ -56,14 +64,10 @@ export async function POST(request: NextRequest) {
       await supabase.auth.signInWithPassword({ email, password });
 
     if (authError || !authData.session) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      return apiError("INVALID_CREDENTIALS", "Invalid credentials", 401);
     }
 
     // 3. Return staff data + set session cookies on the response
-    // Copy cookies set by the SSR client onto our response
     const authResponse = NextResponse.json({
       data: {
         staff: {
@@ -86,9 +90,6 @@ export async function POST(request: NextRequest) {
 
     return authResponse;
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
   }
 }

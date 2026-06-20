@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole } from "@/lib/api-auth";
 
 /**
  * Migration status checker.
@@ -9,8 +9,8 @@ import { requireAuth } from "@/lib/api-auth";
  * GET /api/v1/admin/migrate
  */
 export async function GET(request: NextRequest) {
-  // Require authentication — this endpoint exposes DB schema details
-  const auth = await requireAuth(request);
+  // Require owner/admin role — this endpoint exposes DB schema details
+  const auth = await requireRole(request, ["owner", "admin"]);
   if (!auth.authenticated) return auth.error!;
 
   try {
