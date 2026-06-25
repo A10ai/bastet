@@ -33,7 +33,6 @@ jobs:
 
       - name: ESLint
         run: npm run lint
-        continue-on-error: true # warnings don't fail CI
 
   unit-tests:
     name: Unit Tests
