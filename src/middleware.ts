@@ -3,14 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Check whether a Supabase auth session cookie exists on the request.
- * The cookie name follows the pattern `sb.<project-ref>-auth-token` (or
- * `sb.<project-ref>-auth-token.0` / `.1` for chunked tokens).
- * We use a prefix match so we don't need the project ref at match time.
+ * The cookie name follows the pattern `sb-<project-ref>-auth-token` (or
+ * `sb.<project-ref>-auth-token` depending on the Supabase version).
+ * Chunked tokens may have `.0` / `.1` suffixes.
  */
 function hasSessionCookie(request: NextRequest): boolean {
   return request.cookies
     .getAll()
-    .some((c) => c.name.startsWith("sb.") && c.name.includes("auth-token"));
+    .some((c) => (c.name.startsWith("sb-") || c.name.startsWith("sb.")) && c.name.includes("auth-token"));
 }
 
 export async function middleware(request: NextRequest) {
