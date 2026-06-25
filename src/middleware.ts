@@ -1,7 +1,39 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+/**
+ * Check whether a Supabase auth session cookie exists on the request.
+ * The cookie name follows the pattern `sb.<project-ref>-auth-token` (or
+ * `sb.<project-ref>-auth-token.0` / `.1` for chunked tokens).
+ * We use a prefix match so we don't need the project ref at match time.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb.") && c.name.includes("auth-token"));
+}
+
 export async function middleware(request: NextRequest) {
+  // Fast path: if no auth cookie exists, skip Supabase entirely.
+  // This avoids network calls to Supabase in CI / during outages and
+  // lets the redirect fire immediately.
+  const hasCookie = hasSessionCookie(request);
+
+  // Protect dashboard routes — redirect to login if no session cookie
+  if (request.nextUrl.pathname.startsWith("/dashboard") && !hasCookie) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // If no cookie and on login page, just let it render
+  if (!hasCookie) {
+    return NextResponse.next({
+      request: { headers: request.headers },
+    });
+  }
+
+  // Cookie exists — validate with Supabase
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -32,11 +64,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] = null;
+  try {
+    const result = await supabase.auth.getSession();
+    session = result.data.session;
+  } catch {
+    session = null;
+  }
 
-  // Protect dashboard routes
+  // Protect dashboard routes — cookie existed but session is invalid/expired
   if (request.nextUrl.pathname.startsWith("/dashboard") && !session) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
@@ -52,5 +88,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard", "/dashboard/:path*", "/login"],
 };
