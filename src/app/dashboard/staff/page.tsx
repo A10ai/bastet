@@ -9,6 +9,7 @@ import { Eye, Filter, Loader2, Search, Plus, Users, UserCheck, UserX } from "luc
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const ACCENT = "#22D3EE";
 const ROLE_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6"];
@@ -185,7 +186,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
@@ -212,7 +213,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: any) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">

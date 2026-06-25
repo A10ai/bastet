@@ -307,51 +307,67 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
   // Process apartments
   const apartments = apartmentsResult.data || [];
   const total = apartments.length;
-  const occupied = apartments.filter((a: any) => a.status === "occupied").length;
-  const available = apartments.filter((a: any) => a.status === "available").length;
-  const cleaning = apartments.filter((a: any) => a.status === "cleaning").length;
-  const maintenanceStatusCount = apartments.filter((a: any) => a.status === "maintenance").length;
+  const occupied = apartments.filter((a: Record<string, any>) => a.status === "occupied").length;
+  const available = apartments.filter((a: Record<string, any>) => a.status === "available").length;
+  const cleaning = apartments.filter((a: Record<string, any>) => a.status === "cleaning").length;
+  const maintenanceStatusCount = apartments.filter((a: Record<string, any>) => a.status === "maintenance").length;
   const vacantStatuses = ["available", "blocked", "out_of_service"];
-  const vacantUnits = apartments.filter((a: any) => vacantStatuses.includes(a.status)).length;
+  const vacantUnits = apartments.filter((a: Record<string, any>) => vacantStatuses.includes(a.status as string)).length;
 
   // Process arrivals
-  const arrivals = (arrivalsResult.data || []).map((b: any) => ({
-    id: b.id,
-    guest_name: b.guests ? `${b.guests.first_name} ${b.guests.last_name}` : "Unknown",
-    apartment_number: b.apartments?.number || "TBD",
-    check_in_date: b.check_in,
-  }));
+  const arrivals = (arrivalsResult.data || []).map((b: Record<string, any>) => {
+    const guests = b.guests as Record<string, any> | null;
+    const apt = b.apartments as Record<string, any> | null;
+    return {
+      id: b.id as string,
+      guest_name: guests ? `${guests.first_name} ${guests.last_name}` : "Unknown",
+      apartment_number: (apt?.number as string) || "TBD",
+      check_in_date: b.check_in as string,
+    };
+  });
 
   // VIP arrivals
   const vipArrivals = (arrivalsResult.data || [])
-    .filter((b: any) => b.guests?.loyalty_tier === "platinum" || b.guests?.loyalty_tier === "gold")
-    .map((b: any) => ({
-      guest_name: `${b.guests.first_name} ${b.guests.last_name}`,
-      loyalty_tier: b.guests.loyalty_tier,
-      apartment_number: b.apartments?.number || "TBD",
-    }));
+    .filter((b: Record<string, any>) => {
+      const guests = b.guests as Record<string, any> | null;
+      return guests?.loyalty_tier === "platinum" || guests?.loyalty_tier === "gold";
+    })
+    .map((b: Record<string, any>) => {
+      const guests = b.guests as unknown as Record<string, unknown>;
+      const apt = b.apartments as Record<string, any> | null;
+      return {
+        guest_name: `${guests.first_name} ${guests.last_name}`,
+        loyalty_tier: guests.loyalty_tier as string,
+        apartment_number: (apt?.number as string) || "TBD",
+      };
+    });
 
   // Process departures
-  const departures = (departuresResult.data || []).map((b: any) => ({
-    id: b.id,
-    guest_name: b.guests ? `${b.guests.first_name} ${b.guests.last_name}` : "Unknown",
-    apartment_number: b.apartments?.number || "TBD",
-    check_out_date: b.check_out,
-  }));
+  const departures = (departuresResult.data || []).map((b: Record<string, any>) => {
+    const guests = b.guests as Record<string, any> | null;
+    const apt = b.apartments as Record<string, any> | null;
+    return {
+      id: b.id as string,
+      guest_name: guests ? `${guests.first_name} ${guests.last_name}` : "Unknown",
+      apartment_number: (apt?.number as string) || "TBD",
+      check_out_date: b.check_out as string,
+    };
+  });
 
   // Maintenance categories
   const maintenanceItems = maintenanceResult.data || [];
   const categories: Record<string, number> = {};
-  maintenanceItems.forEach((m: any) => {
-    categories[m.category] = (categories[m.category] || 0) + 1;
+  maintenanceItems.forEach((m: Record<string, any>) => {
+    const category = m.category as string;
+    categories[category] = (categories[category] || 0) + 1;
   });
 
   // Revenue sums
-  const sumField = (rows: any[] | null) =>
-    (rows || []).reduce((sum: number, r: any) => sum + (r.total_amount_gbp || 0), 0);
+  const sumField = (rows: Record<string, any>[] | null) =>
+    (rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + ((r.total_amount_gbp as number) || 0), 0);
 
   // Rates
-  const currentRates = (ratesResult.data || []).map((r: any) => ({
+  const currentRates = (ratesResult.data || []).map((r: Record<string, any>) => ({
     type_name: r.name,
     rate: r.base_weekly_rate_gbp,
   }));
@@ -466,7 +482,7 @@ Respond ONLY with valid JSON in this exact format:
     }
 
     const data = await res.json();
-    const textBlock = data.content?.find((c: any) => c.type === "text");
+    const textBlock = data.content?.find((c: Record<string, any>) => c.type === "text");
     if (!textBlock?.text) return null;
 
     // Extract JSON from the response (handle markdown code blocks)
@@ -838,7 +854,7 @@ export async function getBrainHistory(
   if (error || !rows || rows.length === 0) return [];
 
   // Group by cycle_id
-  const cycleMap = new Map<string, any[]>();
+  const cycleMap = new Map<string, Record<string, any>[]>();
   for (const row of rows) {
     const key = row.cycle_id as string;
     if (!cycleMap.has(key)) cycleMap.set(key, []);
@@ -856,20 +872,20 @@ export async function getBrainHistory(
       cycle_id: cycleId,
       mode: (first.mode as "supervised" | "autonomous") || "supervised",
       timestamp: first.created_at,
-      data_snapshot: (first.data_snapshot as Record<string, unknown>) || {},
-      decisions: cycleRows.map((r: any) => ({
-        id: r.id,
+      data_snapshot: (first.data_snapshot as unknown as Record<string, unknown>) || {},
+      decisions: cycleRows.map((r: Record<string, any>) => ({
+        id: r.id as string,
         category: r.category as BrainDecision["category"],
-        action: r.action,
-        reasoning: r.reasoning,
-        confidence: r.confidence,
-        impact_estimate: r.impact_estimate || "",
-        auto_executable: r.auto_executable || false,
-        executed: r.executed || false,
-        approved: r.approved,
-        created_at: r.created_at,
+        action: r.action as string,
+        reasoning: r.reasoning as string,
+        confidence: r.confidence as number,
+        impact_estimate: (r.impact_estimate as string) || "",
+        auto_executable: (r.auto_executable as boolean) || false,
+        executed: (r.executed as boolean) || false,
+        approved: r.approved as boolean | null,
+        created_at: r.created_at as string,
         event_type: r.event_type as EventType | undefined,
-        event_payload: r.event_payload as Record<string, unknown> | undefined,
+        event_payload: r.event_payload as unknown as Record<string, unknown> | undefined,
       })),
       summary: (first.summary as string) || "",
     });

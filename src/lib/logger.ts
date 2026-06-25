@@ -120,7 +120,7 @@ function getLogger(): PinoLogger {
 export const logger: PinoLogger = new Proxy({} as PinoLogger, {
   get(_target, prop: string) {
     const instance = getLogger();
-    const value = (instance as any)[prop];
+    const value = (instance as Record<string, any>)[prop];
     return typeof value === "function" ? value.bind(instance) : value;
   },
 });

@@ -31,6 +31,7 @@ import {
   Legend,
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -459,18 +460,18 @@ export default function FnBDashboard() {
                   tick={{ fontSize: 11, fill: "#9CA3AF" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v: any) => `£${v}`}
+                  tickFormatter={(v: RechartsValue) => `£${v}`}
                 />
                 <Tooltip
                   contentStyle={darkTooltipStyle}
-                  formatter={(value: any, name: any) => [
+                  formatter={(value: RechartsValue, name: RechartsName) => [
                     `£${Number(value).toLocaleString()}`,
-                    String(name).replace("_", " ").replace(/\b\w/g, (c: any) => c.toUpperCase()),
+                    String(name).replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
                   ]}
                 />
                 <Legend
-                  formatter={(value: any) =>
-                    String(value).replace("_", " ").replace(/\b\w/g, (c: any) => c.toUpperCase())
+                  formatter={(value: RechartsValue) =>
+                    String(value).replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
                   }
                 />
                 <Bar

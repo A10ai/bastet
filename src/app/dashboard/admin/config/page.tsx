@@ -34,7 +34,7 @@ interface PropertyData {
   phone: string | null;
   email: string;
   website: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface RateRow {
@@ -45,7 +45,7 @@ interface RateRow {
   end_date: string;
   weekly_rate_gbp: number;
   min_nights: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ChannelRow {
@@ -54,7 +54,7 @@ interface ChannelRow {
   code: string;
   commission_rate: number;
   is_active: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface CurrencyRow {
@@ -63,7 +63,7 @@ interface CurrencyRow {
   target_currency: string;
   rate: number;
   source: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export default function SystemConfigPage() {

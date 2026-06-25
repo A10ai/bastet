@@ -14,7 +14,6 @@ import type {
   FinancialReport,
   ExecutiveSummary,
 } from "@/lib/reports-engine";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
 import {
   FileBarChart,
   Download,
@@ -38,6 +37,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, AreaChart, Area, CartesianGrid,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // Energy and AI-decisions report shapes are dynamic (optional fields),
 // so use interfaces with optional/indexed fields to allow flexible access.

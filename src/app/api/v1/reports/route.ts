@@ -21,7 +21,7 @@ function isValidDate(d: string): boolean {
 function flattenForCSV(reportType: string, data: Record<string, unknown>): Record<string, unknown>[] {
   switch (reportType) {
     case "occupancy": {
-      const daily = (data.daily as any[]) || [];
+      const daily = (data.daily as Record<string, unknown>[]) || [];
       return daily.map((d) => ({
         Date: d.date,
         "Occupancy %": d.occupancy,
@@ -30,11 +30,11 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
       }));
     }
     case "revenue": {
-      const daily = (data.daily as any[]) || [];
+      const daily = (data.daily as Record<string, unknown>[]) || [];
       if (daily.length > 0) {
         return daily.map((d) => ({ Date: d.date, Revenue: d.revenue }));
       }
-      const byChannel = (data.by_channel as any[]) || [];
+      const byChannel = (data.by_channel as Record<string, unknown>[]) || [];
       return byChannel.map((c) => ({
         Channel: c.channel,
         Revenue: c.revenue,
@@ -44,17 +44,17 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
       }));
     }
     case "guests": {
-      const byNationality = (data.by_nationality as any[]) || [];
+      const byNationality = (data.by_nationality as Record<string, unknown>[]) || [];
       return byNationality.map((n) => ({ Nationality: n.nationality, Count: n.count }));
     }
     case "operations": {
       const rows: Record<string, unknown>[] = [];
-      const hk = (data.housekeeping as any) || {};
-      for (const t of (hk.by_type as any[]) || []) {
+      const hk = (data.housekeeping as Record<string, unknown>) || {};
+      for (const t of (hk.by_type as Record<string, unknown>[]) || []) {
         rows.push({ Department: "Housekeeping", Category: t.type, Count: t.count });
       }
-      const mx = (data.maintenance as any) || {};
-      for (const c of (mx.by_category as any[]) || []) {
+      const mx = (data.maintenance as Record<string, unknown>) || {};
+      for (const c of (mx.by_category as Record<string, unknown>[]) || []) {
         rows.push({ Department: "Maintenance", Category: c.category, Count: c.count });
       }
       return rows;
@@ -65,7 +65,7 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
       rows.push({ Item: "Total Expenses", Amount: data.total_expenses });
       rows.push({ Item: "Gross Profit", Amount: data.gross_profit });
       rows.push({ Item: "Profit Margin %", Amount: data.profit_margin });
-      for (const e of (data.expense_breakdown as any[]) || []) {
+      for (const e of (data.expense_breakdown as Record<string, unknown>[]) || []) {
         rows.push({ Item: `Expense: ${e.category}`, Amount: e.amount });
       }
       return rows;
@@ -80,7 +80,7 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
       ];
     }
     case "energy": {
-      const byZone = (data.by_zone as any[]) || [];
+      const byZone = (data.by_zone as Record<string, unknown>[]) || [];
       return byZone.map((z) => ({
         Zone: z.zone,
         "Total kWh": z.total_kwh,
@@ -89,7 +89,7 @@ function flattenForCSV(reportType: string, data: Record<string, unknown>): Recor
       }));
     }
     case "ai_decisions": {
-      const decisions = (data.decisions as any[]) || [];
+      const decisions = (data.decisions as Record<string, unknown>[]) || [];
       return decisions.map((d) => ({
         "Cycle ID": d.cycle_id,
         Category: d.category,

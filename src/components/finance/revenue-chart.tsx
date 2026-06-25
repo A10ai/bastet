@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 interface RevenueChartProps {
   data: { month: string; revenue: number; expenses: number }[];
@@ -45,13 +46,13 @@ export function RevenueChart({ data }: RevenueChartProps) {
           tick={{ fill: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}
           axisLine={{ stroke: '#1F2937' }}
           tickLine={false}
-          tickFormatter={(value: any) => `£${(value / 1000).toFixed(0)}k`}
+          tickFormatter={(value: RechartsValue) => `£${(Number(value) / 1000).toFixed(0)}k`}
         />
         <Tooltip
           contentStyle={darkTooltipStyle}
           labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
-          formatter={(value: any, name: any) => [
-            formatCurrency(value),
+          formatter={(value: RechartsValue, name: RechartsName) => [
+            formatCurrency(Number(value)),
             name === 'revenue' ? 'Revenue' : 'Expenses',
           ]}
         />

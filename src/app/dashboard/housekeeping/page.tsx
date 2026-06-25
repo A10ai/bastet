@@ -10,6 +10,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { HOUSEKEEPING_STATUSES, HOUSEKEEPING_TYPES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { HousekeepingTask } from "@/types";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const HK_STATUS_COLORS: Record<string, string> = {
   pending: "#22D3EE",
@@ -103,7 +104,7 @@ export default function HousekeepingPage() {
         const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
         const gJson = await gRes.json();
         const vipGuests = gJson.data || [];
-        const vipGuestIds = new Set(vipGuests.map((g: any) => g.id));
+        const vipGuestIds = new Set(vipGuests.map((g: Record<string, any>) => g.id));
 
         for (const b of bookings) {
           if (b.apartment_id && b.guest_id && vipGuestIds.has(b.guest_id)) {
@@ -207,7 +208,7 @@ export default function HousekeepingPage() {
                         <Cell key={s} fill={HK_STATUS_COLORS[s] || "#6B7280"} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">
@@ -241,7 +242,7 @@ export default function HousekeepingPage() {
                     <BarChart data={floorData} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                       <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
                         {floorData.map((_, i) => (
                           <Cell key={i} fill={FLOOR_COLORS[i % FLOOR_COLORS.length]} />

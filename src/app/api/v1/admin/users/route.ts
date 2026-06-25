@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Merge auth info into staff records
-    const enriched = (staffList || []).map((s: any) => ({
+    const enriched = (staffList || []).map((s: Record<string, any>) => ({
       ...s,
       auth_info: s.auth_user_id ? authUsers[s.auth_user_id] || null : null,
     }));

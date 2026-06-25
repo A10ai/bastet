@@ -24,6 +24,7 @@ import {
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
 
@@ -98,7 +99,7 @@ export default function BookingsPage() {
       const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
       const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
       const directCount = monthBookings.filter(
-        (b) => (b as any).channel === "direct" || (b as any).source === "direct"
+        (b) => (b as unknown as Record<string, any>).channel === "direct" || (b as unknown as Record<string, any>).source === "direct"
       ).length;
       const directPct = monthBookings.length > 0
         ? Math.round((directCount / monthBookings.length) * 100)
@@ -256,7 +257,7 @@ export default function BookingsPage() {
                             <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Bookings"]} />
+                        <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="space-y-1.5">
@@ -304,7 +305,7 @@ export default function BookingsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                       <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Bookings"]} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       <Area type="monotone" dataKey="bookings" stroke="#22D3EE" strokeWidth={2} fill="url(#bookingGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>

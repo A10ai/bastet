@@ -22,8 +22,8 @@ async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
     const error = new Error(`API error: ${res.status} ${res.statusText}`);
-    (error as any).status = res.status;
-    (error as any).url = url;
+    (error as unknown as Record<string, any> & { status?: number }).status = res.status;
+    (error as unknown as Record<string, any> & { url?: string }).url = url;
     throw error;
   }
   const json = await res.json();
@@ -38,7 +38,7 @@ const dashboardConfig: SWRConfiguration = {
   errorRetryCount: 3,
   errorRetryInterval: 2_000,
   dedupingInterval: 5_000,
-  shouldRetryOnError: (err: any) => err?.status !== 401 && err?.status !== 403,
+  shouldRetryOnError: (err: unknown) => { const e = err as unknown as Record<string, any> & { status?: number }; return e?.status !== 401 && e?.status !== 403; },
 };
 
 /** Slow-refresh config for expensive endpoints (AI, reports). */

@@ -369,7 +369,7 @@ export async function getUpsellOpportunities(
   for (const score of scores) {
     const gb = bookingsByGuest[score.guest_id] || [];
     const studioStays = gb.filter((b) => {
-      const apt = b.apartments as any;
+      const apt = b.apartments as Record<string, any> | null;
       const typeName = apt?.apartment_types?.name?.toLowerCase() || "";
       return typeName.includes("studio") || (apt?.apartment_types?.bedrooms === 0);
     });

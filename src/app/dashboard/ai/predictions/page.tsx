@@ -31,6 +31,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types matching prediction-model.ts
@@ -234,11 +235,11 @@ function ForecastChart({ predictions }: { predictions: Prediction[] }) {
             tick={{ fill: "#64748B", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: any) => `${v}%`}
+            tickFormatter={(v: RechartsValue) => `${v}%`}
           />
           <Tooltip
             contentStyle={darkTooltipStyle}
-            formatter={(value: any, name: any) => [
+            formatter={(value: RechartsValue, name: RechartsName) => [
               `${value}%`,
               name === "occupancy"
                 ? "Occupancy"
@@ -322,11 +323,11 @@ function BacktestChart({
             tick={{ fill: "#64748B", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: any) => `${v}%`}
+            tickFormatter={(v: RechartsValue) => `${v}%`}
           />
           <Tooltip
             contentStyle={darkTooltipStyle}
-            formatter={(value: any, name: any) => [
+            formatter={(value: RechartsValue, name: RechartsName) => [
               `${value}%`,
               name === "predicted" ? "Predicted" : "Actual",
             ]}
@@ -723,14 +724,14 @@ export default function PredictionsPage() {
                   tick={{ fill: "#64748B", fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v: any) =>
-                    v >= 1000 ? `\u00a3${(v / 1000).toFixed(1)}k` : `\u00a3${v}`
+                  tickFormatter={(v: RechartsValue) =>
+                    Number(v) >= 1000 ? `\u00a3${(Number(v) / 1000).toFixed(1)}k` : `\u00a3${v}`
                   }
                 />
                 <Tooltip
                   contentStyle={darkTooltipStyle}
-                  formatter={(value: any, name: any) => [
-                    name === "revenue" ? formatCurrency(value) : `${value}%`,
+                  formatter={(value: RechartsValue, name: RechartsName) => [
+                    name === "revenue" ? formatCurrency(Number(value)) : `${value}%`,
                     name === "revenue" ? "Revenue" : "Occupancy",
                   ]}
                   labelStyle={{ color: "#94A3B8" }}

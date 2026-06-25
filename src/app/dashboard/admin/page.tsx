@@ -31,6 +31,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 interface Toast {
   id: number;
@@ -315,7 +316,7 @@ export default function AdminOverviewPage() {
                       paddingAngle={2}
                       dataKey="value"
                     >
-                      {donutData.map((_: any, i: number) => (
+                      {donutData.map((_: Record<string, any>, i: number) => (
                         <Cell key={i} fill={TABLE_COLORS[i % TABLE_COLORS.length]} />
                       ))}
                     </Pie>
@@ -327,13 +328,13 @@ export default function AdminOverviewPage() {
                         color: "#e2e8f0",
                         fontSize: "12px",
                       }}
-                      formatter={(value: any) => [Number(value).toLocaleString(), "Records"]}
+                      formatter={(value: RechartsValue) => [Number(value).toLocaleString(), "Records"]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                {donutData.map((entry: any, i: number) => (
+                {donutData.map((entry: Record<string, any>, i: number) => (
                   <div key={entry.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
@@ -373,7 +374,7 @@ export default function AdminOverviewPage() {
                         color: "#e2e8f0",
                         fontSize: "12px",
                       }}
-                      formatter={(value: any) => [Number(value).toLocaleString(), "Records"]}
+                      formatter={(value: RechartsValue) => [Number(value).toLocaleString(), "Records"]}
                     />
                     <Bar dataKey="value" fill="#22D3EE" radius={[0, 4, 4, 0]} />
                   </BarChart>

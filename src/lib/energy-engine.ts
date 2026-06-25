@@ -110,7 +110,7 @@ interface ApartmentRow {
   floor: number;
   status: string;
   building_id: string;
-  buildings?: any;
+  buildings?: Record<string, any>[];
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -154,7 +154,7 @@ function isUnitWasteful(apartmentId: string, status: string): boolean {
 }
 
 function getBuildingInfo(unit: ApartmentRow): { code: string; name: string } {
-  const b = unit.buildings;
+  const b = unit.buildings as Record<string, any> | Record<string, any>[] | null;
   if (!b) return { code: "??", name: "Unknown" };
   // Supabase joins can return object or array depending on relationship
   if (Array.isArray(b)) {
@@ -578,7 +578,7 @@ export async function getEnergyRecommendations(
     .in("status", ["confirmed", "pending"]);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const arrivingUnits = (todayArrivals || []) as any[];
+  const arrivingUnits = (todayArrivals || []) as Record<string, any>[];
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   if (arrivingUnits.length > 0) {

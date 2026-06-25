@@ -29,6 +29,7 @@ import {
   Legend,
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Dark tooltip style (matches finance page)
@@ -425,10 +426,10 @@ export default function ChannelsPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={darkTooltipStyle}
-                    formatter={(value: any) => [formatCurrency(Number(value)), "Revenue"]}
+                    formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]}
                   />
                   <Legend
-                    formatter={(value: any) => (
+                    formatter={(value: RechartsValue) => (
                       <span className="text-xs text-text-secondary">{value}</span>
                     )}
                   />

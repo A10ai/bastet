@@ -37,6 +37,7 @@ import {
   PieChart,
   Pie,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 interface AIData {
   insights: AIInsight[];
@@ -149,11 +150,11 @@ function OccupancyChart({ forecast }: { forecast: OccupancyForecast[] }) {
           tick={{ fill: "#64748B", fontSize: 10 }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v: any) => `${v}%`}
+          tickFormatter={(v: RechartsValue) => `${v}%`}
         />
         <Tooltip
           contentStyle={darkTooltipStyle}
-          formatter={(value: any) => [`${value}%`, "Occupancy"]}
+          formatter={(value: RechartsValue) => [`${value}%`, "Occupancy"]}
           labelStyle={{ color: "#94A3B8" }}
         />
         <Bar dataKey="occupancy" radius={[4, 4, 0, 0]}>
@@ -200,7 +201,7 @@ function InsightSeverityDonut({ insights }: { insights: AIInsight[] }) {
         </Pie>
         <Tooltip
           contentStyle={darkTooltipStyle}
-          formatter={(value: any, name: any) => [value, name]}
+          formatter={(value: RechartsValue, name: RechartsName) => [value, name]}
         />
       </PieChart>
     </ResponsiveContainer>

@@ -39,6 +39,7 @@ import {
   PieChart,
   Pie,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Tier badge colors (matching guests page)
@@ -451,7 +452,7 @@ export default function GuestIntelligencePage() {
                   />
                   <Tooltip
                     contentStyle={darkTooltipStyle}
-                    formatter={(value: any) => [value, "Guests"]}
+                    formatter={(value: RechartsValue) => [value, "Guests"]}
                     labelStyle={{ color: "#94A3B8" }}
                   />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#22D3EE" fillOpacity={0.8} />
@@ -495,9 +496,9 @@ export default function GuestIntelligencePage() {
                 </Pie>
                 <Tooltip
                   contentStyle={darkTooltipStyle}
-                  formatter={(value: any, name: any) => [
+                  formatter={(value: RechartsValue, name: RechartsName) => [
                     `${value} guests`,
-                    name.charAt(0).toUpperCase() + name.slice(1),
+                    String(name ?? "").charAt(0).toUpperCase() + String(name ?? "").slice(1),
                   ]}
                 />
               </PieChart>
@@ -565,8 +566,8 @@ export default function GuestIntelligencePage() {
                     />
                     <Tooltip
                       contentStyle={darkTooltipStyle}
-                      formatter={(value: any, name: any) => [
-                        name === "revenue" ? formatCurrency(value) : value,
+                      formatter={(value: RechartsValue, name: RechartsName) => [
+                        name === "revenue" ? formatCurrency(Number(value)) : value,
                         name === "revenue" ? "Revenue" : "Guests",
                       ]}
                       labelStyle={{ color: "#94A3B8" }}

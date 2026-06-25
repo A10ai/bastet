@@ -27,6 +27,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 interface SchedulerStatus {
   enabled: boolean;
@@ -309,7 +310,7 @@ export default function SchedulerPage() {
                     </defs>
                     <XAxis dataKey="cycle" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [name === "duration" ? `${value}ms` : value, name === "duration" ? "Duration" : name === "decisions" ? "Decisions" : "Actions"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName) => [name === "duration" ? `${value}ms` : value, name === "duration" ? "Duration" : name === "decisions" ? "Decisions" : "Actions"]} />
                     <Area type="monotone" dataKey="duration" stroke="#22D3EE" strokeWidth={2} fill="url(#schedGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -327,7 +328,7 @@ export default function SchedulerPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName) => [value, name]} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>

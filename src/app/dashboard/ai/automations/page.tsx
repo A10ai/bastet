@@ -31,6 +31,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -280,7 +281,7 @@ export default function AutomationsPage() {
                   <BarChart data={typeData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
                     <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} itemStyle={{ color: '#22D3EE' }} formatter={(value: any) => [value, "Actions"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} itemStyle={{ color: '#22D3EE' }} formatter={(value: RechartsValue) => [value, "Actions"]} />
                     <Bar dataKey="actions" fill="#22D3EE" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -298,7 +299,7 @@ export default function AutomationsPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName) => [value, name]} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>

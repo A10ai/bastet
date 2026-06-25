@@ -41,6 +41,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types (mirroring server types)
@@ -418,7 +419,7 @@ export default function AIBrainPage() {
                   <BarChart data={catData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
                     <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Decisions"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue) => [value, "Decisions"]} />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                       {catData.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
@@ -440,7 +441,7 @@ export default function AIBrainPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: any, name: any) => [value, name]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} itemStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName) => [value, name]} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -831,7 +832,7 @@ function DecisionCard({
 // ---------------------------------------------------------------------------
 
 function SnapshotPreview({ snapshot }: { snapshot: Record<string, unknown> }) {
-  const s = snapshot as any;
+  const s = snapshot as Record<string, any>;
   if (!s.occupancy) {
     return (
       <Card>

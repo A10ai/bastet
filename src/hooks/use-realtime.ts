@@ -35,7 +35,7 @@ export function useRealtimeSubscription(
 
     for (const table of stableTables) {
       channel = channel.on(
-        "postgres_changes" as any,
+        "postgres_changes",
         { event: "*", schema: "public", table },
         () => {
           debouncedUpdate();

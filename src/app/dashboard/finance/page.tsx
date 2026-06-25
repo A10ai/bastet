@@ -47,6 +47,7 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const darkTooltipStyle = {
   backgroundColor: "#111827",
@@ -567,7 +568,7 @@ export default function FinancePage() {
                     <Tooltip
                       contentStyle={darkTooltipStyle}
                       labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                      formatter={(value: any) => [formatCurrency(value), "Revenue"]}
+                      formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]}
                     />
                     <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={32}>
                       {roomTypeBarData.map((_, index) => (
@@ -643,7 +644,7 @@ export default function FinancePage() {
                       <Tooltip
                         contentStyle={darkTooltipStyle}
                         labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                        formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                        formatter={(value: RechartsValue, name: RechartsName) => [formatCurrency(Number(value)), name]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -701,7 +702,7 @@ export default function FinancePage() {
                       <Tooltip
                         contentStyle={darkTooltipStyle}
                         labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                        formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                        formatter={(value: RechartsValue, name: RechartsName) => [formatCurrency(Number(value)), name]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -757,7 +758,7 @@ export default function FinancePage() {
                     <Tooltip
                       contentStyle={darkTooltipStyle}
                       labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                      formatter={(value: any, name: any) => [formatCurrency(value), name]}
+                      formatter={(value: RechartsValue, name: RechartsName) => [formatCurrency(Number(value)), name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -810,7 +811,7 @@ export default function FinancePage() {
                   <Tooltip
                     contentStyle={darkTooltipStyle}
                     labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                    formatter={(value: any) => [formatCurrency(value), "Outstanding"]}
+                    formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Outstanding"]}
                   />
                   <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={48}>
                     {arBarData.map((item, index) => (
@@ -877,8 +878,8 @@ export default function FinancePage() {
                   <Tooltip
                     contentStyle={darkTooltipStyle}
                     labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                    formatter={(value: any, name: any) => [
-                      formatCurrency(value),
+                    formatter={(value: RechartsValue, name: RechartsName) => [
+                      formatCurrency(Number(value)),
                       name === "budget_gbp" ? "Budget" : "Actual",
                     ]}
                   />
@@ -956,8 +957,8 @@ export default function FinancePage() {
                 <Tooltip
                   contentStyle={darkTooltipStyle}
                   labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                  formatter={(value: any, name: any) => [
-                    formatCurrency(value),
+                  formatter={(value: RechartsValue, name: RechartsName) => [
+                    formatCurrency(Number(value)),
                     name === "net_profit" ? "Net Profit" : name,
                   ]}
                 />
@@ -1011,7 +1012,7 @@ export default function FinancePage() {
                 <Tooltip
                   contentStyle={darkTooltipStyle}
                   labelStyle={{ color: "#9CA3AF", fontSize: 12 }}
-                  formatter={(value: any) => [formatCurrency(value), "CPOR"]}
+                  formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "CPOR"]}
                 />
                 <Area
                   type="monotone"

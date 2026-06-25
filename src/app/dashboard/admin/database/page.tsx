@@ -19,6 +19,7 @@ import {
   X,
   ArrowUpDown,
 } from "lucide-react";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 interface Toast {
   id: number;
@@ -227,7 +228,7 @@ export default function DatabaseExplorerPage() {
   };
 
   // Format cell value for display
-  const formatCell = (value: any): string => {
+  const formatCell = (value: RechartsValue): string => {
     if (value === null || value === undefined) return "null";
     if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "object") return JSON.stringify(value);

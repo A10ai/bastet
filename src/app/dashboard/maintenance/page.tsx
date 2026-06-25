@@ -10,6 +10,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { MAINTENANCE_STATUSES } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import type { MaintenanceRequest } from "@/types";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#22D3EE",
@@ -79,7 +80,7 @@ export default function MaintenancePage() {
       const bkRes = await fetch("/api/v1/bookings?status=checked_in&limit=500");
       const bkJson = await bkRes.json();
       const bookings = bkJson.data || [];
-      const occupiedApts = new Set(bookings.map((b: any) => b.apartment_id).filter(Boolean));
+      const occupiedApts = new Set(bookings.map((b: Record<string, any>) => b.apartment_id).filter(Boolean));
 
       for (const req of mxRequests) {
         cd[req.id] = {
@@ -234,7 +235,7 @@ export default function MaintenancePage() {
                         <Cell key={s} fill={STATUS_COLORS[s] || "#6B7280"} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">
@@ -264,8 +265,8 @@ export default function MaintenancePage() {
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                       <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11, textTransform: "capitalize" } as any} axisLine={false} tickLine={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11, textTransform: "capitalize" } as Record<string, unknown>} axisLine={false} tickLine={false} />
+                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                         {catData.map((_, i) => (
                           <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />

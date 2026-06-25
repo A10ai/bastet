@@ -277,7 +277,7 @@ export default function AvailabilityCalendarPage() {
           const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
           const gJson = await gRes.json();
           const vipGuests = gJson.data || [];
-          const vipIds = new Set(vipGuests.map((g: any) => g.id));
+          const vipIds = new Set(vipGuests.map((g: Record<string, any>) => g.id));
 
           if (data) {
             const todayStr = format(new Date(), "yyyy-MM-dd");

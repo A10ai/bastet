@@ -784,11 +784,11 @@ export async function createWorkflowFromBrainDecision(
         const multiplier = isIncrease ? 1 + pct / 100 : 1 - pct / 100;
 
         for (const t of types) {
-          const newRate = Math.round(((t as any).base_weekly_rate_gbp || 0) * multiplier * 100) / 100;
+          const newRate = Math.round(((t as Record<string, any>).base_weekly_rate_gbp || 0) * multiplier * 100) / 100;
           steps.push({
-            title: `Adjust ${(t as any).name} rate to ${newRate.toFixed(2)}`,
+            title: `Adjust ${(t as Record<string, any>).name} rate to ${newRate.toFixed(2)}`,
             action_type: "update_rate",
-            action_params: { type_id: (t as any).id, new_rate: newRate },
+            action_params: { type_id: (t as Record<string, any>).id, new_rate: newRate },
             requires_approval: requiresApproval,
           });
         }

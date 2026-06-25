@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { APARTMENT_STATUSES } from "@/lib/constants";
 import type { Apartment } from "@/types";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
 
@@ -338,7 +339,7 @@ export default function ApartmentsPage() {
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {statusChartData.map((entry: any) => (
+                      {statusChartData.map((entry: Record<string, any>) => (
                         <Cell key={entry.key} fill={STATUS_COLORS[entry.key] || "#6B7280"} />
                       ))}
                     </Pie>
@@ -350,13 +351,13 @@ export default function ApartmentsPage() {
                         color: "#e2e8f0",
                         fontSize: "12px",
                       }}
-                      formatter={(value: any, name: any) => [value, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
+                      formatter={(value: RechartsValue, name: RechartsName) => [value, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-3 justify-center">
-                {statusChartData.map((entry: any) => (
+                {statusChartData.map((entry: Record<string, any>) => (
                   <div key={entry.key} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
@@ -388,7 +389,7 @@ export default function ApartmentsPage() {
                         color: "#e2e8f0",
                         fontSize: "12px",
                       }}
-                      formatter={(value: any) => [value, "Units"]}
+                      formatter={(value: RechartsValue) => [value, "Units"]}
                     />
                     <Bar dataKey="value" fill="#22D3EE" radius={[4, 4, 0, 0]} />
                   </BarChart>

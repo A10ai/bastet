@@ -34,6 +34,7 @@ import type {
   TimelinePoint,
   EnergyRecommendation,
 } from "@/lib/energy-engine";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
 
@@ -383,7 +384,7 @@ function HourlyConsumptionChart({ data }: { data: TimelinePoint[] }) {
         <Tooltip
           contentStyle={darkTooltipStyle}
           labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
-          formatter={(value: any) => [`${value} kWh`]}
+          formatter={(value: RechartsValue) => [`${value} kWh`]}
         />
         <Bar dataKey="occupied_kwh" name="Occupied" fill="#22D3EE" radius={[3, 3, 0, 0]} />
         <Bar dataKey="vacant_kwh" name="Vacant Waste" fill="#F87171" radius={[3, 3, 0, 0]} opacity={0.7} />
@@ -429,7 +430,7 @@ function TimelineChart({ data }: { data: TimelinePoint[] }) {
         <Tooltip
           contentStyle={darkTooltipStyle}
           labelStyle={{ color: '#9CA3AF', fontSize: 12 }}
-          formatter={(value: any) => [`${value} kWh`]}
+          formatter={(value: RechartsValue) => [`${value} kWh`]}
         />
         <Legend
           wrapperStyle={{ fontSize: 11, color: '#6B7280' }}

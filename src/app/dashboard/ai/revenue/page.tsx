@@ -43,6 +43,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Channel colors
@@ -180,7 +181,7 @@ function ChannelMixDonut({
           </Pie>
           <Tooltip
             contentStyle={darkTooltipStyle}
-            formatter={(value: any, name: any) => [formatCurrency(value), name]}
+            formatter={(value: RechartsValue, name: RechartsName) => [formatCurrency(Number(value)), name]}
             labelStyle={{ color: "#94A3B8" }}
           />
         </PieChart>
@@ -261,7 +262,7 @@ function LOSBarChart({ analysis }: { analysis: LOSAnalysis }) {
           />
           <Tooltip
             contentStyle={darkTooltipStyle}
-            formatter={(value: any) => [value, "Bookings"]}
+            formatter={(value: RechartsValue) => [value, "Bookings"]}
             labelStyle={{ color: "#94A3B8" }}
           />
           <Bar dataKey="bookings" radius={[4, 4, 0, 0]}>
@@ -327,14 +328,14 @@ function ForecastChart({ forecast }: { forecast: RevenueForecast }) {
             tick={{ fill: "#64748B", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: any) =>
-              v >= 1000 ? `\u00a3${(v / 1000).toFixed(1)}k` : `\u00a3${v}`
+            tickFormatter={(v: RechartsValue) =>
+              Number(v) >= 1000 ? `\u00a3${(Number(v) / 1000).toFixed(1)}k` : `\u00a3${v}`
             }
           />
           <Tooltip
             contentStyle={darkTooltipStyle}
-            formatter={(value: any, name: any) => [
-              formatCurrency(value),
+            formatter={(value: RechartsValue, name: RechartsName) => [
+              formatCurrency(Number(value)),
               name === "projected"
                 ? "Projected"
                 : name === "confirmed"

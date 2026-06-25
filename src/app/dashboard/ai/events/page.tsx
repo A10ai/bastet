@@ -34,6 +34,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -438,7 +439,7 @@ export default function EventBusPage() {
                   <BarChart data={typeData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
                     <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={40} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Events"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue) => [value, "Events"]} />
                     <Bar dataKey="count" fill="#22D3EE" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -459,7 +460,7 @@ export default function EventBusPage() {
                     </defs>
                     <XAxis dataKey="hour" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: any) => [value, "Events"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue) => [value, "Events"]} />
                     <Area type="monotone" dataKey="events" stroke="#22D3EE" strokeWidth={2} fill="url(#eventGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>

@@ -269,7 +269,7 @@ async function runAutoHousekeeping(
 
   // Sort checkouts by priority: VIP first, then arrivals-due, then standard
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sorted = [...checkouts].sort((a: any, b: any) => {
+  const sorted = [...checkouts].sort((a: Record<string, any>, b: Record<string, any>) => {
     const aGuest = first<{ vip_status?: boolean; loyalty_tier?: string }>(
       a.guest
     );
@@ -290,7 +290,7 @@ async function runAutoHousekeeping(
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const booking of sorted as any[]) {
+  for (const booking of sorted as Record<string, any>[]) {
     if (alreadyScheduled.has(booking.apartment_id)) continue;
 
     const apt = first<{ id: string; number: string; property_id: string }>(
@@ -489,7 +489,7 @@ async function runVipPreparation(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const vipArrivals = arrivals.filter((b: any) => {
+  const vipArrivals = arrivals.filter((b: Record<string, any>) => {
     const guest = first<{ vip_status?: boolean; loyalty_tier?: string }>(
       b.guest
     );
@@ -507,7 +507,7 @@ async function runVipPreparation(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const booking of vipArrivals as any[]) {
+  for (const booking of vipArrivals as Record<string, any>[]) {
     const apt = first<{ id: string; number: string; status: string }>(
       booking.apartment
     );
