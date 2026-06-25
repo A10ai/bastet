@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,7 +67,7 @@ export async function createNotification(
       .single();
 
     if (error) {
-      console.error("[Notifications] Failed to create notification:", error.message);
+      logger.error({ err: error.message }, "[Notifications] Failed to create notification");
       return [];
     }
 
@@ -80,7 +81,7 @@ export async function createNotification(
     .eq("is_active", true);
 
   if (staffError || !staffMembers || staffMembers.length === 0) {
-    console.error("[Notifications] Failed to fetch staff for broadcast:", staffError?.message);
+    logger.error({ err: staffError?.message }, "[Notifications] Failed to fetch staff for broadcast");
     // Still create one with null staff_id as fallback
     const { data, error } = await supabase
       .from("notifications")
@@ -96,7 +97,7 @@ export async function createNotification(
       .single();
 
     if (error) {
-      console.error("[Notifications] Fallback insert failed:", error.message);
+      logger.error({ err: error.message }, "[Notifications] Fallback insert failed");
       return [];
     }
     return data ? [data as Notification] : [];
@@ -117,7 +118,7 @@ export async function createNotification(
     .select("*");
 
   if (error) {
-    console.error("[Notifications] Broadcast insert failed:", error.message);
+    logger.error({ err: error.message }, "[Notifications] Broadcast insert failed");
     return [];
   }
 
@@ -149,7 +150,7 @@ export async function getNotifications(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[Notifications] Failed to get notifications:", error.message);
+    logger.error({ err: error.message }, "[Notifications] Failed to get notifications");
     return [];
   }
 
@@ -170,7 +171,7 @@ export async function markRead(
     .eq("id", notificationId);
 
   if (error) {
-    console.error("[Notifications] Failed to mark read:", error.message);
+    logger.error({ err: error.message }, "[Notifications] Failed to mark read");
     return false;
   }
 
@@ -192,7 +193,7 @@ export async function markAllRead(
     .eq("read", false);
 
   if (error) {
-    console.error("[Notifications] Failed to mark all read:", error.message);
+    logger.error({ err: error.message }, "[Notifications] Failed to mark all read");
     return false;
   }
 
@@ -214,7 +215,7 @@ export async function getUnreadCount(
     .eq("read", false);
 
   if (error) {
-    console.error("[Notifications] Failed to get unread count:", error.message);
+    logger.error({ err: error.message }, "[Notifications] Failed to get unread count");
     return 0;
   }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, resolveSchema } from "@/lib/validation";
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +13,12 @@ export async function POST(
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { resolution_notes, actual_cost_gbp } = body;
+
+    const validation = validateBody(resolveSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { resolution_notes, actual_cost_gbp } = validation.data;
 
     const { data: req } = await supabase
       .from("maintenance_requests")

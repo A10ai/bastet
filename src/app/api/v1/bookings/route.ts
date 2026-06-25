@@ -10,6 +10,7 @@ import {
   convertCurrency,
 } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createBookingSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createBookingSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       property_id,
       apartment_id,
@@ -75,14 +82,7 @@ export async function POST(request: NextRequest) {
       special_requests,
       internal_notes,
       guest_currency = "GBP",
-    } = body;
-
-    if (!apartment_id || !check_in || !check_out) {
-      return NextResponse.json(
-        { error: "Missing required fields: apartment_id, check_in, check_out" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Check availability
     const availability = await checkAvailability(apartment_id, check_in, check_out, supabase);

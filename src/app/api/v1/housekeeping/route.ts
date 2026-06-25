@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createHousekeepingTaskSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,6 +50,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createHousekeepingTaskSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       apartment_id,
       type,
@@ -56,14 +63,7 @@ export async function POST(request: NextRequest) {
       scheduled_date,
       assigned_to,
       notes,
-    } = body;
-
-    if (!apartment_id || !type || !scheduled_date) {
-      return NextResponse.json(
-        { error: "Missing required fields: apartment_id, type, scheduled_date" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Get property_id from apartment
     const { data: apartment } = await supabase

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createApartmentTypeSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -36,6 +37,13 @@ export async function PUT(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    // Validate as partial of createApartmentTypeSchema
+    const validation = validateBody(createApartmentTypeSchema.partial(), body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     // Only allow updating specific rate fields for safety
     const allowedFields = [
       "name",
@@ -48,8 +56,8 @@ export async function PUT(
     ];
     const updates: Record<string, unknown> = {};
     for (const key of allowedFields) {
-      if (body[key] !== undefined) {
-        updates[key] = body[key];
+      if ((validated as Record<string, unknown>)[key] !== undefined) {
+        updates[key] = (validated as Record<string, unknown>)[key];
       }
     }
 

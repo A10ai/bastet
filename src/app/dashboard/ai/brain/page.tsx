@@ -29,6 +29,7 @@ import {
   Bolt,
 } from "lucide-react";
 import { cn, formatCurrency, timeAgo } from "@/lib/utils";
+import { logger } from "@/lib/client-logger";
 import {
   BarChart,
   Bar,
@@ -114,7 +115,7 @@ export default function AIBrainPage() {
         setHistory(json.data.history || []);
       }
     } catch (err) {
-      console.error("Failed to fetch brain data:", err);
+      logger.error({ err }, "Failed to fetch brain data");
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ export default function AIBrainPage() {
         await fetchBrainData();
       }
     } catch (err) {
-      console.error("Failed to run brain cycle:", err);
+      logger.error({ err }, "Failed to run brain cycle");
     } finally {
       setRunningCycle(false);
     }
@@ -154,7 +155,7 @@ export default function AIBrainPage() {
       const json = await res.json();
       if (json.data?.config) setConfig(json.data.config);
     } catch (err) {
-      console.error("Failed to update config:", err);
+      logger.error({ err }, "Failed to update config");
     }
   };
 
@@ -168,7 +169,7 @@ export default function AIBrainPage() {
       });
       await fetchBrainData();
     } catch (err) {
-      console.error("Failed to approve:", err);
+      logger.error({ err }, "Failed to approve");
     } finally {
       setPendingAction(null);
     }
@@ -184,7 +185,7 @@ export default function AIBrainPage() {
       });
       await fetchBrainData();
     } catch (err) {
-      console.error("Failed to reject:", err);
+      logger.error({ err }, "Failed to reject");
     } finally {
       setPendingAction(null);
     }

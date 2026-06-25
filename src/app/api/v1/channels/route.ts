@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logger } from "@/lib/logger";
 
 // Commission rates by channel code
 const CHANNEL_COMMISSIONS: Record<string, number> = {
@@ -185,7 +186,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("[channels] Error:", error);
+    logger.error({ err: error }, "[channels] Error");
     return NextResponse.json(
       { error: "Failed to fetch channel data" },
       { status: 500 }

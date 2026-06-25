@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createApartmentSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,9 +46,15 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createApartmentSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const { data, error } = await supabase
       .from("apartments")
-      .insert(body)
+      .insert(validated)
       .select()
       .single();
 

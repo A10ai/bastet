@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getActivePropertyId } from "@/lib/api-property";
+import { validateBody, formatZodErrors, messageSchema } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
 // Templates — use {property_name} placeholder, resolved at request time
@@ -221,14 +222,11 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
-    const { guest_id, subject, body: messageBody } = body;
-
-    if (!subject || !messageBody) {
-      return NextResponse.json(
-        { error: "Missing required fields: subject, body" },
-        { status: 400 }
-      );
+    const validation = validateBody(messageSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
+    const { guest_id, subject, body: messageBody } = validation.data;
 
     // Get first staff member as sender
     const { data: staff } = await supabase

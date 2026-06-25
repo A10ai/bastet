@@ -6,6 +6,7 @@ import {
   runAutomation,
   runAllAutomations,
 } from "@/lib/automations-engine";
+import { validateBody, formatZodErrors, automationSchema } from "@/lib/validation";
 
 /**
  * GET /api/v1/ai/automations
@@ -39,8 +40,14 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(automationSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     // Run all enabled automations
-    if (body.action === "run_all") {
+    if (validated.action === "run_all") {
       const results = await runAllAutomations(supabase);
       const automations = getAutomations();
       return NextResponse.json({
@@ -52,15 +59,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Run a specific automation
-    if (body.automation_id) {
-      const results = await runAutomation(body.automation_id, supabase);
+    if (validated.automation_id) {
+      const results = await runAutomation(validated.automation_id, supabase);
       const automations = getAutomations();
       return NextResponse.json({
         data: {
           automations,
           run_results: [
             {
-              automation_id: body.automation_id,
+              automation_id: validated.automation_id,
               results,
             },
           ],

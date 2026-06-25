@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { POINTS_PER_GBP_ROOM } from "@/lib/constants";
 import { emitEvent } from "@/lib/event-bus";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, checkoutSchema } from "@/lib/validation";
 
 export async function POST(
   request: NextRequest,
@@ -13,6 +14,13 @@ export async function POST(
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
+    const body = await request.json().catch(() => ({}));
+
+    const validation = validateBody(checkoutSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    // validation successful — notes available if provided
 
     // Get current booking with guest info
     const { data: booking, error: fetchError } = await supabase

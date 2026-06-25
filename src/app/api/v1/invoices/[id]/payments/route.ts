@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getInvoicePaymentStatus } from "@/lib/finance-engine";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, paymentSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -38,6 +39,12 @@ export async function POST(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(paymentSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       amount_gbp,
       amount_original,
@@ -47,14 +54,7 @@ export async function POST(
       reference,
       received_by,
       notes,
-    } = body;
-
-    if (!amount_gbp || !method) {
-      return NextResponse.json(
-        { error: "Missing required fields: amount_gbp, method" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Verify invoice exists and is payable
     const { data: invoice } = await supabase

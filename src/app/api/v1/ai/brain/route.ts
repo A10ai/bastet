@@ -7,6 +7,8 @@ import {
   runBrainCycle,
   getBrainHistory,
 } from "@/lib/ai-brain";
+import { validateBody, formatZodErrors, aiBrainActionSchema } from "@/lib/validation";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: { config, history } });
   } catch (err) {
-    console.error("[AI Brain API] GET error:", err);
+    logger.error({ err }, "[AI Brain API] GET error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -32,7 +34,13 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { action } = body;
+
+    const validation = validateBody(aiBrainActionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+    const { action } = validated;
 
     switch (action) {
       case "run_cycle": {
@@ -49,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "update_config": {
-        const { config } = body;
+        const { config } = validated;
         if (!config || typeof config !== "object") {
           return NextResponse.json(
             { error: "Missing config object" },
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "approve": {
-        const { decision_id } = body;
+        const { decision_id } = validated;
         if (!decision_id) {
           return NextResponse.json(
             { error: "Missing decision_id" },
@@ -113,7 +121,7 @@ export async function POST(request: NextRequest) {
               supabase
             );
           } catch (err) {
-            console.error("[AI Brain] Failed to emit event on approve:", err);
+            logger.error({ err }, "[AI Brain] Failed to emit event on approve");
           }
         }
 
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "reject": {
-        const { decision_id } = body;
+        const { decision_id } = validated;
         if (!decision_id) {
           return NextResponse.json(
             { error: "Missing decision_id" },
@@ -155,7 +163,7 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (err) {
-    console.error("[AI Brain API] POST error:", err);
+    logger.error({ err }, "[AI Brain API] POST error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

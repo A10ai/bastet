@@ -9,6 +9,7 @@ import {
   getFinancialSummary,
   getExecutiveSummary,
 } from "@/lib/reports-engine";
+import { logger } from "@/lib/logger";
 
 const REPORT_TYPES = ["occupancy", "revenue", "guests", "operations", "financial", "executive", "energy", "ai_decisions"] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
@@ -252,7 +253,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data, meta: { type, from, to } });
   } catch (err) {
-    console.error("Reports API error:", err);
+    logger.error({ err }, "Reports API error");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

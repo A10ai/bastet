@@ -5,6 +5,7 @@ import { runBrainCycle, getBrainConfig } from "@/lib/ai-brain";
 import { runAllAutomations } from "@/lib/automations-engine";
 import { generateInsights } from "@/lib/ai-engine";
 import { trainModel } from "@/lib/prediction-model";
+import { validateBody, formatZodErrors, schedulerSchema } from "@/lib/validation";
 
 // Store last run time in memory (resets on deploy)
 let lastSchedulerRun: string | null = null;
@@ -42,7 +43,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, interval_minutes } = body;
+
+    const validation = validateBody(schedulerSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { action, interval_minutes } = validation.data;
 
     switch (action) {
       case "start": {

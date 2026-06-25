@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/api-auth";
 import { apiError, handleDbError } from "@/lib/api-error";
+import { validateBody, formatZodErrors, databaseActionSchema } from "@/lib/validation";
 
 const ALLOWED_TABLES = [
   "properties",
@@ -159,7 +160,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createAdminClient();
     const body = await request.json();
-    const { table, row } = body;
+
+    const validation = validateBody(databaseActionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { table, row } = validation.data;
 
     if (!table || !ALLOWED_TABLES.includes(table)) {
       return NextResponse.json(
@@ -169,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove id if empty (let DB auto-generate)
-    const insertData = { ...row };
+    const insertData = { ...row } as Record<string, unknown>;
     if (!insertData.id || insertData.id === "") {
       delete insertData.id;
     }
@@ -199,7 +205,12 @@ export async function PUT(request: NextRequest) {
   try {
     const supabase = createAdminClient();
     const body = await request.json();
-    const { table, id, updates } = body;
+
+    const validation = validateBody(databaseActionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { table, id, updates } = validation.data;
 
     if (!table || !ALLOWED_TABLES.includes(table)) {
       return NextResponse.json(
@@ -217,7 +228,7 @@ export async function PUT(request: NextRequest) {
 
     const { data, error } = await supabase
       .from(table)
-      .update(updates)
+      .update(updates || {})
       .eq("id", id)
       .select()
       .single();

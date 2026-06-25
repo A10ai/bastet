@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAudit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -797,7 +798,7 @@ export async function emitEvent(
     .single();
 
   if (insertError || !inserted) {
-    console.error("[EventBus] Failed to store event:", insertError?.message);
+    logger.error({ err: insertError?.message }, "[EventBus] Failed to store event");
     return { event_id: "", results: [] };
   }
 

@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth, requireRole } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/api-error";
+import { logger } from "@/lib/logger";
+import { validateBody, formatZodErrors, gdprActionSchema } from "@/lib/validation";
 
 /**
  * GDPR Data Management API
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
-    console.error("[GDPR API] GET error:", err);
+    logger.error({ err }, "[GDPR API] GET error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -56,21 +58,33 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
 
     const body = await request.json();
-    const { action } = body;
+
+    const validation = validateBody(gdprActionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+    const { action } = validated;
 
     if (action === "erasure") {
       // Only admin/owner can request erasure
       const roleCheck = await requireRole(request, ["owner", "admin"]);
       if (!roleCheck.authenticated) return roleCheck.error!;
 
-      return await requestErasure(body.guest_id, body.reason);
+      return await requestErasure(validated.guest_id!, validated.reason || undefined);
     } else if (action === "consent") {
-      return await updateConsent(body);
+      return await updateConsent({
+        guest_id: validated.guest_id!,
+        consent_type: validated.consent_type!,
+        granted: validated.granted!,
+        method: validated.method,
+        notes: validated.notes || undefined,
+      });
     } else if (action === "complete_erasure") {
       const roleCheck = await requireRole(request, ["owner", "admin"]);
       if (!roleCheck.authenticated) return roleCheck.error!;
 
-      return await executeErasure(body.request_id);
+      return await executeErasure(validated.request_id!);
     }
 
     return NextResponse.json(
@@ -78,7 +92,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (err) {
-    console.error("[GDPR API] POST error:", err);
+    logger.error({ err }, "[GDPR API] POST error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

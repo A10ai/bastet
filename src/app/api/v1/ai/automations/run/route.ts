@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { runAllAutomations, getAutomations } from "@/lib/automations-engine";
 import { requireAuth } from "@/lib/api-auth";
+import { validateBody, formatZodErrors, runAutomationSchema } from "@/lib/validation";
 
 /**
  * POST /api/v1/ai/automations/run
@@ -13,6 +14,13 @@ export async function POST(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
+    const body = await request.json().catch(() => ({}));
+
+    const validation = validateBody(runAutomationSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+
     const supabase = createServerSupabaseClient();
     const runResults = await runAllAutomations(supabase);
     const automations = getAutomations();

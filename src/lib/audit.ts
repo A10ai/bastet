@@ -6,6 +6,7 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 export interface AuditEntry {
   user_id?: string;
@@ -54,7 +55,7 @@ export async function logAudit(
     });
   } catch {
     // Non-critical — don't break the main operation
-    console.error("[Audit] Failed to log:", entry.action);
+    logger.error({ action: entry.action }, "[Audit] Failed to log");
   }
 }
 
@@ -81,7 +82,7 @@ export async function logAuditBatch(
     }));
     await supabase.from("audit_log").insert(rows);
   } catch {
-    console.error("[Audit] Failed to batch log:", entries.length, "entries");
+    logger.error({ entries: entries.length }, "[Audit] Failed to batch log");
   }
 }
 

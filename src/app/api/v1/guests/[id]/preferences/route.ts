@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { validateBody, formatZodErrors, guestPreferencesSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -36,6 +37,12 @@ export async function PUT(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(guestPreferencesSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     // Upsert: update if exists, insert if not
     const { data: existing } = await supabase
       .from("guest_preferences")
@@ -47,7 +54,7 @@ export async function PUT(
     if (existing) {
       const { data, error } = await supabase
         .from("guest_preferences")
-        .update({ ...body, guest_id: params.id })
+        .update({ ...validated, guest_id: params.id })
         .eq("guest_id", params.id)
         .select()
         .single();
@@ -56,7 +63,7 @@ export async function PUT(
     } else {
       const { data, error } = await supabase
         .from("guest_preferences")
-        .insert({ ...body, guest_id: params.id })
+        .insert({ ...validated, guest_id: params.id })
         .select()
         .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });

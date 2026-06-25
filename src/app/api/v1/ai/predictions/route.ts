@@ -7,6 +7,8 @@ import {
   getModelPerformance,
   compareWithRules,
 } from "@/lib/prediction-model";
+import { validateBody, formatZodErrors, predictionSchema } from "@/lib/validation";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/v1/ai/predictions?type=forecast|footfall|revenue|performance|compare|train
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (e) {
-    console.error("Prediction API error:", e);
+    logger.error({ err: e }, "Prediction API error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -78,7 +80,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
-    if (body.action === "train") {
+    const validation = validateBody(predictionSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+
+    if (validation.data.action === "train") {
       const model = await trainModel(supabase);
 
       // Store trained model coefficients in system_events for audit trail
@@ -110,7 +117,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (e) {
-    console.error("Prediction POST error:", e);
+    logger.error({ err: e }, "Prediction POST error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

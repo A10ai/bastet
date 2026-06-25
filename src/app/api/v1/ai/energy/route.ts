@@ -9,6 +9,7 @@ import {
   getEnergyTimeline,
   getEnergyRecommendations,
 } from "@/lib/energy-engine";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/v1/ai/energy
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[Energy API]", err);
+    logger.error({ err }, "[Energy API]");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

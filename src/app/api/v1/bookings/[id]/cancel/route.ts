@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, cancelBookingSchema } from "@/lib/validation";
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +13,13 @@ export async function POST(
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json().catch(() => ({}));
-    const { cancellation_reason } = body;
+
+    const validation = validateBody(cancelBookingSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { cancellation_reason, reason } = validation.data;
+    const cancellationReason = cancellation_reason || reason;
 
     // Get current booking
     const { data: booking, error: fetchError } = await supabase
@@ -39,7 +46,7 @@ export async function POST(
       .update({
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
-        cancellation_reason: cancellation_reason || null,
+        cancellation_reason: cancellationReason || null,
       })
       .eq("id", params.id)
       .select()

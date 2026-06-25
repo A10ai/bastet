@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { logger } from "@/lib/logger";
 import {
   createNotification,
   getNotifications,
@@ -9,6 +10,7 @@ import {
   markAllRead,
 } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, notificationSchema } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/notifications
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
       unread_count: unreadCount,
     });
   } catch (err) {
-    console.error("[Notifications API] GET error:", err);
+    logger.error({ err }, "[Notifications API] GET error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -91,10 +93,16 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { action } = body;
+
+    const validation = validateBody(notificationSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+    const { action } = validated;
 
     // Resolve staff ID from session
-    let staffId: string | null = body.staff_id || null;
+    let staffId: string | null = validated.staff_id || null;
     if (!staffId) {
       const {
         data: { session },
@@ -111,19 +119,19 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "mark_read": {
-        if (!body.id) {
+        if (!validated.id) {
           return NextResponse.json(
             { error: "Missing notification id" },
             { status: 400 }
           );
         }
-        const success = await markRead(supabase, body.id);
+        const success = await markRead(supabase, validated.id);
         await logAudit(supabase, {
           action: "notification.mark_read",
           category: "system",
           resource_type: "notification",
-          resource_id: body.id,
-          description: `Marked notification ${body.id} as read`,
+          resource_id: validated.id,
+          description: `Marked notification ${validated.id} as read`,
         });
         return NextResponse.json({ success });
       }
@@ -147,7 +155,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "create": {
-        const { title, message, type, category, link } = body;
+        const { title, message, type, category, link } = validated;
         if (!title || !message) {
           return NextResponse.json(
             { error: "Missing title or message" },
@@ -155,11 +163,11 @@ export async function POST(request: NextRequest) {
           );
         }
         const notifications = await createNotification(supabase, {
-          staff_id: body.staff_id || null,
+          staff_id: validated.staff_id || null,
           title,
           message,
           type: type || "info",
-          category: category || null,
+          category: category ?? undefined,
           link: link || null,
         });
         await logAudit(supabase, {
@@ -167,7 +175,7 @@ export async function POST(request: NextRequest) {
           category: "system",
           resource_type: "notification",
           description: `Created notification: ${title}`,
-          new_data: body,
+          new_data: validated,
         });
         return NextResponse.json({ notifications });
       }
@@ -179,7 +187,7 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (err) {
-    console.error("[Notifications API] POST error:", err);
+    logger.error({ err }, "[Notifications API] POST error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

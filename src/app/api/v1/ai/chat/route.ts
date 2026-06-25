@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { processChat } from "@/lib/ai-chat";
+import { validateBody, formatZodErrors, aiChatSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuth(req);
     if (!auth.authenticated) return auth.error!;
-    const { message } = await req.json();
+    const body = await req.json();
 
-    if (!message || typeof message !== "string") {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
+    const validation = validateBody(aiChatSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
+    const { message } = validation.data;
 
     const supabase = createServerSupabaseClient();
     const response = await processChat(message, supabase);

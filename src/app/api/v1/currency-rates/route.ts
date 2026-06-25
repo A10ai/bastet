@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { validateBody, formatZodErrors, currencyRateSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,14 +40,12 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { base_currency = "GBP", target_currency, rate } = body;
 
-    if (!target_currency || !rate) {
-      return NextResponse.json(
-        { error: "Missing required fields: target_currency, rate" },
-        { status: 400 }
-      );
+    const validation = validateBody(currencyRateSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
+    const { base_currency = "GBP", target_currency, rate } = validation.data;
 
     const { data, error } = await supabase
       .from("currency_rates")

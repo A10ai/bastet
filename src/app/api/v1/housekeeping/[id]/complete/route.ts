@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent } from "@/lib/event-bus";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, completeSchema } from "@/lib/validation";
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,13 @@ export async function POST(
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
+    const body = await request.json().catch(() => ({}));
+
+    const validation = validateBody(completeSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    // validation successful — notes/rating available if provided
 
     const { data: task } = await supabase
       .from("housekeeping_tasks")

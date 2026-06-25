@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
+import { validateBody, formatZodErrors, staffScheduleSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -43,14 +44,11 @@ export async function POST(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
-    const { date, shift_start, shift_end, shift_type = "regular", notes } = body;
-
-    if (!date || !shift_start || !shift_end) {
-      return NextResponse.json(
-        { error: "Missing required fields: date, shift_start, shift_end" },
-        { status: 400 }
-      );
+    const validation = validateBody(staffScheduleSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
+    const { date, shift_start, shift_end, shift_type = "regular", notes } = validation.data;
 
     const { data, error } = await supabase
       .from("staff_schedules")

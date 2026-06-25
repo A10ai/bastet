@@ -11,6 +11,7 @@ import {
   recordOutcome,
   getWorkflowStats,
 } from "@/lib/workflow-engine";
+import { validateBody, formatZodErrors, workflowSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,11 +54,17 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { action } = body;
+
+    const validation = validateBody(workflowSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+    const { action } = validated;
 
     switch (action) {
       case "create": {
-        const { title, description, source, source_id, priority, steps, created_by } = body;
+        const { title, description, source, source_id, priority, steps, created_by } = validated;
         if (!title || !source || !steps || !Array.isArray(steps)) {
           return NextResponse.json(
             { error: "Missing required fields: title, source, steps" },
@@ -66,12 +73,12 @@ export async function POST(request: NextRequest) {
         }
         const workflow = await createWorkflow(supabase, {
           title,
-          description,
-          source,
-          source_id,
+          description: description ?? undefined,
+          source: source ?? undefined,
+          source_id: source_id ?? undefined,
           priority,
-          steps,
-          created_by,
+          steps: steps as Parameters<typeof createWorkflow>[1]["steps"],
+          created_by: created_by ?? undefined,
         });
         if (!workflow) {
           return NextResponse.json({ error: "Failed to create workflow" }, { status: 500 });
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "approve": {
-        const { id, approved_by } = body;
+        const { id, approved_by } = validated;
         if (!id) {
           return NextResponse.json({ error: "Missing workflow id" }, { status: 400 });
         }
@@ -92,7 +99,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "execute_step": {
-        const { id } = body;
+        const { id } = validated;
         if (!id) {
           return NextResponse.json({ error: "Missing workflow id" }, { status: 400 });
         }
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "cancel": {
-        const { id, reason } = body;
+        const { id, reason } = validated;
         if (!id) {
           return NextResponse.json({ error: "Missing workflow id" }, { status: 400 });
         }
@@ -116,7 +123,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "record_outcome": {
-        const { id, outcome, notes } = body;
+        const { id, outcome, notes } = validated;
         if (!id) {
           return NextResponse.json({ error: "Missing workflow id" }, { status: 400 });
         }

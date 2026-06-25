@@ -12,6 +12,7 @@ import "server-only";
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
 import { logAudit, logAuditBatch } from "@/lib/audit";
@@ -459,7 +460,8 @@ Respond ONLY with valid JSON in this exact format:
     });
 
     if (!res.ok) {
-      console.error("[AI Brain] Claude API error:", res.status, await res.text());
+      const errBody = await res.text();
+      logger.error({ status: res.status, body: errBody }, "[AI Brain] Claude API error");
       return null;
     }
 
@@ -477,7 +479,7 @@ Respond ONLY with valid JSON in this exact format:
     const parsed: ClaudeResponse = JSON.parse(jsonStr);
     return parsed;
   } catch (err) {
-    console.error("[AI Brain] Claude API call failed:", err);
+    logger.error({ err }, "[AI Brain] Claude API call failed");
     return null;
   }
 }
@@ -666,7 +668,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
   // 2. Get decisions -- try Claude API first, fall back to rules
   let analysisResult = await callClaudeAPI(snapshot);
   if (!analysisResult) {
-    console.warn("[AI Brain] Using rule-based fallback analysis");
+    logger.warn("[AI Brain] Using rule-based fallback analysis");
     analysisResult = runRuleBasedAnalysis(snapshot);
   }
 
@@ -705,7 +707,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
       .select("*");
 
     if (batchErr || !insertedRows) {
-      console.error("[AI Brain] Batch insert failed:", batchErr?.message);
+      logger.error({ err: batchErr?.message }, "[AI Brain] Batch insert failed");
     } else {
       // Emit events for auto-executable decisions and build storedDecisions
       const emitPromises: Promise<unknown>[] = [];
@@ -721,7 +723,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
               raw.event_payload || {},
               supabase
             ).catch((err) => {
-              console.error("[AI Brain] Failed to emit event on auto-execute:", err);
+              logger.error({ err }, "[AI Brain] Failed to emit event on auto-execute");
             })
           );
         }
@@ -766,7 +768,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
         link: "/dashboard/ai/brain",
       });
     } catch (err) {
-      console.error("[AI Brain] Failed to create cycle notification:", err);
+      logger.error({ err }, "[AI Brain] Failed to create cycle notification");
     }
   }
 
@@ -803,7 +805,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
   await Promise.all(
     storedDecisions.map((decision) =>
       createWorkflowFromBrainDecision(supabase, decision, mode).catch((err) => {
-        console.error("[AI Brain] Failed to create workflow for decision:", decision.id, err);
+        logger.error({ decisionId: decision.id, err }, "[AI Brain] Failed to create workflow for decision");
       })
     )
   );

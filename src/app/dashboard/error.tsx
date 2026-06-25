@@ -8,6 +8,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { logger } from "@/lib/client-logger";
 
 export default function DashboardError({
   error,
@@ -17,8 +18,8 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log to console (Sentry will capture this in production)
-    console.error("[Dashboard Error Boundary]", error);
+    // Log to client logger (Sentry will capture this in production)
+    logger.error({ err: error }, "[Dashboard Error Boundary]");
   }, [error]);
 
   return (

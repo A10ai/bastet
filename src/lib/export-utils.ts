@@ -37,6 +37,16 @@ export function toCSV(data: Record<string, unknown>[], filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** Helper to narrow an unknown value to a record array. */
+function asRowArray(val: unknown): Record<string, unknown>[] {
+  return Array.isArray(val) ? val as Record<string, unknown>[] : [];
+}
+
+/** Helper to narrow an unknown value to a record. */
+function asRow(val: unknown): Record<string, unknown> {
+  return (val && typeof val === "object") ? val as Record<string, unknown> : {};
+}
+
 /**
  * Flatten nested report data into flat rows suitable for CSV export.
  */
@@ -46,7 +56,7 @@ export function formatReportData(
 ): Record<string, unknown>[] {
   switch (reportType) {
     case "occupancy": {
-      const daily = (data.daily as any[]) || [];
+      const daily = asRowArray(data.daily);
       return daily.map((d) => ({
         Date: d.date,
         "Occupancy %": d.occupancy,
@@ -56,7 +66,7 @@ export function formatReportData(
     }
 
     case "revenue": {
-      const daily = (data.daily as any[]) || [];
+      const daily = asRowArray(data.daily);
       if (daily.length > 0) {
         return daily.map((d) => ({
           Date: d.date,
@@ -64,7 +74,7 @@ export function formatReportData(
         }));
       }
       // Fallback: channel breakdown
-      const byChannel = (data.by_channel as any[]) || [];
+      const byChannel = asRowArray(data.by_channel);
       return byChannel.map((c) => ({
         Channel: c.channel,
         Revenue: c.revenue,
@@ -75,7 +85,7 @@ export function formatReportData(
     }
 
     case "guests": {
-      const byNationality = (data.by_nationality as any[]) || [];
+      const byNationality = asRowArray(data.by_nationality);
       return byNationality.map((n) => ({
         Nationality: n.nationality,
         "Guest Count": n.count,
@@ -86,14 +96,14 @@ export function formatReportData(
       const rows: Record<string, unknown>[] = [];
 
       // Housekeeping by type
-      const hk = (data.housekeeping as any) || {};
-      for (const t of (hk.by_type as any[]) || []) {
+      const hk = asRow(data.housekeeping);
+      for (const t of asRowArray(hk.by_type)) {
         rows.push({ Department: "Housekeeping", Category: t.type, Count: t.count });
       }
 
       // Maintenance by category
-      const mx = (data.maintenance as any) || {};
-      for (const c of (mx.by_category as any[]) || []) {
+      const mx = asRow(data.maintenance);
+      for (const c of asRowArray(mx.by_category)) {
         rows.push({ Department: "Maintenance", Category: c.category, Count: c.count });
       }
 
@@ -108,11 +118,11 @@ export function formatReportData(
       rows.push({ Item: "Gross Profit", Amount: data.gross_profit });
       rows.push({ Item: "Profit Margin %", Amount: data.profit_margin });
 
-      for (const e of (data.expense_breakdown as any[]) || []) {
+      for (const e of asRowArray(data.expense_breakdown)) {
         rows.push({ Item: `Expense: ${e.category}`, Amount: e.amount });
       }
 
-      for (const r of (data.revenue_breakdown as any[]) || []) {
+      for (const r of asRowArray(data.revenue_breakdown)) {
         rows.push({ Item: `Revenue: ${r.source}`, Amount: r.amount });
       }
 
@@ -130,7 +140,7 @@ export function formatReportData(
     }
 
     case "energy": {
-      const floors = (data.by_floor as any[]) || (data.floors as any[]) || [];
+      const floors = asRowArray(data.by_floor).length > 0 ? asRowArray(data.by_floor) : asRowArray(data.floors);
       if (floors.length > 0) {
         return floors.map((f) => ({
           Floor: f.floor_label || f.building_name || `Floor ${f.floor}`,
@@ -145,17 +155,17 @@ export function formatReportData(
     }
 
     case "ai_decisions": {
-      const decisions = (data.decisions as any[]) || (data.recent_decisions as any[]) || [];
+      const decisions = asRowArray(data.decisions).length > 0 ? asRowArray(data.decisions) : asRowArray(data.recent_decisions);
       if (decisions.length > 0) {
         return decisions.map((d) => ({
           Decision: d.title || d.description || "—",
           Type: d.type || d.category || "—",
-          Confidence: d.confidence ? `${(d.confidence * 100).toFixed(0)}%` : "—",
+          Confidence: d.confidence ? `${(Number(d.confidence) * 100).toFixed(0)}%` : "—",
           Outcome: d.outcome || d.status || "—",
           Timestamp: d.timestamp || d.created_at || "—",
         }));
       }
-      const cycles = (data.cycles as any[]) || (data.brain_cycles as any[]) || [];
+      const cycles = asRowArray(data.cycles).length > 0 ? asRowArray(data.cycles) : asRowArray(data.brain_cycles);
       return cycles.map((c) => ({
         "Cycle ID": c.id || c.cycle_id || "—",
         Timestamp: c.timestamp || c.created_at || "—",

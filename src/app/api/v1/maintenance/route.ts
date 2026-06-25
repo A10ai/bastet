@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent } from "@/lib/event-bus";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createMaintenanceRequestSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createMaintenanceRequestSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       apartment_id,
       category,
@@ -59,14 +66,7 @@ export async function POST(request: NextRequest) {
       reported_by_staff,
       reported_by_guest,
       estimated_cost_gbp,
-    } = body;
-
-    if (!title || !description || !category) {
-      return NextResponse.json(
-        { error: "Missing required fields: title, description, category" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Get property_id
     let propertyId: string | null = null;

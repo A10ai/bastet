@@ -1,5 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Centralized API error handler.
@@ -40,9 +41,9 @@ export function handleDbError(error: unknown, context?: string): NextResponse {
 
   // Log full error server-side (never to client)
   if (context) {
-    console.error(`[DB Error: ${context}]`, error);
+    logger.error({ context, err: error }, "[DB Error]");
   } else {
-    console.error("[DB Error]", error);
+    logger.error({ err: error }, "[DB Error]");
   }
 
   if (mapped) {
@@ -87,7 +88,7 @@ export function withErrorHandler<T extends unknown[]>(
     try {
       return await handler(...args);
     } catch (error) {
-      console.error("[Unhandled API Error]", error);
+      logger.error({ err: error }, "[Unhandled API Error]");
       return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
     }
   };

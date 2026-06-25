@@ -7,6 +7,7 @@ import "server-only";
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 import { format, addDays, subDays } from "date-fns";
 
 export interface ChatMessage {
@@ -197,7 +198,8 @@ Rules:
     });
 
     if (!res.ok) {
-      console.error("[AI Chat] Claude API error:", res.status, await res.text());
+      const errBody = await res.text();
+      logger.error({ status: res.status, body: errBody }, "[AI Chat] Claude API error");
       return null;
     }
 
@@ -205,7 +207,7 @@ Rules:
     const textBlock = data.content?.find((c: { type: string }) => c.type === "text");
     return textBlock?.text || null;
   } catch (err) {
-    console.error("[AI Chat] Claude API call failed:", err);
+    logger.error({ err }, "[AI Chat] Claude API call failed");
     return null;
   }
 }
@@ -227,7 +229,7 @@ export async function processChat(
         return reply(claudeResponse);
       }
     } catch (err) {
-      console.error("[AI Chat] Claude chat failed, falling back to rule-based:", err);
+      logger.error({ err }, "[AI Chat] Claude chat failed, falling back to rule-based");
     }
   }
 

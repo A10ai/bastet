@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createStaffSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +46,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createStaffSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       property_id,
       first_name,
@@ -55,17 +62,10 @@ export async function POST(request: NextRequest) {
       department,
       language = "en",
       hire_date,
-    } = body;
-
-    if (!first_name || !last_name || !email || !role) {
-      return NextResponse.json(
-        { error: "Missing required fields: first_name, last_name, email, role" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Get default property if not provided
-    let resolvedPropertyId = property_id;
+    let resolvedPropertyId = property_id || undefined;
     if (!resolvedPropertyId) {
       const { data: prop } = await supabase
         .from("properties")

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,6 +47,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createGuestSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       first_name,
       last_name,
@@ -64,14 +71,7 @@ export async function POST(request: NextRequest) {
       vip_status = false,
       notes,
       marketing_consent = false,
-    } = body;
-
-    if (!first_name || !last_name) {
-      return NextResponse.json(
-        { error: "first_name and last_name are required" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Create guest
     const { data: guest, error } = await supabase

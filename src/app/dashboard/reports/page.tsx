@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toCSV, formatReportData } from "@/lib/export-utils";
+import type {
+  OccupancyReport,
+  RevenueReport,
+  GuestReport,
+  OperationsReport,
+  FinancialReport,
+  ExecutiveSummary,
+} from "@/lib/reports-engine";
+import type { RechartsValue, RechartsName } from "@/types/recharts";
 import {
   FileBarChart,
   Download,
@@ -29,6 +38,109 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, AreaChart, Area, CartesianGrid,
 } from "recharts";
+
+// Energy and AI-decisions report shapes are dynamic (optional fields),
+// so use interfaces with optional/indexed fields to allow flexible access.
+interface EnergyReportData {
+  by_floor?: EnergyFloorRow[];
+  floors?: EnergyFloorRow[];
+  overview?: EnergyOverview;
+  recommendations?: EnergyRecommendationRow[];
+  consumption_kwh?: number;
+  waste_kwh?: number;
+  savings_potential_gbp?: number;
+  daily_savings_potential_gbp?: number;
+  co2_saved_kg?: number;
+  [key: string]: unknown;
+}
+
+interface EnergyFloorRow {
+  floor_label?: string;
+  building_name?: string;
+  floor?: number;
+  consumption_kwh?: number;
+  waste_kwh?: number;
+  savings_potential_gbp?: number;
+  occupied_units?: number;
+  total_units?: number;
+  [key: string]: unknown;
+}
+
+interface EnergyOverview {
+  consumption_kwh?: number;
+  waste_kwh?: number;
+  savings_potential_gbp?: number;
+  daily_savings_potential_gbp?: number;
+  co2_saved_kg?: number;
+  [key: string]: unknown;
+}
+
+interface EnergyRecommendationRow {
+  title?: string;
+  priority?: string;
+  affected_units?: number;
+  estimated_savings_gbp?: number;
+  [key: string]: unknown;
+}
+
+interface AIDecisionsReportData {
+  cycles?: AICycleRow[];
+  brain_cycles?: AICycleRow[];
+  decisions?: AIDecisionRow[];
+  recent_decisions?: AIDecisionRow[];
+  summary?: AISummary;
+  total_cycles?: number;
+  total_decisions?: number;
+  mode?: string;
+  avg_cycle_ms?: number;
+  [key: string]: unknown;
+}
+
+interface AICycleRow {
+  id?: string;
+  cycle_id?: string;
+  timestamp?: string;
+  created_at?: string;
+  duration_ms?: number;
+  decisions_count?: number;
+  decisions?: number;
+  status?: string;
+  outcome?: string;
+  [key: string]: unknown;
+}
+
+interface AIDecisionRow {
+  title?: string;
+  description?: string;
+  type?: string;
+  category?: string;
+  confidence?: number;
+  outcome?: string;
+  status?: string;
+  timestamp?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+interface AISummary {
+  total_cycles?: number;
+  total_decisions?: number;
+  mode?: string;
+  avg_cycle_ms?: number;
+  [key: string]: unknown;
+}
+
+// The API returns one of several report shapes depending on the selected type.
+// The client treats `data` as a discriminated union; we narrow by component.
+type ReportData =
+  | ExecutiveSummary
+  | OccupancyReport
+  | RevenueReport
+  | GuestReport
+  | OperationsReport
+  | FinancialReport
+  | EnergyReportData
+  | AIDecisionsReportData;
 
 const RECHARTS_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
@@ -62,7 +174,7 @@ export default function ReportsPage() {
     return d.toISOString().split("T")[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,9 +190,9 @@ export default function ReportsPage() {
         throw new Error(err.error || "Failed to fetch report");
       }
       const json = await res.json();
-      setData(json.data);
-    } catch (e: any) {
-      setError(e.message);
+      setData(json.data as ReportData);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to fetch report");
       setData(null);
     } finally {
       setLoading(false);
@@ -93,7 +205,7 @@ export default function ReportsPage() {
 
   const handleExportCSV = () => {
     if (!data) return;
-    const rows = formatReportData(reportType, data);
+    const rows = formatReportData(reportType, data as unknown as Record<string, unknown>);
     if (rows.length === 0) return;
     toCSV(rows, `${reportType}-report-${dateFrom}-to-${dateTo}`);
   };
@@ -220,14 +332,14 @@ export default function ReportsPage() {
         {/* Report content */}
         {!loading && !error && data && (
           <>
-            {reportType === "executive" && <ExecutiveView data={data} />}
-            {reportType === "occupancy" && <OccupancyView data={data} />}
-            {reportType === "revenue" && <RevenueView data={data} />}
-            {reportType === "guests" && <GuestView data={data} />}
-            {reportType === "operations" && <OperationsView data={data} />}
-            {reportType === "financial" && <FinancialView data={data} />}
-            {reportType === "energy" && <EnergyReportView data={data} />}
-            {reportType === "ai_decisions" && <AIDecisionsView data={data} />}
+            {reportType === "executive" && <ExecutiveView data={data as ExecutiveSummary} />}
+            {reportType === "occupancy" && <OccupancyView data={data as OccupancyReport} />}
+            {reportType === "revenue" && <RevenueView data={data as RevenueReport} />}
+            {reportType === "guests" && <GuestView data={data as GuestReport} />}
+            {reportType === "operations" && <OperationsView data={data as OperationsReport} />}
+            {reportType === "financial" && <FinancialView data={data as FinancialReport} />}
+            {reportType === "energy" && <EnergyReportView data={data as EnergyReportData} />}
+            {reportType === "ai_decisions" && <AIDecisionsView data={data as AIDecisionsReportData} />}
           </>
         )}
       </div>
@@ -237,7 +349,7 @@ export default function ReportsPage() {
 
 // ─── Executive Summary View ──────────────────────────────────────────
 
-function ExecutiveView({ data }: { data: any }) {
+function ExecutiveView({ data }: { data: ExecutiveSummary }) {
   const metrics = [
     { label: "Occupancy", value: `${data.occupancy_pct}%`, icon: Building2, color: "text-cyan-400" },
     { label: "Revenue", value: formatCurrency(data.revenue), icon: DollarSign, color: "text-emerald-400" },
@@ -320,7 +432,7 @@ function ExecutiveView({ data }: { data: any }) {
 
 // ─── Occupancy View ──────────────────────────────────────────────────
 
-function OccupancyView({ data }: { data: any }) {
+function OccupancyView({ data }: { data: OccupancyReport }) {
   return (
     <div className="space-y-6">
       {/* Summary cards */}
@@ -343,7 +455,7 @@ function OccupancyView({ data }: { data: any }) {
         <CardContent>
           {(data.daily || []).length > 0 && (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={(data.daily || []).map((d: any) => ({ date: (d.date || "").slice(5), occupancy: d.occupancy }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+              <AreaChart data={(data.daily || []).map((d) => ({ date: (d.date || "").slice(5), occupancy: d.occupancy }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                 <defs>
                   <linearGradient id="occGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.3} />
@@ -353,7 +465,7 @@ function OccupancyView({ data }: { data: any }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                 <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-                <Tooltip {...darkTooltipStyle} formatter={(value: any) => [`${value}%`, "Occupancy"]} />
+                <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [`${value}%`, "Occupancy"]} />
                 <Area type="monotone" dataKey="occupancy" stroke="#22D3EE" strokeWidth={2} fill="url(#occGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -370,12 +482,12 @@ function OccupancyView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Floor", "Occupancy", "Occupied Days", "Total Days"]}
-              rows={(data.by_floor || data.by_building || []).map((b: any) => [
-                b.floor_label || b.building_name,
+              rows={(data.by_floor.length > 0 ? data.by_floor : data.by_building).map((b) => [
+                "floor_label" in b ? b.floor_label : b.building_name,
                 `${b.occupancy}%`,
                 String(b.occupied),
                 String(b.total),
-              ])}
+              ]) as string[][]}
             />
           </CardContent>
         </Card>
@@ -387,7 +499,7 @@ function OccupancyView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Type", "Occupancy", "Occupied Days", "Total Days"]}
-              rows={(data.by_apartment_type || []).map((t: any) => [
+              rows={(data.by_apartment_type || []).map((t) => [
                 t.type_name,
                 `${t.occupancy}%`,
                 String(t.occupied),
@@ -403,7 +515,7 @@ function OccupancyView({ data }: { data: any }) {
 
 // ─── Revenue View ────────────────────────────────────────────────────
 
-function RevenueView({ data }: { data: any }) {
+function RevenueView({ data }: { data: RevenueReport }) {
   return (
     <div className="space-y-6">
       {/* Summary */}
@@ -426,7 +538,7 @@ function RevenueView({ data }: { data: any }) {
         <CardContent>
           <ReportTable
             headers={["Channel", "Revenue", "Commission", "Net Revenue", "Bookings"]}
-            rows={(data.by_channel || []).map((c: any) => [
+            rows={(data.by_channel || []).map((c) => [
               c.channel,
               formatCurrency(c.revenue),
               formatCurrency(c.commission),
@@ -445,7 +557,7 @@ function RevenueView({ data }: { data: any }) {
         <CardContent>
           {(data.daily || []).length > 0 && (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={(data.daily || []).map((d: any) => ({ date: (d.date || "").slice(5), revenue: d.revenue }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+              <AreaChart data={(data.daily || []).map((d) => ({ date: (d.date || "").slice(5), revenue: d.revenue }))} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#34D399" stopOpacity={0.3} />
@@ -455,7 +567,7 @@ function RevenueView({ data }: { data: any }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                 <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Revenue"]} />
+                <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} />
                 <Area type="monotone" dataKey="revenue" stroke="#34D399" strokeWidth={2} fill="url(#revGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -471,7 +583,7 @@ function RevenueView({ data }: { data: any }) {
         <CardContent>
           <ReportTable
             headers={["Ref", "Guest", "Apartment", "Nights", "Amount"]}
-            rows={(data.top_bookings || []).map((b: any) => [
+            rows={(data.top_bookings || []).map((b) => [
               b.ref,
               b.guest_name,
               b.apartment,
@@ -490,7 +602,7 @@ function RevenueView({ data }: { data: any }) {
         <CardContent>
           <ReportTable
             headers={["Type", "Revenue", "Bookings"]}
-            rows={(data.by_apartment_type || []).map((t: any) => [
+            rows={(data.by_apartment_type || []).map((t) => [
               t.type_name,
               formatCurrency(t.revenue),
               String(t.bookings),
@@ -504,7 +616,7 @@ function RevenueView({ data }: { data: any }) {
 
 // ─── Guest View ──────────────────────────────────────────────────────
 
-function GuestView({ data }: { data: any }) {
+function GuestView({ data }: { data: GuestReport }) {
   const total = data.total_guests || 1;
   const newPct = Math.round(((data.new_guests || 0) / total) * 100);
   const retPct = 100 - newPct;
@@ -540,7 +652,7 @@ function GuestView({ data }: { data: any }) {
                     <Cell fill="#22D3EE" />
                     <Cell fill="#34D399" />
                   </Pie>
-                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Guests"]} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Guests"]} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-3">
@@ -565,12 +677,12 @@ function GuestView({ data }: { data: any }) {
           <CardContent>
             {(data.by_nationality || []).length > 0 && (
               <ResponsiveContainer width="100%" height={Math.max((data.by_nationality || []).length * 28, 120)}>
-                <BarChart data={(data.by_nationality || []).map((n: any) => ({ name: n.nationality, count: n.count }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <BarChart data={(data.by_nationality || []).map((n) => ({ name: n.nationality, count: n.count }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Guests"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Guests"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
-                    {(data.by_nationality || []).map((_: any, i: number) => (
+                    {(data.by_nationality || []).map((_, i: number) => (
                       <Cell key={i} fill={RECHARTS_COLORS[i % RECHARTS_COLORS.length]} />
                     ))}
                   </Bar>
@@ -588,7 +700,7 @@ function GuestView({ data }: { data: any }) {
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 flex-wrap">
-            {(data.by_loyalty_tier || []).map((t: any) => {
+            {(data.by_loyalty_tier || []).map((t) => {
               const tierColors: Record<string, string> = {
                 bronze: "bg-amber-700/20 text-amber-500 border-amber-700/30",
                 silver: "bg-gray-400/20 text-gray-300 border-gray-400/30",
@@ -618,7 +730,7 @@ function GuestView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Name", "Email", "Tier", "Total Spend", "Stays"]}
-              rows={(data.vip_guests || []).map((g: any) => [
+              rows={(data.vip_guests || []).map((g) => [
                 g.name,
                 g.email,
                 g.tier,
@@ -635,7 +747,7 @@ function GuestView({ data }: { data: any }) {
 
 // ─── Operations View ─────────────────────────────────────────────────
 
-function OperationsView({ data }: { data: any }) {
+function OperationsView({ data }: { data: OperationsReport }) {
   const hk = data.housekeeping || {};
   const mx = data.maintenance || {};
 
@@ -671,7 +783,7 @@ function OperationsView({ data }: { data: any }) {
             <div>
               <p className="text-sm font-medium text-text-secondary mb-2">By Status</p>
               <div className="space-y-1.5">
-                {(hk.by_status || []).map((s: any) => (
+                {(hk.by_status || []).map((s) => (
                   <div key={s.status} className="flex items-center justify-between text-xs">
                     <Badge status={s.status} variant="status">{s.status}</Badge>
                     <span className="font-mono text-text-secondary">{s.count}</span>
@@ -684,10 +796,10 @@ function OperationsView({ data }: { data: any }) {
               <p className="text-sm font-medium text-text-secondary mb-2">By Type</p>
               {(hk.by_type || []).length > 0 && (
                 <ResponsiveContainer width="100%" height={Math.max((hk.by_type || []).length * 28, 100)}>
-                  <BarChart data={(hk.by_type || []).map((t: any) => ({ name: t.type.replace(/_/g, " "), count: t.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <BarChart data={(hk.by_type || []).map((t) => ({ name: t.type.replace(/_/g, " "), count: t.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                     <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#22D3EE" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -731,10 +843,10 @@ function OperationsView({ data }: { data: any }) {
               <p className="text-sm font-medium text-text-secondary mb-2">By Category</p>
               {(mx.by_category || []).length > 0 && (
                 <ResponsiveContainer width="100%" height={Math.max((mx.by_category || []).length * 28, 100)}>
-                  <BarChart data={(mx.by_category || []).map((c: any) => ({ name: c.category.replace(/_/g, " "), count: c.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <BarChart data={(mx.by_category || []).map((c) => ({ name: c.category.replace(/_/g, " "), count: c.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                     <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(value: any) => [value, "Tickets"]} cursor={{ fill: "rgba(251,191,36,0.08)" }} />
+                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(251,191,36,0.08)" }} />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#FBBF24" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -744,7 +856,7 @@ function OperationsView({ data }: { data: any }) {
             <div>
               <p className="text-sm font-medium text-text-secondary mb-2">By Priority</p>
               <div className="space-y-1.5">
-                {(mx.by_priority || []).map((p: any) => (
+                {(mx.by_priority || []).map((p) => (
                   <div key={p.priority} className="flex items-center justify-between text-xs">
                     <Badge status={p.priority} variant="status">{p.priority}</Badge>
                     <span className="font-mono text-text-secondary">{p.count}</span>
@@ -765,7 +877,7 @@ function OperationsView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Staff", "Role", "Assigned", "Completed"]}
-              rows={(data.staff_workload || []).map((s: any) => [
+              rows={(data.staff_workload || []).map((s) => [
                 s.staff_name,
                 s.role,
                 String(s.tasks_assigned),
@@ -781,7 +893,7 @@ function OperationsView({ data }: { data: any }) {
 
 // ─── Financial View ──────────────────────────────────────────────────
 
-function FinancialView({ data }: { data: any }) {
+function FinancialView({ data }: { data: FinancialReport }) {
   return (
     <div className="space-y-6">
       {/* P&L Style */}
@@ -828,10 +940,10 @@ function FinancialView({ data }: { data: any }) {
           <CardContent>
             {(data.revenue_breakdown || []).length > 0 && (
               <ResponsiveContainer width="100%" height={Math.max((data.revenue_breakdown || []).length * 32, 120)}>
-                <BarChart data={(data.revenue_breakdown || []).map((r: any) => ({ name: r.source, amount: r.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <BarChart data={(data.revenue_breakdown || []).map((r) => ({ name: r.source, amount: r.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Revenue"]} cursor={{ fill: "rgba(52,211,153,0.08)" }} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} cursor={{ fill: "rgba(52,211,153,0.08)" }} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#34D399" />
                 </BarChart>
               </ResponsiveContainer>
@@ -847,10 +959,10 @@ function FinancialView({ data }: { data: any }) {
           <CardContent>
             {(data.expense_breakdown || []).length > 0 && (
               <ResponsiveContainer width="100%" height={Math.max((data.expense_breakdown || []).length * 32, 120)}>
-                <BarChart data={(data.expense_breakdown || []).map((e: any) => ({ name: e.category.replace(/_/g, " "), amount: e.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <BarChart data={(data.expense_breakdown || []).map((e) => ({ name: e.category.replace(/_/g, " "), amount: e.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: any) => [formatCurrency(value), "Expense"]} cursor={{ fill: "rgba(239,68,68,0.08)" }} />
+                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Expense"]} cursor={{ fill: "rgba(239,68,68,0.08)" }} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#EF4444" />
                 </BarChart>
               </ResponsiveContainer>
@@ -917,9 +1029,9 @@ function FinancialView({ data }: { data: any }) {
 
 // ─── Energy Report View ──────────────────────────────────────────────
 
-function EnergyReportView({ data }: { data: any }) {
-  const floors = data.by_floor || data.floors || [];
-  const overview = data.overview || data;
+function EnergyReportView({ data }: { data: EnergyReportData }) {
+  const floors = (data.by_floor || data.floors || []) as Record<string, unknown>[];
+  const overview = (data.overview || data) as Record<string, unknown>;
 
   return (
     <div className="space-y-6">
@@ -927,7 +1039,7 @@ function EnergyReportView({ data }: { data: any }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Daily Consumption" value={`${overview.consumption_kwh || 0} kWh`} />
         <MetricCard label="Daily Waste" value={`${overview.waste_kwh || 0} kWh`} />
-        <MetricCard label="Daily Savings" value={formatCurrency(overview.savings_potential_gbp || overview.daily_savings_potential_gbp || 0)} />
+        <MetricCard label="Daily Savings" value={formatCurrency(Number(overview.savings_potential_gbp ?? overview.daily_savings_potential_gbp ?? 0))} />
         <MetricCard label="CO2 Reduction" value={`${overview.co2_saved_kg || 0} kg`} />
       </div>
 
@@ -942,11 +1054,11 @@ function EnergyReportView({ data }: { data: any }) {
         <CardContent>
           <ReportTable
             headers={["Floor", "Consumption (kWh)", "Waste (kWh)", "Savings Potential", "Occupied Units", "Total Units"]}
-            rows={floors.length > 0 ? floors.map((f: any) => [
-              f.floor_label || f.building_name || `Floor ${f.floor}`,
+            rows={floors.length > 0 ? floors.map((f) => [
+              String(f.floor_label || f.building_name || `Floor ${f.floor}`),
               String(f.consumption_kwh || 0),
               String(f.waste_kwh || 0),
-              formatCurrency(f.savings_potential_gbp || 0),
+              formatCurrency(Number(f.savings_potential_gbp ?? 0)),
               String(f.occupied_units || 0),
               String(f.total_units || 0),
             ]) : []}
@@ -955,7 +1067,10 @@ function EnergyReportView({ data }: { data: any }) {
       </Card>
 
       {/* Recommendations */}
-      {(data.recommendations || []).length > 0 && (
+      {(() => {
+        const recs = (data.recommendations || []) as Record<string, unknown>[];
+        if (recs.length === 0) return null;
+        return (
         <Card className="report-card report-section">
           <CardHeader>
             <h3 className="text-lg font-semibold text-text-primary">AI Recommendations</h3>
@@ -963,26 +1078,27 @@ function EnergyReportView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Title", "Priority", "Affected Units", "Estimated Savings/day"]}
-              rows={(data.recommendations || []).map((r: any) => [
-                r.title,
-                r.priority,
+              rows={recs.map((r) => [
+                String(r.title),
+                String(r.priority),
                 String(r.affected_units || 0),
-                formatCurrency(r.estimated_savings_gbp || 0),
+                formatCurrency(Number(r.estimated_savings_gbp ?? 0)),
               ])}
             />
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
     </div>
   );
 }
 
 // ─── AI Decisions Report View ───────────────────────────────────────
 
-function AIDecisionsView({ data }: { data: any }) {
-  const cycles = data.cycles || data.brain_cycles || [];
-  const decisions = data.decisions || data.recent_decisions || [];
-  const summary = data.summary || data;
+function AIDecisionsView({ data }: { data: AIDecisionsReportData }) {
+  const cycles = (data.cycles || data.brain_cycles || []) as Record<string, unknown>[];
+  const decisions = (data.decisions || data.recent_decisions || []) as Record<string, unknown>[];
+  const summary = (data.summary || data) as Record<string, unknown>;
 
   return (
     <div className="space-y-6">
@@ -990,7 +1106,7 @@ function AIDecisionsView({ data }: { data: any }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Total Cycles" value={String(summary.total_cycles || cycles.length || 0)} />
         <MetricCard label="Decisions Made" value={String(summary.total_decisions || decisions.length || 0)} />
-        <MetricCard label="Mode" value={summary.mode || "supervised"} />
+        <MetricCard label="Mode" value={String(summary.mode || "supervised")} />
         <MetricCard label="Avg Cycle Time" value={summary.avg_cycle_ms ? `${summary.avg_cycle_ms}ms` : "—"} />
       </div>
 
@@ -1006,12 +1122,12 @@ function AIDecisionsView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Cycle ID", "Timestamp", "Duration", "Decisions", "Status"]}
-              rows={cycles.slice(0, 50).map((c: any) => [
-                c.id || c.cycle_id || "—",
-                c.timestamp || c.created_at || "—",
+              rows={cycles.slice(0, 50).map((c) => [
+                String(c.id || c.cycle_id || "—"),
+                String(c.timestamp || c.created_at || "—"),
                 c.duration_ms ? `${c.duration_ms}ms` : "—",
                 String(c.decisions_count || c.decisions || 0),
-                c.status || c.outcome || "completed",
+                String(c.status || c.outcome || "completed"),
               ])}
             />
           </CardContent>
@@ -1027,12 +1143,12 @@ function AIDecisionsView({ data }: { data: any }) {
           <CardContent>
             <ReportTable
               headers={["Decision", "Type", "Confidence", "Outcome", "Timestamp"]}
-              rows={decisions.slice(0, 50).map((d: any) => [
-                d.title || d.description || "—",
-                d.type || d.category || "—",
-                d.confidence ? `${(d.confidence * 100).toFixed(0)}%` : "—",
-                d.outcome || d.status || "—",
-                d.timestamp || d.created_at || "—",
+              rows={decisions.slice(0, 50).map((d) => [
+                String(d.title || d.description || "—"),
+                String(d.type || d.category || "—"),
+                d.confidence ? `${(Number(d.confidence) * 100).toFixed(0)}%` : "—",
+                String(d.outcome || d.status || "—"),
+                String(d.timestamp || d.created_at || "—"),
               ])}
             />
           </CardContent>

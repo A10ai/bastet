@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, updateInvoiceSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -41,6 +42,12 @@ export async function PATCH(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(updateInvoiceSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     // Only allow editing draft invoices
     const { data: current } = await supabase
       .from("invoices")
@@ -71,7 +78,7 @@ export async function PATCH(
     ];
     const updates: Record<string, unknown> = {};
     for (const key of allowedFields) {
-      if (key in body) updates[key] = body[key];
+      if (key in validated) updates[key] = (validated as Record<string, unknown>)[key];
     }
 
     // Allow cancellation from draft

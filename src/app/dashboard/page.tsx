@@ -47,6 +47,7 @@ import {
   useAIInsights,
   useAIGuests,
 } from "@/hooks/use-api";
+import type { RechartsValue } from "@/types/recharts";
 
 interface DashboardStats {
   occupancy_percentage: number;
@@ -99,6 +100,37 @@ interface GuestAlerts {
   at_risk_guests?: number;
 }
 
+// Raw API response shapes (before normalization)
+interface EnergyRawResponse {
+  overview?: {
+    daily_savings_potential_gbp?: number;
+    waste_kwh?: number;
+  };
+  daily_savings_potential_gbp?: number;
+  waste_kwh?: number;
+}
+
+interface RevenueRawResponse {
+  adr_gbp?: number;
+  adr?: number;
+  revpar_gbp?: number;
+  revpar?: number;
+  channel_optimization_savings_gbp?: number;
+  channel_savings?: number;
+}
+
+interface InsightsRawResponse {
+  insights?: AIInsight[];
+  [key: string]: unknown;
+}
+
+interface GuestsRawResponse {
+  vip_arrivals_today?: number;
+  vip_arrivals?: number;
+  at_risk_guests?: number;
+  at_risk?: number;
+}
+
 export default function DashboardPage() {
   const { activeProperty } = useProperty();
 
@@ -125,25 +157,26 @@ export default function DashboardPage() {
   const brainStatus: AIBrainStatus | null = brainStatusRaw as AIBrainStatus | null;
   const energySavings: EnergySavings | null = energyRaw
     ? {
-        daily_savings_potential_gbp: (energyRaw as any).overview?.daily_savings_potential_gbp ?? (energyRaw as any).daily_savings_potential_gbp,
-        waste_kwh: (energyRaw as any).overview?.waste_kwh ?? (energyRaw as any).waste_kwh,
+        daily_savings_potential_gbp: (energyRaw as EnergyRawResponse).overview?.daily_savings_potential_gbp ?? (energyRaw as EnergyRawResponse).daily_savings_potential_gbp,
+        waste_kwh: (energyRaw as EnergyRawResponse).overview?.waste_kwh ?? (energyRaw as EnergyRawResponse).waste_kwh,
       }
     : null;
   const revenueOpp: RevenueOpportunity | null = revenueRaw
     ? {
-        adr_gbp: (revenueRaw as any).adr_gbp ?? (revenueRaw as any).adr,
-        revpar_gbp: (revenueRaw as any).revpar_gbp ?? (revenueRaw as any).revpar,
-        channel_optimization_savings_gbp: (revenueRaw as any).channel_optimization_savings_gbp ?? (revenueRaw as any).channel_savings,
+        adr_gbp: (revenueRaw as RevenueRawResponse).adr_gbp ?? (revenueRaw as RevenueRawResponse).adr,
+        revpar_gbp: (revenueRaw as RevenueRawResponse).revpar_gbp ?? (revenueRaw as RevenueRawResponse).revpar,
+        channel_optimization_savings_gbp: (revenueRaw as RevenueRawResponse).channel_optimization_savings_gbp ?? (revenueRaw as RevenueRawResponse).channel_savings,
       }
     : null;
   const insights: AIInsight[] = (() => {
-    const list = (insightsRaw as any)?.insights || (insightsRaw as any) || [];
+    const raw = insightsRaw as InsightsRawResponse | undefined;
+    const list = raw?.insights || raw || [];
     return Array.isArray(list) ? list.slice(0, 3) : [];
   })();
   const guestAlerts: GuestAlerts | null = guestsRaw
     ? {
-        vip_arrivals_today: (guestsRaw as any).vip_arrivals_today ?? (guestsRaw as any).vip_arrivals ?? 0,
-        at_risk_guests: (guestsRaw as any).at_risk_guests ?? (guestsRaw as any).at_risk ?? 0,
+        vip_arrivals_today: (guestsRaw as GuestsRawResponse).vip_arrivals_today ?? (guestsRaw as GuestsRawResponse).vip_arrivals ?? 0,
+        at_risk_guests: (guestsRaw as GuestsRawResponse).at_risk_guests ?? (guestsRaw as GuestsRawResponse).at_risk ?? 0,
       }
     : null;
 
@@ -406,12 +439,12 @@ export default function DashboardPage() {
                 </Pie>
                 <Tooltip
                   {...tooltipStyle}
-                  formatter={(value: any) => [`${value} rooms`, ""]}
+                  formatter={(value: RechartsValue) => [`${value} rooms`, ""]}
                 />
                 <Legend
                   verticalAlign="bottom"
                   height={36}
-                  formatter={(value: any) => (
+                  formatter={(value: RechartsValue) => (
                     <span style={{ color: "#9CA3AF", fontSize: 11 }}>{value}</span>
                   )}
                 />
@@ -451,11 +484,11 @@ export default function DashboardPage() {
                   tick={{ fill: "#6B7280", fontSize: 10 }}
                   axisLine={{ stroke: "#1F2937" }}
                   tickLine={false}
-                  tickFormatter={(value: any) => `£${value}`}
+                  tickFormatter={(value: RechartsValue) => `£${value}`}
                 />
                 <Tooltip
                   {...tooltipStyle}
-                  formatter={(value: any) => [formatCurrency(value), "Revenue"]}
+                  formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]}
                 />
                 <Area
                   type="monotone"
@@ -494,7 +527,7 @@ export default function DashboardPage() {
                 />
                 <Tooltip
                   {...tooltipStyle}
-                  formatter={(value: any) => [`${value} rooms`, ""]}
+                  formatter={(value: RechartsValue) => [`${value} rooms`, ""]}
                 />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
                   {housekeepingData.map((entry, index) => (
@@ -613,7 +646,7 @@ export default function DashboardPage() {
                   />
                   <Tooltip
                     {...tooltipStyle}
-                    formatter={(value: any) => [`${value} bookings`, ""]}
+                    formatter={(value: RechartsValue) => [`${value} bookings`, ""]}
                   />
                   <Bar
                     dataKey="count"

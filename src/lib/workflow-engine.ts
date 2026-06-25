@@ -11,6 +11,7 @@ import { emitEvent, type EventType } from "@/lib/event-bus";
 import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import type { BrainDecision } from "@/lib/ai-brain";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -123,7 +124,7 @@ export async function createWorkflow(
     .single();
 
   if (error || !data) {
-    console.error("[Workflow] Failed to create workflow:", error?.message);
+    logger.error({ err: error?.message }, "[Workflow] Failed to create workflow");
     return null;
   }
 
@@ -180,7 +181,7 @@ export async function getWorkflows(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[Workflow] Failed to fetch workflows:", error.message);
+    logger.error({ err: error.message }, "[Workflow] Failed to fetch workflows");
     return [];
   }
 
@@ -218,7 +219,7 @@ export async function approveWorkflow(
   if (!workflow) return null;
 
   if (workflow.status !== "awaiting_approval" && workflow.status !== "pending") {
-    console.error("[Workflow] Cannot approve workflow in status:", workflow.status);
+    logger.error({ status: workflow.status }, "[Workflow] Cannot approve workflow in status");
     return null;
   }
 
@@ -237,7 +238,7 @@ export async function approveWorkflow(
     .single();
 
   if (error || !data) {
-    console.error("[Workflow] Failed to approve workflow:", error?.message);
+    logger.error({ err: error?.message }, "[Workflow] Failed to approve workflow");
     return null;
   }
 
@@ -277,13 +278,13 @@ export async function executeNextStep(
     workflow.status !== "in_progress" &&
     workflow.status !== "pending"
   ) {
-    console.error("[Workflow] Cannot execute step in status:", workflow.status);
+    logger.error({ status: workflow.status }, "[Workflow] Cannot execute step in status");
     return null;
   }
 
   const stepIndex = workflow.current_step;
   if (stepIndex >= workflow.total_steps) {
-    console.error("[Workflow] All steps already executed");
+    logger.error("[Workflow] All steps already executed");
     return null;
   }
 
@@ -372,7 +373,7 @@ export async function executeNextStep(
     .single();
 
   if (updateErr) {
-    console.error("[Workflow] Failed to update workflow after step execution:", updateErr.message);
+    logger.error({ err: updateErr.message }, "[Workflow] Failed to update workflow after step execution");
     return null;
   }
 
@@ -675,7 +676,7 @@ export async function cancelWorkflow(
   if (!workflow) return null;
 
   if (workflow.status === "completed" || workflow.status === "cancelled") {
-    console.error("[Workflow] Cannot cancel workflow in status:", workflow.status);
+    logger.error({ status: workflow.status }, "[Workflow] Cannot cancel workflow in status");
     return null;
   }
 
@@ -699,7 +700,7 @@ export async function cancelWorkflow(
     .single();
 
   if (error) {
-    console.error("[Workflow] Failed to cancel workflow:", error.message);
+    logger.error({ err: error.message }, "[Workflow] Failed to cancel workflow");
     return null;
   }
 
@@ -740,7 +741,7 @@ export async function recordOutcome(
     .single();
 
   if (error) {
-    console.error("[Workflow] Failed to record outcome:", error.message);
+    logger.error({ err: error.message }, "[Workflow] Failed to record outcome");
     return null;
   }
 

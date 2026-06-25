@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, verifySchema } from "@/lib/validation";
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +13,12 @@ export async function POST(
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
-    const { passed, verified_by, notes } = body;
+
+    const validation = validateBody(verifySchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const { passed, verified_by, notes } = validation.data;
 
     const { data: task } = await supabase
       .from("housekeeping_tasks")

@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { convertExpenseToGbp } from "@/lib/finance-engine";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createExpenseSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +49,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createExpenseSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       category,
       description,
@@ -58,19 +65,12 @@ export async function POST(request: NextRequest) {
       recurring_frequency,
       is_r_and_d = false,
       expense_date,
-    } = body;
-
-    if (!category || !description || !amount_egp || !expense_date) {
-      return NextResponse.json(
-        { error: "Missing required fields: category, description, amount_egp, expense_date" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Convert EGP to GBP
     let amountGbp: number | null = null;
     let fxRate: number | null = null;
-    const converted = await convertExpenseToGbp(amount_egp, supabase);
+    const converted = await convertExpenseToGbp(amount_egp ?? 0, supabase);
     if (converted) {
       amountGbp = converted.amount_gbp;
       fxRate = converted.fx_rate;

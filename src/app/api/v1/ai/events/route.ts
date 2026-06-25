@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { emitEvent, getRegisteredEventTypes, type EventType } from "@/lib/event-bus";
+import { validateBody, formatZodErrors, eventSchema } from "@/lib/validation";
 
 /**
  * GET /api/v1/ai/events
@@ -84,11 +85,17 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(eventSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       type,
       source_system = "manual",
       payload = {},
-    } = body as {
+    } = validated as {
       type: EventType;
       source_system?: string;
       payload?: Record<string, unknown>;

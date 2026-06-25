@@ -7,6 +7,7 @@ import {
 } from "@/lib/finance-engine";
 import { convertCurrency } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, createInvoiceSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +49,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
+    const validation = validateBody(createInvoiceSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
     const {
       booking_id,
       guest_id,
@@ -56,25 +63,11 @@ export async function POST(request: NextRequest) {
       due_date,
       notes,
       tax_rate = 0,
-    } = body;
-
-    if (!line_items.length) {
-      return NextResponse.json(
-        { error: "At least one line item is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!due_date) {
-      return NextResponse.json(
-        { error: "Missing required field: due_date" },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Calculate line item totals
     const processedItems = line_items.map(
-      (item: { description: string; quantity: number; unit_price_gbp: number }) => ({
+      (item) => ({
         description: item.description,
         quantity: item.quantity,
         unit_price_gbp: item.unit_price_gbp,

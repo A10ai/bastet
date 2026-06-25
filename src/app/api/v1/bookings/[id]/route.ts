@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, updateBookingSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -42,7 +43,13 @@ export async function PATCH(
     const supabase = createServerSupabaseClient();
     const body = await request.json();
 
-    // Only allow updating specific fields
+    const validation = validateBody(updateBookingSchema, body);
+    if (!validation.success) {
+      return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
+    }
+    const validated = validation.data;
+
+    // Only allow updating specific fields (validated already filtered unknowns)
     const allowedFields = [
       "status",
       "adults",
@@ -55,8 +62,8 @@ export async function PATCH(
     ];
     const updates: Record<string, unknown> = {};
     for (const key of allowedFields) {
-      if (key in body) {
-        updates[key] = body[key];
+      if (key in validated) {
+        updates[key] = (validated as Record<string, unknown>)[key];
       }
     }
 
