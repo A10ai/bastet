@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { convertExpenseToGbp } from "@/lib/finance-engine";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createExpenseSchema } from "@/lib/validation";
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("expenses")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("expense_date", { ascending: false });
 
     if (category) query = query.eq("category", category);
@@ -33,11 +34,13 @@ export async function GET(request: NextRequest) {
     if (dateFrom) query = query.gte("expense_date", dateFrom);
     if (dateTo) query = query.lte("expense_date", dateTo);
 
-    const { data, error } = await query;
+    const pagination = parsePagination(searchParams);
+    query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
+    const { data, error, count } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

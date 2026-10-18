@@ -754,13 +754,29 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
 // Core: emitEvent — stores event and processes handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * Idempotency key: the same business fact (this booking checked in, this
+ * task completed) must run its side effects once, even if the caller
+ * retries or a workflow re-emits it. Callers may pass their own key; by
+ * default it is derived from the event type and the entity id in the payload.
+ */
+function defaultIdempotencyKey(type: EventType, payload: Record<string, unknown>): string | null {
+  const id = payload.booking_id ?? payload.task_id ?? payload.request_id ?? payload.guest_id ?? payload.apartment_id;
+  if (!id) return null;
+  const qualifier = payload.idempotency_qualifier ? `:${String(payload.idempotency_qualifier)}` : "";
+  return `${type}:${String(id)}${qualifier}`;
+}
+
 export async function emitEvent(
   type: EventType,
   sourceSystem: string,
   payload: Record<string, unknown>,
-  supabase: SupabaseClient
-): Promise<{ event_id: string; results: HandlerResult[] }> {
-  // 1. Store event in database
+  supabase: SupabaseClient,
+  options: { idempotencyKey?: string | null } = {}
+): Promise<{ event_id: string; results: HandlerResult[]; duplicate?: boolean }> {
+  const idempotencyKey = options.idempotencyKey === undefined ? defaultIdempotencyKey(type, payload) : options.idempotencyKey;
+
+  // 1. Store event in database (unique index on idempotency_key, migration 00025)
   const { data: inserted, error: insertError } = await supabase
     .from("system_events")
     .insert({
@@ -769,9 +785,20 @@ export async function emitEvent(
       payload,
       processed: false,
       results: [],
+      idempotency_key: idempotencyKey,
     })
     .select("id")
     .single();
+
+  if (insertError?.code === "23505" && idempotencyKey) {
+    const { data: existing } = await supabase
+      .from("system_events")
+      .select("id, results")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    logger.info({ type, idempotencyKey }, "[EventBus] Duplicate event ignored");
+    return { event_id: (existing?.id as string) || "", results: (existing?.results as HandlerResult[]) || [], duplicate: true };
+  }
 
   if (insertError || !inserted) {
     logger.error({ err: insertError?.message }, "[EventBus] Failed to store event");

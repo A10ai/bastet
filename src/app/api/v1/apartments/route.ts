@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createApartmentSchema } from "@/lib/validation";
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
         *,
         building:buildings(id, name, code),
         apartment_type:apartment_types(id, name, slug, bedrooms, max_occupancy, base_weekly_rate_gbp)
-      `)
+      `, { count: "exact" })
       .order("number");
 
     if (propertyId) query = query.eq("property_id", propertyId);
@@ -30,11 +31,13 @@ export async function GET(request: NextRequest) {
     if (buildingId) query = query.eq("building_id", buildingId);
     if (typeId) query = query.eq("apartment_type_id", typeId);
 
-    const { data, error } = await query;
+    const pagination = parsePagination(searchParams);
+    query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
+    const { data, error, count } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

@@ -112,6 +112,17 @@ export async function checkAvailability(
   supabase: SupabaseClient,
   excludeBookingId?: string
 ): Promise<{ available: boolean; reason?: string }> {
+  // A room that is out of service, blocked or under maintenance is not sellable
+  const { data: apt } = await supabase
+    .from("apartments")
+    .select("status")
+    .eq("id", apartmentId)
+    .maybeSingle();
+  if (!apt) return { available: false, reason: "Apartment not found" };
+  if (["maintenance", "blocked", "out_of_service"].includes(apt.status as string)) {
+    return { available: false, reason: `Apartment is ${String(apt.status).replace("_", " ")}` };
+  }
+
   // Check availability table for blocked dates
   const { data: blockedDates } = await supabase
     .from("availability")

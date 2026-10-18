@@ -38,6 +38,8 @@ export interface WorkflowStep {
 
 export interface Workflow {
   id: string;
+  /** Bumped by a trigger on every update (migration 00025); used for optimistic locking. */
+  version: number;
   property_id: string | null;
   title: string;
   description: string | null;
@@ -304,18 +306,28 @@ export async function executeNextStep(
     return data as Workflow | null;
   }
 
-  // Mark step as in_progress
+  // Mark step as in_progress — only if nobody else has touched the workflow
+  // since we read it (optimistic lock on `version`).
   const steps = [...workflow.steps];
   steps[stepIndex] = { ...step, status: "in_progress" };
 
-  await supabase
+  const { data: claimed } = await supabase
     .from("workflows")
     .update({
       steps,
       status: "in_progress",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", workflowId);
+    .eq("id", workflowId)
+    .eq("version", workflow.version ?? 0)
+    .select("version")
+    .maybeSingle();
+
+  if (!claimed) {
+    logger.warn({ workflowId, step: stepIndex }, "[Workflow] Step already claimed by a concurrent execution");
+    return null;
+  }
+  const claimedVersion = (claimed as { version: number }).version;
 
   // Execute the step action
   let result: Record<string, any> = {};
@@ -369,11 +381,12 @@ export async function executeNextStep(
     .from("workflows")
     .update(updatePayload)
     .eq("id", workflowId)
+    .eq("version", claimedVersion)
     .select("*")
-    .single();
+    .maybeSingle();
 
-  if (updateErr) {
-    logger.error({ err: updateErr.message }, "[Workflow] Failed to update workflow after step execution");
+  if (updateErr || !updated) {
+    logger.error({ err: updateErr?.message ?? "version conflict" }, "[Workflow] Failed to update workflow after step execution");
     return null;
   }
 
@@ -533,7 +546,7 @@ async function executeStepAction(
           apartment_id,
           title: title || "Maintenance request",
           description: description || null,
-          category: category || "general",
+          category: category || "other",
           priority: priority || "normal",
           status: "open",
         })
@@ -545,7 +558,7 @@ async function executeStepAction(
       return {
         request_id: req?.id,
         apartment: apt.number,
-        category: category || "general",
+        category: category || "other",
       };
     }
 

@@ -193,7 +193,7 @@ export const updateStaffSchema = z.object({
 
 export const createHousekeepingTaskSchema = z.object({
   apartment_id: z.string().uuid("Invalid apartment ID"),
-  type: z.enum(["checkout_clean", "stay_clean", "deep_clean", "inspection", "turnover"]),
+  type: z.enum(["checkout_clean", "midstay_clean", "deep_clean", "inspection", "turndown"]),
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   assigned_to: z.string().uuid().optional().nullable(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
@@ -206,7 +206,7 @@ export const createMaintenanceRequestSchema = z.object({
   apartment_id: z.string().uuid().optional().nullable(),
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().max(5000).optional().nullable(),
-  category: z.enum(["plumbing", "electrical", "hvac", "appliance", "structural", "cosmetic", "other"]),
+  category: z.enum(["plumbing", "electrical", "hvac", "furniture", "appliance", "structural", "pest", "other"]),
   priority: z.enum(["low", "normal", "high", "urgent", "emergency"]).optional().default("normal"),
   reported_by_staff: z.string().uuid().optional().nullable(),
   reported_by_guest: z.string().uuid().optional().nullable(),
@@ -305,7 +305,7 @@ export const staffScheduleSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   shift_start: z.string().min(1, "shift_start is required"),
   shift_end: z.string().min(1, "shift_end is required"),
-  shift_type: z.enum(["regular", "overtime", "cover", "training"]).optional().default("regular"),
+  shift_type: z.enum(["regular", "overtime", "on_call", "holiday"]).optional().default("regular"),
   notes: z.string().max(2000).optional().nullable(),
 }).strict();
 

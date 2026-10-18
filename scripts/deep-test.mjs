@@ -291,6 +291,9 @@ async function transactionTests(owner, reception) {
     rec("txn", "owner blocked without override, allowed with allow_outstanding_balance", ci2.status() === 200 && blocked.status() === 402 && override.status() === 200 ? "PASS" : "FAIL", `checkin=${ci2.status()} blocked=${blocked.status()} override=${override.status()}`);
   }
 
+  // Data integrity: concurrency, pagination, schema-aligned validation, night audit
+  await integrityTests(ctx, csrf, guest, direct, available);
+
   // Audit trail has real actors
   const audit = (await j(await ctx.get("/api/v1/audit?limit=50")));
   const entries = audit?.data?.entries || audit?.data || audit?.entries || [];
@@ -390,6 +393,54 @@ async function mfaTests(account) {
   const rm = await s1.ctx.post("/api/v1/auth/mfa", { headers: H(s1.csrf), data: { action: "unenroll", factor_id: factorId } });
   rec("mfa", "factor removed after test", rm.status() === 200 ? "PASS" : "WARN", rm.status());
   await s1.ctx.dispose();
+}
+
+// ---------------------------------------------------------------------------
+// 6b. Data integrity
+// ---------------------------------------------------------------------------
+async function integrityTests(ctx, csrf, guest, direct, available) {
+  // Five simultaneous bookings for the same room and nights: exactly one wins.
+  const apt = available[2] || available[1];
+  if (apt) {
+    const payload = { apartment_id: apt.id, guest_id: guest.id, channel_id: direct?.id, check_in: plus(10), check_out: plus(12), adults: 1 };
+    const results = await Promise.all([1, 2, 3, 4, 5].map(() => ctx.post("/api/v1/bookings", { headers: H(csrf), data: payload })));
+    const codes = results.map((r) => r.status());
+    const wins = codes.filter((c) => c === 201 || c === 200).length;
+    const rejected = codes.filter((c) => c === 409 || c === 400).length;
+    rec("integrity", "5 concurrent bookings for one room: exactly one succeeds", wins === 1 && rejected === 4 ? "PASS" : "FAIL", codes.join(","));
+  }
+  // Pagination metadata and limits
+  const page = await j(await ctx.get("/api/v1/bookings?limit=2&offset=0"));
+  rec("integrity", "list endpoints paginate with meta.total", page?.meta && typeof page.meta.total === "number" && (page.data || []).length <= 2 ? "PASS" : "FAIL", JSON.stringify(page?.meta));
+  const page2 = await j(await ctx.get("/api/v1/bookings?limit=2&offset=2"));
+  rec("integrity", "offset returns the next page", page2?.data && page?.data && page2.data[0]?.id !== page.data[0]?.id ? "PASS" : "FAIL", "");
+  const big = await j(await ctx.get("/api/v1/guests?limit=999999"));
+  rec("integrity", "limit is capped", big?.meta?.limit <= 1000 ? "PASS" : "FAIL", `limit=${big?.meta?.limit}`);
+  // Validation enums match the database
+  const hkBad = await ctx.post("/api/v1/housekeeping", { headers: H(csrf), data: { apartment_id: apt?.id || available[0].id, type: "turnover", scheduled_date: today } });
+  rec("integrity", "housekeeping type not in schema is rejected (400, not 500)", hkBad.status() === 400 ? "PASS" : "FAIL", hkBad.status());
+  const hkOk = await ctx.post("/api/v1/housekeeping", { headers: H(csrf), data: { apartment_id: apt?.id || available[0].id, type: "turndown", scheduled_date: today, priority: "low" } });
+  rec("integrity", "housekeeping type from the schema is accepted", hkOk.status() < 300 ? "PASS" : "FAIL", `${hkOk.status()} ${(await hkOk.text()).slice(0, 80)}`);
+  const mtOk = await ctx.post("/api/v1/maintenance", { headers: H(csrf), data: { apartment_id: apt?.id || available[0].id, title: "Water leak", description: "deep test", category: "plumbing", priority: "urgent" } });
+  rec("integrity", "maintenance category from the schema is accepted", mtOk.status() < 300 ? "PASS" : "FAIL", `${mtOk.status()} ${(await mtOk.text()).slice(0, 80)}`);
+  // A room under maintenance is not sellable
+  const mtBody = await j(mtOk);
+  if (mtBody?.data?.apartment_id) {
+    const blocked = await ctx.post("/api/v1/bookings", { headers: H(csrf), data: { apartment_id: mtBody.data.apartment_id, guest_id: guest.id, channel_id: direct?.id, check_in: plus(20), check_out: plus(21), adults: 1 } });
+    rec("integrity", "room taken out of service by an urgent maintenance request cannot be booked", blocked.status() === 409 || blocked.status() === 400 ? "PASS" : "FAIL", `${blocked.status()} ${(await blocked.text()).slice(0, 80)}`);
+  }
+  // Night audit via the cron secret, idempotent
+  const cron = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: { Authorization: `Bearer ${process.env.CRON_SECRET || ""}` } });
+  const na1 = await cron.post("/api/v1/cron/night-audit", { data: { business_date: plus(-1) } });
+  const na1b = await j(na1);
+  rec("integrity", "night audit runs with the cron secret", na1.status() === 200 && na1b?.data?.closes?.length >= 1 ? "PASS" : "FAIL", `${na1.status()} ${JSON.stringify(na1b).slice(0, 100)}`);
+  const na2 = await j(await cron.post("/api/v1/cron/night-audit", { data: { business_date: plus(-1) } }));
+  rec("integrity", "night audit is idempotent for the same date", na2?.data?.closes?.[0]?.already_closed === true ? "PASS" : "FAIL", JSON.stringify(na2?.data?.closes?.[0] || {}).slice(0, 80));
+  const noSecret = await (await request.newContext({ baseURL: BASE_URL })).post("/api/v1/cron/night-audit", { data: {} });
+  rec("integrity", "cron endpoint refuses without secret or admin session", noSecret.status() === 401 || noSecret.status() === 403 ? "PASS" : "FAIL", noSecret.status());
+  const cyc = await cron.post("/api/v1/cron/automations", { data: {} });
+  rec("integrity", "automation cycle runs from cron (no timers)", cyc.status() === 200 ? "PASS" : "FAIL", `${cyc.status()} ${(await cyc.text()).slice(0, 100)}`);
+  await cron.dispose();
 }
 
 // ---------------------------------------------------------------------------

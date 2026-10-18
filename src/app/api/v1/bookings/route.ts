@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { parsePagination, paginationMeta } from "@/lib/pagination";
 import {
   calculateRate,
   calculateBookingTotal,
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         guest:guests(id, first_name, last_name, email, loyalty_tier, vip_status),
         apartment:apartments(id, number, floor, view_type, building:buildings(id, name, code), apartment_type:apartment_types(id, name)),
         channel:booking_channels(id, name, code)
-      `)
+      `, { count: "exact" })
       .order("created_at", { ascending: false });
 
     if (propertyId) query = query.eq("property_id", propertyId);
@@ -48,11 +49,13 @@ export async function GET(request: NextRequest) {
       query = query.ilike("reference", `%${search}%`);
     }
 
-    const { data, error } = await query;
+    const pagination = parsePagination(searchParams);
+    query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
+    const { data, error, count } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -128,6 +131,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Channel is NOT NULL in the schema: default to the direct channel
+    let resolvedChannelId = channel_id || null;
+    if (!resolvedChannelId) {
+      const { data: direct } = await supabase
+        .from("booking_channels")
+        .select("id")
+        .eq("code", "direct")
+        .maybeSingle();
+      resolvedChannelId = direct?.id ?? null;
+      if (!resolvedChannelId) {
+        return NextResponse.json({ error: "channel_id is required (no direct channel configured)" }, { status: 400 });
+      }
+    }
+
     // Generate reference
     const reference = await getNextBookingReference(supabase);
 
@@ -137,7 +154,7 @@ export async function POST(request: NextRequest) {
       property_id: resolvedPropertyId,
       apartment_id,
       guest_id: guest_id || null,
-      channel_id: channel_id || null,
+      channel_id: resolvedChannelId,
       reference,
       status: "pending",
       check_in,
