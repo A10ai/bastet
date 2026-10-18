@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,68 +24,34 @@ interface StaffTaskCounts {
 }
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("true");
   const [search, setSearch] = useState("");
-  const [taskCounts, setTaskCounts] = useState<StaffTaskCounts>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
-    const fetchStaff = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (activeFilter) params.set("is_active", activeFilter);
-        if (search) params.set("search", search);
-        const res = await fetch(`/api/v1/staff?${params}`);
-        const json = await res.json();
-        const data = json.data || [];
-        setStaff(data);
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (activeFilter) params.set("is_active", activeFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    return params.toString();
+  }, [activeFilter, debouncedSearch]);
 
-        // Fetch task counts
-        fetchTaskCounts(data);
-      } catch {
-        setStaff([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStaff();
-  }, [activeFilter, search]);
+  const { data: staffRows, isLoading: loading } = useApi<Staff[]>(`/api/v1/staff?${query}`, undefined, ["staff"]);
+  const staff = useMemo(() => staffRows ?? [], [staffRows]);
+  type AssignedRow = { assigned_staff_id?: string | null; status: string };
+  const { data: hkRows } = useApi<AssignedRow[]>("/api/v1/housekeeping", undefined, ["housekeeping_tasks"]);
+  const { data: mxRows } = useApi<AssignedRow[]>("/api/v1/maintenance", undefined, ["maintenance_requests"]);
 
-  const fetchTaskCounts = async (_staffList: Staff[]) => {
+  const taskCounts = useMemo<StaffTaskCounts>(() => {
     const counts: StaffTaskCounts = {};
-
-    try {
-      const [hkRes, mxRes] = await Promise.all([
-        fetch("/api/v1/housekeeping").catch(() => null),
-        fetch("/api/v1/maintenance").catch(() => null),
-      ]);
-
-      if (hkRes) {
-        const hkJson = await hkRes.json();
-        const tasks = hkJson.data || [];
-        for (const t of tasks) {
-          if (t.assigned_staff_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
-            counts[t.assigned_staff_id] = (counts[t.assigned_staff_id] || 0) + 1;
-          }
-        }
-      }
-
-      if (mxRes) {
-        const mxJson = await mxRes.json();
-        const requests = mxJson.data || [];
-        for (const r of requests) {
-          if (r.assigned_staff_id && ["open", "assigned", "in_progress"].includes(r.status)) {
-            counts[r.assigned_staff_id] = (counts[r.assigned_staff_id] || 0) + 1;
-          }
-        }
-      }
-    } catch { /* — */ }
-
-    setTaskCounts(counts);
-  };
+    for (const t of hkRows ?? []) {
+      if (t.assigned_staff_id && ["pending", "assigned", "in_progress"].includes(t.status)) counts[t.assigned_staff_id] = (counts[t.assigned_staff_id] || 0) + 1;
+    }
+    for (const r of mxRows ?? []) {
+      if (r.assigned_staff_id && ["open", "assigned", "in_progress"].includes(r.status)) counts[r.assigned_staff_id] = (counts[r.assigned_staff_id] || 0) + 1;
+    }
+    return counts;
+  }, [hkRows, mxRows]);
 
   /* ---------- Chart data ---------- */
   const statCards = useMemo(() => {

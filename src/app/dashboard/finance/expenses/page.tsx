@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,28 +12,14 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Expense } from "@/types";
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [rndFilter, setRndFilter] = useState<string>("");
-
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (rndFilter) params.set("is_r_and_d", rndFilter);
-        const res = await fetch(`/api/v1/expenses?${params}`);
-        const json = await res.json();
-        setExpenses(json.data || []);
-      } catch {
-        setExpenses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExpenses();
-  }, [rndFilter]);
+  const { data: expenseRows, isLoading: loading } = useApi<Expense[]>(
+    `/api/v1/expenses${rndFilter ? `?is_r_and_d=${rndFilter}` : ""}`,
+    undefined,
+    ["expenses"]
+  );
+  const expenses = useMemo(() => expenseRows ?? [], [expenseRows]);
 
   const filtered =
     categoryFilter === "all"

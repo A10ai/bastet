@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,102 +36,39 @@ interface NextGuestInfo {
 }
 
 export default function HousekeepingPage() {
-  const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [nextGuests, setNextGuests] = useState<NextGuestInfo>({});
-  const [vipPriorityCount, setVipPriorityCount] = useState(0);
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/v1/housekeeping");
-        const json = await res.json();
-        const data = json.data || [];
-        setTasks(data);
+  const { data: taskRows, isLoading: loading } = useApi<HousekeepingTask[]>("/api/v1/housekeeping", undefined, ["housekeeping_tasks"]);
+  const tasks = useMemo(() => taskRows ?? [], [taskRows]);
+  type ArrivalRow = { apartment_id?: string | null; guest_id?: string | null; check_in?: string | null; guest?: { first_name?: string; last_name?: string; vip_status?: boolean } | null };
+  const { data: confirmedRows } = useApi<ArrivalRow[]>("/api/v1/bookings?status=confirmed&limit=500", undefined, ["bookings"]);
+  const { data: vipRows } = useApi<Array<{ id: string }>>("/api/v1/guests?vip=true&limit=500", undefined, ["guests"]);
 
-        // Fetch cross-data
-        fetchNextGuests(data);
-      } catch {
-        setTasks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTasks();
-  }, []);
-
-  const fetchNextGuests = async (hkTasks: HousekeepingTask[]) => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-
-      // Fetch confirmed bookings arriving today/tomorrow
-      const res = await fetch("/api/v1/bookings?status=confirmed&limit=500");
-      const json = await res.json();
-      const bookings = json.data || [];
-
-      const nextGuest: NextGuestInfo = {};
-      const vipApartmentIds = new Set<string>();
-
-      for (const b of bookings) {
-        if (!b.apartment_id) continue;
-        const checkIn = b.check_in?.split("T")[0];
-        if (checkIn === today || checkIn === tomorrow) {
-          const guestName = b.guest
-            ? `${b.guest.first_name} ${b.guest.last_name}`
-            : "Guest";
-          const isVip = b.guest?.vip_status || false;
-
-          nextGuest[b.apartment_id] = {
-            guest_name: guestName,
-            arriving: checkIn === today ? "today" : "tomorrow",
-            is_vip: isVip,
-          };
-
-          if (isVip) {
-            vipApartmentIds.add(b.apartment_id);
-          }
-        }
-      }
-
-      // Also try to get VIP info from guests endpoint
-      try {
-        const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
-        const gJson = await gRes.json();
-        const vipGuests = gJson.data || [];
-        const vipGuestIds = new Set(vipGuests.map((g: Record<string, unknown>) => g.id));
-
-        for (const b of bookings) {
-          if (b.apartment_id && b.guest_id && vipGuestIds.has(b.guest_id)) {
-            const checkIn = b.check_in?.split("T")[0];
-            if (checkIn === today || checkIn === tomorrow) {
-              if (nextGuest[b.apartment_id]) {
-                nextGuest[b.apartment_id].is_vip = true;
-              }
-              vipApartmentIds.add(b.apartment_id);
-            }
-          }
-        }
-      } catch { /* — */ }
-
-      setNextGuests(nextGuest);
-
-      // Count VIP rooms needing priority cleaning
-      const pendingAptIds = new Set(
-        hkTasks
-          .filter((t) => ["pending", "assigned"].includes(t.status))
-          .map((t) => t.apartment_id)
-      );
-      let vipCount = 0;
-      vipApartmentIds.forEach((aptId) => {
-        if (pendingAptIds.has(aptId)) vipCount++;
-      });
-      setVipPriorityCount(vipCount);
-    } catch { /* — */ }
-  };
+  const { nextGuests, vipPriorityCount } = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+    const nextGuest: NextGuestInfo = {};
+    const vipApartmentIds = new Set<string>();
+    const vipGuestIds = new Set((vipRows ?? []).map((g) => g.id));
+    for (const b of confirmedRows ?? []) {
+      if (!b.apartment_id) continue;
+      const checkIn = b.check_in?.split("T")[0];
+      if (checkIn !== today && checkIn !== tomorrow) continue;
+      const isVip = !!b.guest?.vip_status || (!!b.guest_id && vipGuestIds.has(b.guest_id));
+      nextGuest[b.apartment_id] = {
+        guest_name: b.guest ? `${b.guest.first_name} ${b.guest.last_name}` : "Guest",
+        arriving: checkIn === today ? "today" : "tomorrow",
+        is_vip: isVip,
+      };
+      if (isVip) vipApartmentIds.add(b.apartment_id);
+    }
+    // VIP rooms still waiting for a clean
+    const pendingAptIds = new Set(tasks.filter((t) => ["pending", "assigned"].includes(t.status)).map((t) => t.apartment_id));
+    let vipCount = 0;
+    vipApartmentIds.forEach((aptId) => { if (pendingAptIds.has(aptId)) vipCount++; });
+    return { nextGuests: nextGuest, vipPriorityCount: vipCount };
+  }, [tasks, confirmedRows, vipRows]);
 
   const filtered = tasks.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,95 +53,48 @@ interface GuestMeta {
 }
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [miniStats, setMiniStats] = useState<BookingMiniStats | null>(null);
-  const [guestMeta, setGuestMeta] = useState<GuestMeta>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const fetchBookings = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (search) params.set("search", search);
-      if (dateFrom) params.set("date_from", dateFrom);
-      if (dateTo) params.set("date_to", dateTo);
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    return params.toString();
+  }, [statusFilter, debouncedSearch, dateFrom, dateTo]);
 
-      const res = await fetch(`/api/v1/bookings?${params}`);
-      const json = await res.json();
-      const data = json.data || [];
-      setBookings(data);
+  // SWR: cached between navigations, revalidated on focus and on booking changes
+  const { data: bookingRows, isLoading: loading } = useApi<Booking[]>(`/api/v1/bookings?${query}`, undefined, ["bookings"]);
+  const bookings = useMemo(() => bookingRows ?? [], [bookingRows]);
+  const { data: guestRows } = useApi<Array<{ id: string; loyalty_tier?: GuestMeta[string]["loyalty_tier"]; vip_status?: GuestMeta[string]["vip_status"] }>>("/api/v1/guests?limit=1000", undefined, ["guests"]);
 
-      // Compute mini stats from bookings data
-      computeMiniStats(data);
-      // Fetch guest metadata for tier/VIP info
-      fetchGuestMeta(data);
-    } catch {
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const guestMeta = useMemo<GuestMeta>(() => {
+    const meta: GuestMeta = {};
+    for (const g of guestRows ?? []) meta[g.id] = { loyalty_tier: g.loyalty_tier, vip_status: g.vip_status };
+    return meta;
+  }, [guestRows]);
 
-  const computeMiniStats = (bks: Booking[]) => {
-    try {
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      const monthBookings = bks.filter(
-        (b) => b.check_in >= monthStart && !["cancelled", "no_show"].includes(b.status)
-      );
-      const totalRevenue = monthBookings.reduce((sum, b) => sum + (b.total_amount_gbp || 0), 0);
-      const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
-      const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
-      const directCount = monthBookings.filter(
-        (b) => (b as unknown as Record<string, unknown>).channel === "direct" || (b as unknown as Record<string, unknown>).source === "direct"
-      ).length;
-      const directPct = monthBookings.length > 0
-        ? Math.round((directCount / monthBookings.length) * 100)
-        : 0;
-
-      setMiniStats({
-        total_revenue_month: totalRevenue,
-        avg_nightly_rate: avgRate,
-        direct_booking_pct: directPct,
-      });
-    } catch {
-      // Non-critical
-    }
-  };
-
-  const fetchGuestMeta = async (_bks: Booking[]) => {
-    try {
-      const res = await fetch("/api/v1/guests?limit=1000");
-      const json = await res.json();
-      const guests = json.data || [];
-      const meta: GuestMeta = {};
-      for (const g of guests) {
-        meta[g.id] = {
-          loyalty_tier: g.loyalty_tier,
-          vip_status: g.vip_status,
-        };
-      }
-      setGuestMeta(meta);
-    } catch { /* — */ }
-  };
-
-  useEffect(() => {
-    fetchBookings();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
-  }, [statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchBookings();
-    }, 300);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
-  }, [search]);
+  const miniStats = useMemo<BookingMiniStats | null>(() => {
+    if (bookings.length === 0) return null;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const monthBookings = bookings.filter(
+      (b) => b.check_in >= monthStart && !["cancelled", "no_show"].includes(b.status)
+    );
+    const totalRevenue = monthBookings.reduce((sum, b) => sum + (b.total_amount_gbp || 0), 0);
+    const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
+    const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
+    const directCount = monthBookings.filter(
+      (b) => (b as unknown as Record<string, unknown>).channel === "direct" || (b as unknown as Record<string, unknown>).source === "direct"
+    ).length;
+    const directPct = monthBookings.length > 0 ? Math.round((directCount / monthBookings.length) * 100) : 0;
+    return { total_revenue_month: totalRevenue, avg_nightly_rate: avgRate, direct_booking_pct: directPct };
+  }, [bookings]);
 
   const statusCounts = BOOKING_STATUSES.reduce(
     (acc, s) => {

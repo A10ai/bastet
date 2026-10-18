@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,25 +12,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/v1/invoices");
-        const json = await res.json();
-        setInvoices(json.data || []);
-      } catch {
-        setInvoices([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvoices();
-  }, []);
+  const { data: invoiceRows, isLoading: loading } = useApi<Invoice[]>("/api/v1/invoices", undefined, ["invoices"]);
+  const invoices = useMemo(() => invoiceRows ?? [], [invoiceRows]);
 
   const filtered =
     statusFilter === "all"

@@ -82,3 +82,26 @@ test("protected API answers for the signed-in session and refuses without it", a
   expect(anon.status()).toBe(401);
   await ctx.close();
 });
+
+test("list pages on SWR render their data without page errors", async ({ browser }) => {
+  const ctx = await signedInContext(browser);
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const path of ["/dashboard/bookings", "/dashboard/guests", "/dashboard/apartments", "/dashboard/housekeeping", "/dashboard/maintenance", "/dashboard/staff", "/dashboard/finance/invoices", "/dashboard/finance/expenses"]) {
+    await page.goto(path, { waitUntil: "networkidle" });
+    await expect(page.locator("h1").first()).toBeVisible({ timeout: 15_000 });
+    // The loading spinner must give way to content (a table, a card grid or an empty-state message)
+    await expect(page.locator("table, [data-testid=empty-state], a[href^='/dashboard/']").first()).toBeVisible({ timeout: 15_000 });
+  }
+  // Search box is debounced and re-queries through the cache: typing must not throw
+  await page.goto("/dashboard/bookings", { waitUntil: "networkidle" });
+  const search = page.locator('input[placeholder*="earch"]').first();
+  if (await search.count()) {
+    await search.fill("zzz-no-such-guest");
+    await page.waitForTimeout(800);
+    await search.fill("");
+  }
+  expect(errors).toEqual([]);
+  await ctx.close();
+});

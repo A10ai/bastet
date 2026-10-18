@@ -223,40 +223,21 @@ interface AIGuestsData {
   at_risk_guests?: number;
 }
 
-interface GuestsListData {
-  guests: unknown[];
-  total?: number;
-}
+type GuestsListData = unknown[];
 
-interface BookingsListData {
-  bookings: unknown[];
-  total?: number;
-}
+type BookingsListData = unknown[];
 
-interface ApartmentsListData {
-  apartments: unknown[];
-  total?: number;
-}
+type ApartmentsListData = unknown[];
 
-interface StaffListData {
-  staff: unknown[];
-}
+type StaffListData = unknown[];
 
-interface HousekeepingListData {
-  tasks: unknown[];
-}
+type HousekeepingListData = unknown[];
 
-interface MaintenanceListData {
-  requests: unknown[];
-}
+type MaintenanceListData = unknown[];
 
-interface InvoicesListData {
-  invoices: unknown[];
-}
+type InvoicesListData = unknown[];
 
-interface ExpensesListData {
-  expenses: unknown[];
-}
+type ExpensesListData = unknown[];
 
 interface NotificationsData {
   notifications: unknown[];

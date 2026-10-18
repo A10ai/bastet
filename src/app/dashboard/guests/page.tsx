@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,90 +46,48 @@ interface GuestIntelligence {
 }
 
 export default function GuestsPage() {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [vipOnly, setVipOnly] = useState(false);
-  const [intelligence, setIntelligence] = useState<GuestIntelligence>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const fetchGuests = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (tierFilter !== "all") params.set("tier", tierFilter);
-      if (vipOnly) params.set("vip", "true");
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (tierFilter !== "all") params.set("tier", tierFilter);
+    if (vipOnly) params.set("vip", "true");
+    return params.toString();
+  }, [debouncedSearch, tierFilter, vipOnly]);
 
-      const res = await fetch(`/api/v1/guests?${params}`);
-      const json = await res.json();
-      const data = json.data || [];
-      setGuests(data);
+  const { data: guestRows, isLoading: loading } = useApi<Guest[]>(`/api/v1/guests?${query}`, undefined, ["guests"]);
+  const guests = useMemo(() => guestRows ?? [], [guestRows]);
+  const { data: aiGuests } = useApi<Record<string, unknown>>("/api/v1/ai/guests", { refreshInterval: 60_000 });
+  const { data: checkedOutRows } = useApi<Array<{ guest_id?: string | null; check_out?: string | null }>>("/api/v1/bookings?status=checked_out&limit=1000", undefined, ["bookings"]);
 
-      // Fetch guest intelligence cross-data
-      fetchIntelligence(data);
-    } catch {
-      setGuests([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchIntelligence = async (_guestList: Guest[]) => {
-    try {
-      const res = await fetch("/api/v1/ai/guests");
-      const json = await res.json();
-      const aiData = json.data || json;
-
-      // Build intelligence map
-      const intel: GuestIntelligence = {};
-
-      // If the AI endpoint returns per-guest data
-      const guestIntel = aiData.guests || aiData.guest_intelligence || [];
-      if (Array.isArray(guestIntel)) {
-        for (const gi of guestIntel) {
-          intel[gi.guest_id || gi.id] = {
-            churn_risk: gi.churn_risk ?? gi.churn_score ?? undefined,
-            ltv_gbp: gi.ltv_gbp ?? gi.lifetime_value ?? undefined,
-            last_checkout: gi.last_checkout ?? gi.last_stay ?? undefined,
-          };
-        }
+  const intelligence = useMemo<GuestIntelligence>(() => {
+    const intel: GuestIntelligence = {};
+    const ai = aiGuests ?? {};
+    const guestIntel = (ai.guests || ai.guest_intelligence || []) as Array<Record<string, unknown>>;
+    if (Array.isArray(guestIntel)) {
+      for (const gi of guestIntel) {
+        const id = String(gi.guest_id ?? gi.id ?? "");
+        if (!id) continue;
+        intel[id] = {
+          churn_risk: (gi.churn_risk ?? gi.churn_score) as number | undefined,
+          ltv_gbp: (gi.ltv_gbp ?? gi.lifetime_value) as number | undefined,
+          last_checkout: (gi.last_checkout ?? gi.last_stay) as string | undefined,
+        };
       }
-
-      // Also fetch bookings for last stay dates if not provided by AI
-      try {
-        const bkRes = await fetch("/api/v1/bookings?status=checked_out&limit=1000");
-        const bkJson = await bkRes.json();
-        const bookings = bkJson.data || [];
-
-        // Find most recent checkout per guest
-        for (const b of bookings) {
-          if (b.guest_id && b.check_out) {
-            const existing = intel[b.guest_id]?.last_checkout;
-            if (!existing || b.check_out > existing) {
-              intel[b.guest_id] = {
-                ...intel[b.guest_id],
-                last_checkout: b.check_out,
-              };
-            }
-          }
-        }
-      } catch { /* — */ }
-
-      setIntelligence(intel);
-    } catch { /* — */ }
-  };
-
-  useEffect(() => {
-    fetchGuests();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
-  }, [tierFilter, vipOnly]);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchGuests, 300);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
-  }, [search]);
+    }
+    // Most recent checkout per guest when the AI endpoint does not provide it
+    for (const b of checkedOutRows ?? []) {
+      if (b.guest_id && b.check_out) {
+        const existing = intel[b.guest_id]?.last_checkout;
+        if (!existing || b.check_out > existing) intel[b.guest_id] = { ...intel[b.guest_id], last_checkout: b.check_out };
+      }
+    }
+    return intel;
+  }, [aiGuests, checkedOutRows]);
 
   const tiers: LoyaltyTier[] = ["bronze", "silver", "gold", "platinum"];
 

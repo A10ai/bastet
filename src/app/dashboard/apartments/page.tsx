@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,99 +42,32 @@ interface ApartmentCrossData {
 }
 
 export default function ApartmentsPage() {
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [floorFilter, setFloorFilter] = useState<string>("all");
-  const [crossData, setCrossData] = useState<ApartmentCrossData>({});
 
-  useEffect(() => {
-    const fetchApartments = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/v1/apartments");
-        const json = await res.json();
-        const apts = json.data || [];
-        setApartments(apts);
+  const { data: aptRows, isLoading: loading } = useApi<Apartment[]>("/api/v1/apartments", undefined, ["apartments"]);
+  const apartments = useMemo(() => aptRows ?? [], [aptRows]);
+  const { data: checkedInRows } = useApi<Array<{ apartment_id?: string | null; guest?: { first_name?: string; last_name?: string } | null }>>("/api/v1/bookings?status=checked_in&limit=500", undefined, ["bookings"]);
+  type OpenRow = { apartment_id?: string | null; status: string };
+  const { data: hkRows } = useApi<OpenRow[]>("/api/v1/housekeeping", undefined, ["housekeeping_tasks"]);
+  const { data: mxRows } = useApi<OpenRow[]>("/api/v1/maintenance", undefined, ["maintenance_requests"]);
 
-        // Fetch cross-data for apartments
-        fetchCrossData(apts);
-      } catch {
-        setApartments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApartments();
-  }, []);
-
-  const fetchCrossData = async (apts: Apartment[]) => {
+  const crossData = useMemo<ApartmentCrossData>(() => {
     const data: ApartmentCrossData = {};
-
-    // Fetch current bookings (checked_in)
-    try {
-      const res = await fetch("/api/v1/bookings?status=checked_in&limit=500");
-      const json = await res.json();
-      const bookings = json.data || [];
-      for (const b of bookings) {
-        if (b.apartment_id && b.guest) {
-          data[b.apartment_id] = {
-            ...data[b.apartment_id],
-            guest_name: `${b.guest.first_name} ${b.guest.last_name}`,
-          };
-        }
-      }
-    } catch { /* — */ }
-
-    // Fetch housekeeping + maintenance task counts
-    try {
-      const [hkRes, mxRes] = await Promise.all([
-        fetch("/api/v1/housekeeping").catch(() => null),
-        fetch("/api/v1/maintenance").catch(() => null),
-      ]);
-
-      const taskCount: Record<string, number> = {};
-
-      if (hkRes) {
-        const hkJson = await hkRes.json();
-        const tasks = hkJson.data || [];
-        for (const t of tasks) {
-          if (t.apartment_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
-            taskCount[t.apartment_id] = (taskCount[t.apartment_id] || 0) + 1;
-          }
-        }
-      }
-
-      if (mxRes) {
-        const mxJson = await mxRes.json();
-        const requests = mxJson.data || [];
-        for (const r of requests) {
-          if (r.apartment_id && ["open", "assigned", "in_progress"].includes(r.status)) {
-            taskCount[r.apartment_id] = (taskCount[r.apartment_id] || 0) + 1;
-          }
-        }
-      }
-
-      for (const [aptId, count] of Object.entries(taskCount)) {
-        data[aptId] = { ...data[aptId], open_tasks: count };
-      }
-    } catch { /* — */ }
-
-    // Derive energy status per apartment
-    for (const apt of apts) {
-      const isOccupied = !!data[apt.id]?.guest_name;
-      let energyStatus = "standby";
-      if (isOccupied) {
-        energyStatus = "active";
-      } else {
-        // Vacant — standby mode
-        energyStatus = "standby";
-      }
-      data[apt.id] = { ...data[apt.id], energy_status: energyStatus };
+    for (const b of checkedInRows ?? []) {
+      if (b.apartment_id && b.guest) data[b.apartment_id] = { ...data[b.apartment_id], guest_name: `${b.guest.first_name} ${b.guest.last_name}` };
     }
-
-    setCrossData(data);
-  };
+    const taskCount: Record<string, number> = {};
+    for (const t of hkRows ?? []) {
+      if (t.apartment_id && ["pending", "assigned", "in_progress"].includes(t.status)) taskCount[t.apartment_id] = (taskCount[t.apartment_id] || 0) + 1;
+    }
+    for (const r of mxRows ?? []) {
+      if (r.apartment_id && ["open", "assigned", "in_progress"].includes(r.status)) taskCount[r.apartment_id] = (taskCount[r.apartment_id] || 0) + 1;
+    }
+    for (const [aptId, count] of Object.entries(taskCount)) data[aptId] = { ...data[aptId], open_tasks: count };
+    for (const apt of apartments) data[apt.id] = { ...data[apt.id], energy_status: data[apt.id]?.guest_name ? "active" : "standby" };
+    return data;
+  }, [apartments, checkedInRows, hkRows, mxRows]);
 
   const filtered = apartments.filter((a) => {
     if (statusFilter !== "all" && a.status !== statusFilter) return false;
