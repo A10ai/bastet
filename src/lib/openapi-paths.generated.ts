@@ -2066,7 +2066,7 @@ export const generatedPaths = {
       "tags": [
         "Health"
       ],
-      "summary": "Health check endpoint for Docker, load balancers, and monitoring. (GET)",
+      "summary": "GET /health",
       "responses": {
         "200": {
           "description": "OK"

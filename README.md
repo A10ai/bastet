@@ -95,6 +95,10 @@ Every stay has a folio (`folios`, opened at check-in or by a deposit). The night
 
 `GET /api/v1/health` probes the database, the schema level, the auth server, cron freshness and the last night-audit close, and returns 503 when a hard dependency is down. Runbooks for deploy, rollback, key rotation, incident response, the night audit and backup/restore are in `docs/runbooks/`; environments and promotion in `docs/STAGING.md`; alert rules and on-call in `docs/ALERTING.md`.
 
+## Documentation
+
+`docs/README.md` is the index: architecture, generated data dictionary, architecture decision records, runbooks, staging, alerting and the load-test baseline. `CONTRIBUTING.md` lists the rules reviewers enforce.
+
 ## Known gaps
 
 See the October 2026 code audit for the full list. Not yet built: channel manager integration (OTA sync), card payments (Stripe), email and SMS delivery, guest self-service portal, rate plans and group bookings, POS to folio, accounting export, door-lock and BMS integration. Screens that show sample or modelled data carry a visible "Demo data" or "Modelled estimate" banner.
