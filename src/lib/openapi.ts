@@ -1,15 +1,16 @@
 /**
  * HospitAI OpenAPI 3.0 Specification
  *
- * Auto-generated structure for the HospitAI API v1.
- * This documents all 68+ API endpoints across 22 resource groups.
- *
- * Usage: Import into Swagger UI or Redoc for interactive docs.
- * In production, this should be auto-generated from the route handlers
- * using next-rest-documenter or a similar tool.
+ * Paths come from two sources, merged per method:
+ *  - generatedPaths: every route file under src/app/api/v1, produced by
+ *    scripts/generate-openapi-paths.mjs (run it after adding a route)
+ *  - curatedPaths below: hand-written summaries, parameters and responses
+ *    that override the generated entry for the same path + method
+ * tests/contract/openapi-routes.test.ts fails when routes and spec drift.
  */
+import { generatedPaths } from "@/lib/openapi-paths.generated";
 
-export const openApiSpec = {
+const specBase = {
   openapi: "3.0.3",
   info: {
     title: "HospitAI API",
@@ -140,7 +141,7 @@ export const openApiSpec = {
     { name: "GDPR", description: "Data protection and privacy" },
     { name: "Health", description: "System health checks" },
   ],
-  paths: {
+  curatedPaths: {
     // Auth
     "/auth/login": {
       post: {
@@ -216,4 +217,18 @@ export const openApiSpec = {
     "/briefing": { get: { tags: ["Core"], summary: "Daily briefing", responses: { "200": { description: "Briefing" } } } },
     "/reports": { get: { tags: ["Core"], summary: "Generate report", parameters: [{ name: "type", in: "query", required: true, schema: { type: "string", enum: ["occupancy", "revenue", "guest", "operations", "financial", "executive", "energy", "ai_decisions"] } }, { name: "from", in: "query", required: true, schema: { type: "string", format: "date" } }, { name: "to", in: "query", required: true, schema: { type: "string", format: "date" } }], responses: { "200": { description: "Report data" } } } },
   },
+};
+
+type PathItem = Record<string, unknown>;
+function mergePaths(generated: Record<string, PathItem>, curated: Record<string, PathItem>): Record<string, PathItem> {
+  const out: Record<string, PathItem> = {};
+  for (const [path, item] of Object.entries(generated)) out[path] = { ...item };
+  for (const [path, item] of Object.entries(curated)) out[path] = { ...(out[path] || {}), ...item };
+  return out;
+}
+
+const { curatedPaths, ...rest } = specBase;
+export const openApiSpec = {
+  ...rest,
+  paths: mergePaths(generatedPaths as unknown as Record<string, PathItem>, curatedPaths as unknown as Record<string, PathItem>),
 };

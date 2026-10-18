@@ -23,7 +23,7 @@ const PG_ERROR_MAP: Record<string, { code: string; message: string; status: numb
   "23514": { code: "CHECK_VIOLATION", message: "Value violates a constraint", status: 400 },
   "PGRST205": { code: "NOT_FOUND", message: "Resource not found", status: 404 },
   "PGRST204": { code: "NO_ROWS", message: "No rows returned", status: 404 },
-  "PGRST116": { code: "NOT_SINGLE", message: "Expected single row, got multiple", status: 400 },
+  "PGRST116": { code: "NOT_FOUND", message: "Resource not found", status: 404 },
   "42501": { code: "INSUFFICIENT_PRIVILEGE", message: "Permission denied", status: 403 },
   "42P01": { code: "TABLE_NOT_FOUND", message: "Resource not found", status: 404 },
   "42703": { code: "COLUMN_NOT_FOUND", message: "Invalid field in request", status: 400 },

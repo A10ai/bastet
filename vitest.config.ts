@@ -13,7 +13,8 @@ export default defineConfig({
       include: ["src/lib/**/*.ts"],
       exclude: ["src/lib/supabase/**", "src/**/*.d.ts"],
       // Ratchet: raise these as tests are added; never lower them.
-      thresholds: { statements: 4.5, branches: 3.5, functions: 5, lines: 4.5 },
+      // Ratchet: measured 75/54/78/77 on 18 Oct 2026; raise as tests are added, never lower.
+      thresholds: { statements: 70, branches: 50, functions: 70, lines: 70 },
     },
     server: {
       deps: {
