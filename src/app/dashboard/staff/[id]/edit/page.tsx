@@ -66,7 +66,7 @@ export default function EditStaffPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function EditStaffPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/dashboard/staff/${params.id}`} className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href={`/dashboard/staff/${params.id}`} className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>

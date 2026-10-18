@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get auth users list (requires service role)
-    const authUsers: Record<string, any> = {};
+    const authUsers: Record<string, unknown> = {};
     try {
       const { data: authData } = await supabase.auth.admin.listUsers();
       if (authData?.users) {
@@ -42,9 +42,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Merge auth info into staff records
-    const enriched = (staffList || []).map((s: Record<string, any>) => ({
+    const enriched = (staffList || []).map((s: Record<string, unknown>) => ({
       ...s,
-      auth_info: s.auth_user_id ? authUsers[s.auth_user_id] || null : null,
+      auth_info: s.auth_user_id ? authUsers[s.auth_user_id as string] || null : null,
     }));
 
     return NextResponse.json({ data: enriched });

@@ -307,7 +307,7 @@ export default function SystemConfigPage() {
   if (!staff || !isAdminRole(staff.role)) return <AccessDenied />;
 
   const inputClass =
-    "w-full bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary px-3 py-2 placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40";
+    "w-full bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary px-3 py-2 placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40";
 
   const tabs = [
     { key: "property" as const, label: "Property", icon: Building2 },
@@ -355,14 +355,14 @@ export default function SystemConfigPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-bastet-card border border-bastet-border rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-brand-card border border-brand-border rounded-lg p-1 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === tab.key
-                ? "bg-cyan-400 text-bastet-bg"
+                ? "bg-cyan-400 text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -582,7 +582,7 @@ export default function SystemConfigPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-bastet-border bg-bastet-bg/50">
+                    <tr className="border-b border-brand-border bg-brand-bg/50">
                       <th className="text-left text-xs font-medium text-cyan-400/80 px-4 py-3">
                         Season
                       </th>
@@ -607,8 +607,8 @@ export default function SystemConfigPage() {
                     {rates.map((rate, idx) => (
                       <tr
                         key={rate.id}
-                        className={`border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors ${
-                          idx % 2 === 1 ? "bg-bastet-bg/20" : ""
+                        className={`border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors ${
+                          idx % 2 === 1 ? "bg-brand-bg/20" : ""
                         }`}
                       >
                         <td className="px-4 py-2.5">
@@ -624,7 +624,7 @@ export default function SystemConfigPage() {
                                   season: e.target.value,
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-28"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-28"
                             />
                           ) : (
                             <span className="text-text-primary capitalize">
@@ -645,7 +645,7 @@ export default function SystemConfigPage() {
                                   start_date: e.target.value,
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
                             />
                           ) : (
                             <span className="text-text-secondary text-xs">
@@ -666,7 +666,7 @@ export default function SystemConfigPage() {
                                   end_date: e.target.value,
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
                             />
                           ) : (
                             <span className="text-text-secondary text-xs">
@@ -690,7 +690,7 @@ export default function SystemConfigPage() {
                                   ),
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-24"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-24"
                             />
                           ) : (
                             <span className="text-text-primary font-mono">
@@ -711,7 +711,7 @@ export default function SystemConfigPage() {
                                   min_nights: parseInt(e.target.value),
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-16"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-16"
                             />
                           ) : (
                             <span className="text-text-secondary">
@@ -784,7 +784,7 @@ export default function SystemConfigPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-bastet-border bg-bastet-bg/50">
+                    <tr className="border-b border-brand-border bg-brand-bg/50">
                       <th className="text-left text-xs font-medium text-cyan-400/80 px-4 py-3">
                         Channel Name
                       </th>
@@ -806,8 +806,8 @@ export default function SystemConfigPage() {
                     {channels.map((ch, idx) => (
                       <tr
                         key={ch.id}
-                        className={`border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors ${
-                          idx % 2 === 1 ? "bg-bastet-bg/20" : ""
+                        className={`border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors ${
+                          idx % 2 === 1 ? "bg-brand-bg/20" : ""
                         }`}
                       >
                         <td className="px-4 py-2.5">
@@ -821,7 +821,7 @@ export default function SystemConfigPage() {
                                   name: e.target.value,
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
                             />
                           ) : (
                             <span className="text-text-primary font-medium">
@@ -851,7 +851,7 @@ export default function SystemConfigPage() {
                                   ),
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-20"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-20"
                             />
                           ) : (
                             <span className="text-text-primary font-mono">
@@ -957,7 +957,7 @@ export default function SystemConfigPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-bastet-border bg-bastet-bg/50">
+                    <tr className="border-b border-brand-border bg-brand-bg/50">
                       <th className="text-left text-xs font-medium text-cyan-400/80 px-4 py-3">
                         Base Currency
                       </th>
@@ -979,8 +979,8 @@ export default function SystemConfigPage() {
                     {currencyRates.map((cr, idx) => (
                       <tr
                         key={cr.id}
-                        className={`border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors ${
-                          idx % 2 === 1 ? "bg-bastet-bg/20" : ""
+                        className={`border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors ${
+                          idx % 2 === 1 ? "bg-brand-bg/20" : ""
                         }`}
                       >
                         <td className="px-4 py-2.5">
@@ -1007,7 +1007,7 @@ export default function SystemConfigPage() {
                                   rate: parseFloat(e.target.value),
                                 }))
                               }
-                              className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-28"
+                              className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none w-28"
                             />
                           ) : (
                             <span className="text-text-primary font-mono">

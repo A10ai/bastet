@@ -33,7 +33,7 @@ const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "
 const TIER_BADGE_COLORS: Record<string, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
   silver: "bg-gray-400/20 text-gray-300",
-  gold: "bg-bastet-gold-muted text-bastet-gold",
+  gold: "bg-brand-accent-muted text-brand-accent",
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
@@ -179,11 +179,11 @@ export default function BookingsPage() {
       {/* Mini Stat Cards */}
       {miniStats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Revenue This Month</p>
@@ -194,11 +194,11 @@ export default function BookingsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Avg Nightly Rate</p>
@@ -209,11 +209,11 @@ export default function BookingsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <Globe className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Direct Booking %</p>
@@ -324,7 +324,7 @@ export default function BookingsPage() {
             placeholder="Search reference, guest..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
         <Input
@@ -348,8 +348,8 @@ export default function BookingsPage() {
           onClick={() => setStatusFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({bookings.length})
@@ -360,8 +360,8 @@ export default function BookingsPage() {
             onClick={() => setStatusFilter(status)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               statusFilter === status
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -374,13 +374,13 @@ export default function BookingsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Reference</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Guest</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Tier</th>
@@ -399,17 +399,17 @@ export default function BookingsPage() {
                   return (
                     <tr
                       key={booking.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
-                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                        <span className="text-sm font-mono font-semibold text-brand-accent">
                           {booking.reference}
                         </span>
                       </td>
                       <td className="px-6 py-3 text-sm text-text-primary">
                         <div className="flex items-center gap-1.5">
                           {gm?.vip_status && (
-                            <Star className="w-3.5 h-3.5 text-bastet-gold fill-bastet-gold flex-shrink-0" />
+                            <Star className="w-3.5 h-3.5 text-brand-accent fill-brand-accent flex-shrink-0" />
                           )}
                           <span>
                             {booking.guest
@@ -421,7 +421,7 @@ export default function BookingsPage() {
                       <td className="px-6 py-3 hidden md:table-cell">
                         {gm?.loyalty_tier ? (
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${TIER_BADGE_COLORS[gm.loyalty_tier] || "bg-bastet-bg text-text-muted"}`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${TIER_BADGE_COLORS[gm.loyalty_tier] || "bg-brand-bg text-text-muted"}`}
                           >
                             {gm.loyalty_tier}
                           </span>
@@ -450,7 +450,7 @@ export default function BookingsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/bookings/${booking.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

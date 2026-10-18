@@ -48,11 +48,11 @@ interface WorkflowStep {
   step_number: number;
   title: string;
   action_type: string;
-  action_params: Record<string, any>;
+  action_params: Record<string, unknown>;
   requires_approval: boolean;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   executed_at: string | null;
-  result: Record<string, any> | null;
+  result: Record<string, unknown> | null;
 }
 
 interface Workflow {
@@ -70,7 +70,7 @@ interface Workflow {
   approved_by: string | null;
   approved_at: string | null;
   completed_at: string | null;
-  outcome: Record<string, any> | null;
+  outcome: Record<string, unknown> | null;
   outcome_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -91,7 +91,7 @@ interface WorkflowStats {
 const SOURCE_CONFIG: Record<string, { label: string; color: string; icon: typeof Brain }> = {
   ai_brain: { label: "AI Brain", color: "bg-purple-400/10 text-purple-400 border-purple-400/20", icon: Brain },
   automation: { label: "Automation", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20", icon: Zap },
-  manual: { label: "Manual", color: "bg-text-secondary/10 text-text-secondary border-bastet-border", icon: User },
+  manual: { label: "Manual", color: "bg-text-secondary/10 text-text-secondary border-brand-border", icon: User },
   event: { label: "Event", color: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20", icon: Activity },
   anomaly: { label: "Anomaly", color: "bg-amber-400/10 text-amber-400 border-amber-400/20", icon: Search },
 };
@@ -99,13 +99,13 @@ const SOURCE_CONFIG: Record<string, { label: string; color: string; icon: typeof
 const PRIORITY_CONFIG: Record<string, string> = {
   urgent: "bg-status-error/10 text-status-error border-status-error/20",
   high: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  normal: "bg-text-secondary/10 text-text-secondary border-bastet-border",
-  low: "bg-bastet-bg text-text-muted border-bastet-border",
+  normal: "bg-text-secondary/10 text-text-secondary border-brand-border",
+  low: "bg-brand-bg text-text-muted border-brand-border",
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: "Pending", color: "bg-status-warning/10 text-status-warning" },
-  in_progress: { label: "In Progress", color: "bg-bastet-gold-muted text-bastet-gold" },
+  in_progress: { label: "In Progress", color: "bg-brand-accent-muted text-brand-accent" },
   awaiting_approval: { label: "Awaiting Approval", color: "bg-amber-400/10 text-amber-400" },
   approved: { label: "Approved", color: "bg-status-info/10 text-status-info" },
   completed: { label: "Completed", color: "bg-status-success/10 text-status-success" },
@@ -124,7 +124,7 @@ function StepStatusIcon({ status }: { status: string }) {
     case "failed":
       return <XCircle className="w-4 h-4 text-status-error" />;
     case "in_progress":
-      return <Loader2 className="w-4 h-4 text-bastet-gold animate-spin" />;
+      return <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />;
     case "skipped":
       return <X className="w-4 h-4 text-text-muted" />;
     default:
@@ -151,10 +151,10 @@ function StepProgress({ steps, currentStep }: { steps: WorkflowStep[]; currentSt
                   : step.status === "failed"
                   ? "bg-status-error/20 border-status-error text-status-error"
                   : step.status === "skipped"
-                  ? "bg-bastet-bg border-bastet-border text-text-muted"
+                  ? "bg-brand-bg border-brand-border text-text-muted"
                   : isActive
                   ? "bg-cyan-400/20 border-cyan-400 text-cyan-400"
-                  : "bg-bastet-bg border-bastet-border text-text-muted"
+                  : "bg-brand-bg border-brand-border text-text-muted"
               )}
               title={`Step ${i + 1}: ${step.title} (${step.status})`}
             >
@@ -170,7 +170,7 @@ function StepProgress({ steps, currentStep }: { steps: WorkflowStep[]; currentSt
               <div
                 className={cn(
                   "w-4 h-0.5 mx-0.5",
-                  step.status === "completed" ? "bg-status-success" : "bg-bastet-border"
+                  step.status === "completed" ? "bg-status-success" : "bg-brand-border"
                 )}
               />
             )}
@@ -210,10 +210,10 @@ function WorkflowCard({
   return (
     <div
       className={cn(
-        "border rounded-xl bg-bastet-card transition-colors",
+        "border rounded-xl bg-brand-card transition-colors",
         isApprovalNeeded
           ? "border-amber-400/40 shadow-[0_0_12px_rgba(251,191,36,0.06)]"
-          : "border-bastet-border"
+          : "border-brand-border"
       )}
     >
       {/* Header */}
@@ -247,7 +247,7 @@ function WorkflowCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-bastet-border">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-border">
           <div className="flex items-center gap-2">
             {isApprovalNeeded && (
               <>
@@ -318,7 +318,7 @@ function WorkflowCard({
                   ? "bg-status-error/5 border-status-error/20"
                   : step.status === "in_progress"
                   ? "bg-cyan-400/5 border-cyan-400/20"
-                  : "bg-bastet-bg/50 border-bastet-border"
+                  : "bg-brand-bg/50 border-brand-border"
               )}
             >
               <div className="flex-shrink-0 mt-0.5">
@@ -329,7 +329,7 @@ function WorkflowCard({
                   <span className="text-xs font-semibold text-text-primary">
                     Step {step.step_number}
                   </span>
-                  <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-bastet-bg">
+                  <span className="text-[10px] text-text-muted px-1.5 py-0.5 rounded bg-brand-bg">
                     {step.action_type}
                   </span>
                   {step.requires_approval && (
@@ -345,7 +345,7 @@ function WorkflowCard({
                   </p>
                 )}
                 {step.result && (
-                  <pre className="text-[10px] text-text-muted mt-1 font-mono bg-bastet-bg rounded p-1.5 overflow-x-auto">
+                  <pre className="text-[10px] text-text-muted mt-1 font-mono bg-brand-bg rounded p-1.5 overflow-x-auto">
                     {JSON.stringify(step.result, null, 2)}
                   </pre>
                 )}
@@ -355,7 +355,7 @@ function WorkflowCard({
 
           {/* Outcome section for completed workflows */}
           {workflow.status === "completed" && (
-            <div className="pt-2 border-t border-bastet-border">
+            <div className="pt-2 border-t border-brand-border">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Duration</p>
               <p className="text-xs text-text-secondary">
                 Created {timeAgo(workflow.created_at)}
@@ -390,7 +390,7 @@ function CreateWorkflowModal({
     title: string;
     description: string;
     priority: string;
-    steps: Array<{ title: string; action_type: string; action_params: Record<string, any>; requires_approval: boolean }>;
+    steps: Array<{ title: string; action_type: string; action_params: Record<string, unknown>; requires_approval: boolean }>;
   }) => void;
 }) {
   const [title, setTitle] = useState("");
@@ -444,8 +444,8 @@ function CreateWorkflowModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 bg-bastet-card border border-bastet-border rounded-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto" role="dialog" aria-label="Create workflow">
-        <div className="px-6 py-4 border-b border-bastet-border flex items-center justify-between">
+      <div className="relative z-10 bg-brand-card border border-brand-border rounded-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto" role="dialog" aria-label="Create workflow">
+        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between">
           <h3 className="text-lg font-semibold text-text-primary">Create Workflow</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close">
             <X className="w-5 h-5" />
@@ -458,7 +458,7 @@ function CreateWorkflowModal({
             <label className="text-xs font-medium text-text-secondary mb-1 block" htmlFor="wf-title">Title</label>
             <input
               id="wf-title"
-              className="w-full bg-bastet-bg border border-bastet-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+              className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
               placeholder="Workflow title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -470,7 +470,7 @@ function CreateWorkflowModal({
             <label className="text-xs font-medium text-text-secondary mb-1 block" htmlFor="wf-desc">Description</label>
             <textarea
               id="wf-desc"
-              className="w-full bg-bastet-bg border border-bastet-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none"
+              className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none"
               placeholder="What does this workflow accomplish?"
               rows={2}
               value={description}
@@ -491,7 +491,7 @@ function CreateWorkflowModal({
                     "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize",
                     priority === p
                       ? PRIORITY_CONFIG[p]
-                      : "bg-bastet-bg border-bastet-border text-text-muted hover:text-text-secondary"
+                      : "bg-brand-bg border-brand-border text-text-muted hover:text-text-secondary"
                   )}
                 >
                   {p}
@@ -505,18 +505,18 @@ function CreateWorkflowModal({
             <label className="text-xs font-medium text-text-secondary mb-2 block">Steps</label>
             <div className="space-y-2">
               {steps.map((step, i) => (
-                <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
+                <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-brand-bg border border-brand-border">
                   <span className="text-[10px] font-bold text-text-muted mt-2 w-4 flex-shrink-0">{i + 1}</span>
                   <div className="flex-1 space-y-2">
                     <input
-                      className="w-full bg-bastet-card border border-bastet-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+                      className="w-full bg-brand-card border border-brand-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
                       placeholder="Step title"
                       value={step.title}
                       onChange={(e) => updateStep(i, "title", e.target.value)}
                     />
                     <div className="flex items-center gap-3">
                       <select
-                        className="bg-bastet-card border border-bastet-border rounded px-2 py-1 text-[11px] text-text-secondary focus:outline-none"
+                        className="bg-brand-card border border-brand-border rounded px-2 py-1 text-[11px] text-text-secondary focus:outline-none"
                         value={step.action_type}
                         onChange={(e) => updateStep(i, "action_type", e.target.value)}
                       >
@@ -532,7 +532,7 @@ function CreateWorkflowModal({
                       <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
                         <input
                           type="checkbox"
-                          className="rounded border-bastet-border"
+                          className="rounded border-brand-border"
                           checked={step.requires_approval}
                           onChange={(e) => updateStep(i, "requires_approval", e.target.checked)}
                         />
@@ -563,7 +563,7 @@ function CreateWorkflowModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-bastet-border flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-brand-border flex justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>
             Cancel
           </Button>
@@ -622,7 +622,7 @@ export default function WorkflowsPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleAction = async (action: string, id: string, extra?: Record<string, any>) => {
+  const handleAction = async (action: string, id: string, extra?: Record<string, unknown>) => {
     setActionLoading(id);
     try {
       const res = await fetch("/api/v1/ai/workflows", {
@@ -652,7 +652,7 @@ export default function WorkflowsPage() {
     title: string;
     description: string;
     priority: string;
-    steps: Array<{ title: string; action_type: string; action_params: Record<string, any>; requires_approval: boolean }>;
+    steps: Array<{ title: string; action_type: string; action_params: Record<string, unknown>; requires_approval: boolean }>;
   }) => {
     try {
       const res = await fetch("/api/v1/ai/workflows", {
@@ -850,7 +850,7 @@ export default function WorkflowsPage() {
                   <BarChart data={completionData} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
                     <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
-                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName, props: Record<string, any>) => [`${value}% (${props.payload.total} total)`, "Completion"]} />
+                    <Tooltip contentStyle={DARK_TOOLTIP} labelStyle={{ color: '#D1D5DB' }} formatter={(value: RechartsValue, name: RechartsName, props: { payload?: { total?: number } }) => [`${value}% (${props.payload?.total ?? 0} total)`, "Completion"]} />
                     <Bar dataKey="rate" fill="#22D3EE" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -861,7 +861,7 @@ export default function WorkflowsPage() {
       })()}
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-bastet-bg rounded-lg w-fit">
+      <div className="flex items-center gap-1 p-1 bg-brand-bg rounded-lg w-fit">
         {[
           { key: "all", label: "All", count: workflows.length },
           { key: "approval", label: "Needs Approval", count: pendingApproval.length },
@@ -874,7 +874,7 @@ export default function WorkflowsPage() {
             className={cn(
               "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
               filter === tab.key
-                ? "bg-bastet-card text-text-primary shadow-sm"
+                ? "bg-brand-card text-text-primary shadow-sm"
                 : "text-text-muted hover:text-text-secondary"
             )}
           >
@@ -884,7 +884,7 @@ export default function WorkflowsPage() {
                 "ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]",
                 tab.key === "approval" && tab.count > 0
                   ? "bg-amber-400/20 text-amber-400"
-                  : "bg-bastet-border text-text-muted"
+                  : "bg-brand-border text-text-muted"
               )}>
                 {tab.count}
               </span>

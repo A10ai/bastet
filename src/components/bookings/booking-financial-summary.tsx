@@ -57,7 +57,7 @@ export function BookingFinancialSummary({
           </div>
         )}
 
-        <div className="border-t border-bastet-border pt-3 flex justify-between">
+        <div className="border-t border-brand-border pt-3 flex justify-between">
           <span className="text-sm font-semibold text-text-primary">Total (GBP)</span>
           <span className="font-mono font-bold text-text-primary text-lg">
             {formatCurrency(totalAmountGbp)}
@@ -77,7 +77,7 @@ export function BookingFinancialSummary({
 
         {channelName && (
           <>
-            <div className="border-t border-bastet-border pt-3 flex justify-between text-sm">
+            <div className="border-t border-brand-border pt-3 flex justify-between text-sm">
               <span className="text-text-secondary">Channel</span>
               <span className="text-text-primary">{channelName}</span>
             </div>
@@ -93,7 +93,7 @@ export function BookingFinancialSummary({
                 </div>
                 <div className="flex justify-between text-sm font-semibold">
                   <span className="text-text-primary">Net Revenue</span>
-                  <span className="font-mono text-bastet-gold">
+                  <span className="font-mono text-brand-accent">
                     {formatCurrency(netRevenue)}
                   </span>
                 </div>

@@ -129,7 +129,7 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          <div className="h-8 w-px bg-bastet-border hidden sm:block" />
+          <div className="h-8 w-px bg-brand-border hidden sm:block" />
 
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-cyan-400/10 flex items-center justify-center">
@@ -141,7 +141,7 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          <div className="h-8 w-px bg-bastet-border hidden sm:block" />
+          <div className="h-8 w-px bg-brand-border hidden sm:block" />
 
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-amber-400/10 flex items-center justify-center">

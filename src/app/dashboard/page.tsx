@@ -184,7 +184,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function DashboardPage() {
       case "warning":
         return "bg-status-warning/15 text-status-warning";
       default:
-        return "bg-bastet-gold/15 text-bastet-gold";
+        return "bg-brand-accent/15 text-brand-accent";
     }
   };
 
@@ -295,11 +295,11 @@ export default function DashboardPage() {
       {/* AI Intelligence Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* AI Brain Status */}
-        <Card className="border-bastet-gold/20">
+        <Card className="border-brand-accent/20">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                <Brain className="w-5 h-5 text-bastet-gold" />
+              <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-brand-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-text-muted">AI Brain Status</p>
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                     Last cycle: {brainStatus?.last_cycle_time || "—"}
                   </span>
                   {(brainStatus?.decisions_pending ?? 0) > 0 && (
-                    <span className="text-xs font-mono text-bastet-gold">
+                    <span className="text-xs font-mono text-brand-accent">
                       {brainStatus?.decisions_pending} pending
                     </span>
                   )}
@@ -350,7 +350,7 @@ export default function DashboardPage() {
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-bastet-gold" />
+                <TrendingUp className="w-5 h-5 text-brand-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-text-muted">Revenue Opportunity</p>
@@ -555,7 +555,7 @@ export default function DashboardPage() {
             </h3>
             <Link
               href="/dashboard/bookings"
-              className="text-xs text-bastet-gold hover:underline"
+              className="text-xs text-brand-accent hover:underline"
             >
               View all
             </Link>
@@ -564,7 +564,7 @@ export default function DashboardPage() {
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Reference
                   </th>
@@ -586,9 +586,9 @@ export default function DashboardPage() {
                 {stats.recent_bookings.map((booking) => (
                   <tr
                     key={booking.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
+                    className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50"
                   >
-                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-bastet-gold">
+                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-brand-accent">
                       <Link href={`/dashboard/bookings/${booking.id}`} className="hover:underline">
                         {booking.reference}
                       </Link>
@@ -674,15 +674,15 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* AI Insights */}
         <div className="lg:col-span-2">
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-bastet-gold" />
+                <AlertTriangle className="w-4 h-4 text-brand-accent" />
                 <h3 className="text-lg font-semibold text-text-primary">AI Insights</h3>
               </div>
               <Link
                 href="/dashboard/ai"
-                className="text-xs text-bastet-gold hover:underline"
+                className="text-xs text-brand-accent hover:underline"
               >
                 Command Centre
               </Link>
@@ -693,7 +693,7 @@ export default function DashboardPage() {
                   {insights.map((insight, idx) => (
                     <div
                       key={insight.id || idx}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border"
+                      className="flex items-start gap-3 p-3 rounded-lg bg-brand-bg/50 border border-brand-border"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -723,24 +723,24 @@ export default function DashboardPage() {
         </div>
 
         {/* Guest Alerts */}
-        <Card className="border-bastet-gold/10">
+        <Card className="border-brand-accent/10">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-bastet-gold" />
+              <Users className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">Guest Alerts</h3>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-brand-bg/50 border border-brand-border">
               <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+                <Star className="w-4 h-4 text-brand-accent fill-brand-accent" />
                 <span className="text-sm text-text-secondary">VIP Arrivals Today</span>
               </div>
-              <span className="text-lg font-mono font-bold text-bastet-gold">
+              <span className="text-lg font-mono font-bold text-brand-accent">
                 {guestAlerts?.vip_arrivals_today ?? "—"}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-brand-bg/50 border border-brand-border">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-status-warning" />
                 <span className="text-sm text-text-secondary">At-Risk Guests</span>
@@ -751,7 +751,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/dashboard/guests"
-              className="block text-center text-xs text-bastet-gold hover:underline pt-2"
+              className="block text-center text-xs text-brand-accent hover:underline pt-2"
             >
               View all guests
             </Link>

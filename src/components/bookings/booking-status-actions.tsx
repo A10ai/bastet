@@ -118,7 +118,7 @@ export function BookingStatusActions({
             placeholder="Cancellation reason (optional)"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            className="flex-1 px-3 py-1.5 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted"
+            className="flex-1 px-3 py-1.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted"
           />
           <Button
             size="sm"

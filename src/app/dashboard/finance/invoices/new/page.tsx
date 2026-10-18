@@ -125,7 +125,7 @@ export default function NewInvoicePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/finance/invoices" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href="/dashboard/finance/invoices" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
@@ -149,7 +149,7 @@ export default function NewInvoicePage() {
                     <select
                       value={guestId}
                       onChange={(e) => setGuestId(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">No guest</option>
                       {guests.map((g) => (
@@ -164,7 +164,7 @@ export default function NewInvoicePage() {
                     <select
                       value={bookingId}
                       onChange={(e) => setBookingId(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">Manual invoice</option>
                       {bookings.map((b) => (
@@ -179,7 +179,7 @@ export default function NewInvoicePage() {
                     <select
                       value={guestCurrency}
                       onChange={(e) => setGuestCurrency(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       {SUPPORTED_CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -274,7 +274,7 @@ export default function NewInvoicePage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   placeholder="Invoice notes..."
                 />
               </CardContent>
@@ -313,9 +313,9 @@ export default function NewInvoicePage() {
                     <span className="text-text-secondary">Subtotal</span>
                     <span className="font-mono text-text-primary">{formatCurrency(subtotal)}</span>
                   </div>
-                  <div className="border-t border-bastet-border pt-3 flex justify-between text-sm font-semibold">
+                  <div className="border-t border-brand-border pt-3 flex justify-between text-sm font-semibold">
                     <span className="text-text-primary">Total</span>
-                    <span className="font-mono text-bastet-gold">{formatCurrency(subtotal)}</span>
+                    <span className="font-mono text-brand-accent">{formatCurrency(subtotal)}</span>
                   </div>
                 </div>
               </CardContent>

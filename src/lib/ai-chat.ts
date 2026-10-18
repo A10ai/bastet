@@ -159,11 +159,15 @@ async function gatherPropertyContext(supabase: SupabaseClient): Promise<string> 
 /**
  * Call Claude API for intelligent chat response.
  */
-async function callClaudeChat(message: string, context: string): Promise<string | null> {
+type PropertyIdentity = { name: string; city?: string | null; country?: string | null } | null;
+
+async function callClaudeChat(message: string, context: string, property: PropertyIdentity): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const systemPrompt = `You are HospitAI Assistant — the AI operations assistant for **Bastet Aparthotels**, a serviced apartment property in Kawthar District, Hurghada, Egypt. The property is also referred to as "Bastet" or "the property". It has studios, 1-bed apartments, 2-bed apartments, and penthouses across 5 floors.
+  const propertyName = property?.name || "the property";
+  const location = [property?.city, property?.country].filter(Boolean).join(", ");
+  const systemPrompt = `You are HospitAI Assistant — the AI operations assistant for **${propertyName}**${location ? `, a serviced apartment property in ${location}` : ""}. The property is also referred to as "the property". Its unit types and rates are in the live data below.
 
 You have access to live property data provided below.
 
@@ -178,7 +182,7 @@ Rules:
 - Use £ for currency (reporting currency is GBP)
 - Keep responses focused — don't dump all data unless asked for a full overview
 - When suggesting actions, be specific (e.g., "increase studio rates from £45 to £52" not just "increase rates")
-- When asked "how is Bastet" or similar, treat it as a property status question`;
+- When asked "how is ${propertyName}" or "how are we doing", treat it as a property status question`;
 
   const userMessage = `Live Property Data:\n${context}\n\nUser Question: ${message}`;
 
@@ -225,7 +229,8 @@ export async function processChat(
   if (apiKey) {
     try {
       const context = await gatherPropertyContext(supabase);
-      const claudeResponse = await callClaudeChat(message, context);
+      const { data: property } = await supabase.from("properties").select("name, city, country").eq("status", "active").order("created_at").limit(1).maybeSingle();
+      const claudeResponse = await callClaudeChat(message, context, property as PropertyIdentity);
       if (claudeResponse) {
         return reply(claudeResponse);
       }

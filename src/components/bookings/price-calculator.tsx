@@ -107,7 +107,7 @@ export function PriceCalculator({
           <h3 className="text-lg font-semibold text-text-primary">Price Preview</h3>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-bastet-gold" />
+          <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
         </CardContent>
       </Card>
     );
@@ -167,9 +167,9 @@ export function PriceCalculator({
           </div>
         )}
 
-        <div className="border-t border-bastet-border pt-3 flex justify-between">
+        <div className="border-t border-brand-border pt-3 flex justify-between">
           <span className="text-sm font-semibold text-text-primary">Total</span>
-          <span className="font-mono font-bold text-bastet-gold text-lg">
+          <span className="font-mono font-bold text-brand-accent text-lg">
             {formatCurrency(pricing.total)}
           </span>
         </div>

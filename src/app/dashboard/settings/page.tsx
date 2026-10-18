@@ -108,14 +108,15 @@ function Toast({
 
 /* ---------- local storage helpers ---------- */
 
-const POLICIES_KEY = "bastet_booking_policies";
+const POLICIES_KEY = "hospitai_booking_policies";
+const LEGACY_POLICIES_KEY = "bastet_booking_policies";
 
 function loadPolicies(): BookingPolicies {
   if (typeof window === "undefined") {
     return defaultPolicies();
   }
   try {
-    const raw = localStorage.getItem(POLICIES_KEY);
+    const raw = localStorage.getItem(POLICIES_KEY) ?? localStorage.getItem(LEGACY_POLICIES_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     /* ignore */
@@ -381,7 +382,7 @@ export default function SettingsPage() {
 
       {/* tabs */}
       <div
-        className="flex gap-1 p-1 bg-bastet-card border border-bastet-border rounded-lg overflow-x-auto"
+        className="flex gap-1 p-1 bg-brand-card border border-brand-border rounded-lg overflow-x-auto"
         role="tablist"
         aria-label="Settings sections"
       >
@@ -396,8 +397,8 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 isActive
-                  ? "bg-bastet-gold/10 text-bastet-gold border border-bastet-gold/20"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg"
+                  ? "bg-brand-accent/10 text-brand-accent border border-brand-accent/20"
+                  : "text-text-secondary hover:text-text-primary hover:bg-brand-bg"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -628,7 +629,7 @@ function PoliciesTab({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-text-muted mb-5 bg-bastet-bg px-3 py-2 rounded-lg border border-bastet-border">
+        <p className="text-xs text-text-muted mb-5 bg-brand-bg px-3 py-2 rounded-lg border border-brand-border">
           These policies are saved locally in your browser. A future update will
           persist them to the database.
         </p>
@@ -677,7 +678,7 @@ function PoliciesTab({
             <textarea
               id="pol-cancellation"
               rows={4}
-              className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50 focus:border-bastet-gold transition-colors resize-y"
+              className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors resize-y"
               placeholder="Describe your cancellation policy..."
               value={policies.cancellation_policy}
               onChange={(e) => update("cancellation_policy", e.target.value)}
@@ -747,7 +748,7 @@ function RatesTab({
           <div className="overflow-x-auto">
             <table className="w-full" role="table">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted uppercase tracking-wider py-3 pr-4">
                     Apartment Type
                   </th>
@@ -763,7 +764,7 @@ function RatesTab({
                 {types.map((t) => (
                   <tr
                     key={t.id}
-                    className="border-b border-bastet-border/50 last:border-0"
+                    className="border-b border-brand-border/50 last:border-0"
                   >
                     <td className="py-3 pr-4">
                       <span className="text-sm font-medium text-text-primary">
@@ -775,7 +776,7 @@ function RatesTab({
                         type="number"
                         step="0.01"
                         min="0"
-                        className="w-32 px-3 py-1.5 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50 focus:border-bastet-gold transition-colors"
+                        className="w-32 px-3 py-1.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
                         value={t.base_rate_gbp ?? ""}
                         onChange={(e) =>
                           onUpdateRate(t.id, "base_rate_gbp", e.target.value)
@@ -788,7 +789,7 @@ function RatesTab({
                         type="number"
                         step="0.01"
                         min="0"
-                        className="w-32 px-3 py-1.5 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50 focus:border-bastet-gold transition-colors"
+                        className="w-32 px-3 py-1.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
                         value={t.base_weekly_rate_gbp ?? ""}
                         onChange={(e) =>
                           onUpdateRate(
@@ -865,7 +866,7 @@ function ChannelsTab({
           <div className="overflow-x-auto">
             <table className="w-full" role="table">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted uppercase tracking-wider py-3 pr-4">
                     Channel
                   </th>
@@ -881,7 +882,7 @@ function ChannelsTab({
                 {channels.map((ch) => (
                   <tr
                     key={ch.id}
-                    className="border-b border-bastet-border/50 last:border-0"
+                    className="border-b border-brand-border/50 last:border-0"
                   >
                     <td className="py-3 pr-4">
                       <span className="text-sm font-medium text-text-primary">
@@ -905,7 +906,7 @@ function ChannelsTab({
                         step="0.1"
                         min="0"
                         max="100"
-                        className="w-28 px-3 py-1.5 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50 focus:border-bastet-gold transition-colors"
+                        className="w-28 px-3 py-1.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
                         value={ch.commission_rate ?? ""}
                         onChange={(e) =>
                           onUpdateChannel(ch.id, e.target.value)

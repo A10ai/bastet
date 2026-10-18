@@ -42,7 +42,7 @@ export function StatCard({ title, value, subtitle, trend, icon }: StatCardProps)
             </div>
           )}
         </div>
-        <div className="p-2.5 rounded-lg bg-bastet-gold-muted text-bastet-gold">
+        <div className="p-2.5 rounded-lg bg-brand-accent-muted text-brand-accent">
           {icon}
         </div>
       </CardContent>

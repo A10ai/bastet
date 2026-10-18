@@ -483,8 +483,8 @@ export default function ChannelsPage() {
                   <tr
                     key={row.channel}
                     className={cn(
-                      "border-b border-border/50 hover:bg-bastet-bg/50 transition-colors",
-                      i % 2 === 0 ? "bg-transparent" : "bg-bastet-bg/20"
+                      "border-b border-border/50 hover:bg-brand-bg/50 transition-colors",
+                      i % 2 === 0 ? "bg-transparent" : "bg-brand-bg/20"
                     )}
                   >
                     <td className="py-3 px-3">
@@ -551,8 +551,8 @@ export default function ChannelsPage() {
                     <tr
                       key={row.apartment_type}
                       className={cn(
-                        "border-b border-border/50 hover:bg-bastet-bg/50 transition-colors",
-                        i % 2 === 0 ? "bg-transparent" : "bg-bastet-bg/20"
+                        "border-b border-border/50 hover:bg-brand-bg/50 transition-colors",
+                        i % 2 === 0 ? "bg-transparent" : "bg-brand-bg/20"
                       )}
                     >
                       <td className="py-3 px-3 font-medium text-text-primary">{row.apartment_type}</td>
@@ -561,7 +561,7 @@ export default function ChannelsPage() {
                       <td className="py-3 px-3 font-mono text-text-secondary">{row.total_units}</td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-bastet-bg rounded-full overflow-hidden max-w-[80px]">
+                          <div className="flex-1 h-2 bg-brand-bg rounded-full overflow-hidden max-w-[80px]">
                             <div
                               className="h-full bg-cyan-400 rounded-full transition-all"
                               style={{ width: `${occupancyPct}%` }}

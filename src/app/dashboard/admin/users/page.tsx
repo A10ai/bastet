@@ -235,7 +235,7 @@ export default function UserManagementPage() {
   if (!currentStaff || !isAdminRole(currentStaff.role)) return <AccessDenied />;
 
   const inputClass =
-    "w-full bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary px-3 py-2 placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40";
+    "w-full bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary px-3 py-2 placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40";
 
   return (
     <div className="space-y-6">
@@ -448,7 +448,7 @@ export default function UserManagementPage() {
           placeholder="Search users..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
+          className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
         />
       </div>
 
@@ -462,7 +462,7 @@ export default function UserManagementPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-bastet-border bg-bastet-bg/50">
+                <tr className="border-b border-brand-border bg-brand-bg/50">
                   <th className="text-left text-xs font-medium text-cyan-400/80 px-6 py-3">
                     Name
                   </th>
@@ -493,8 +493,8 @@ export default function UserManagementPage() {
                 {filtered.map((user, idx) => (
                   <tr
                     key={user.id}
-                    className={`border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors ${
-                      idx % 2 === 1 ? "bg-bastet-bg/20" : ""
+                    className={`border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors ${
+                      idx % 2 === 1 ? "bg-brand-bg/20" : ""
                     }`}
                   >
                     <td className="px-6 py-3">
@@ -515,7 +515,7 @@ export default function UserManagementPage() {
                               role: e.target.value,
                             }))
                           }
-                          className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
+                          className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
                         >
                           {STAFF_ROLES.map((r) => (
                             <option key={r} value={r}>
@@ -539,7 +539,7 @@ export default function UserManagementPage() {
                               department: e.target.value,
                             }))
                           }
-                          className="bg-bastet-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
+                          className="bg-brand-bg border border-cyan-400/40 rounded px-2 py-1 text-xs text-text-primary focus:outline-none"
                         >
                           <option value="">None</option>
                           {DEPARTMENTS.map((d) => (

@@ -207,7 +207,7 @@ export default function MaintenancePage() {
           placeholder="Search requests..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-sm pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+          className="w-full sm:max-w-sm pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
         />
       </div>
 
@@ -284,8 +284,8 @@ export default function MaintenancePage() {
           onClick={() => setStatusFilter("all")}
           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
             statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({requests.length})
@@ -296,8 +296,8 @@ export default function MaintenancePage() {
             onClick={() => setStatusFilter(status)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
               statusFilter === status
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -310,7 +310,7 @@ export default function MaintenancePage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <>
@@ -318,7 +318,7 @@ export default function MaintenancePage() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-bastet-border">
+                    <tr className="border-b border-brand-border">
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Title</th>
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Apartment</th>
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Category</th>
@@ -337,10 +337,10 @@ export default function MaintenancePage() {
                       return (
                         <tr
                           key={req.id}
-                          className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                          className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                         >
                           <td className="px-4 py-3 text-sm font-semibold text-text-primary">{req.title}</td>
-                          <td className="px-4 py-3 text-sm font-mono text-bastet-gold">{req.apartment?.number || "—"}</td>
+                          <td className="px-4 py-3 text-sm font-mono text-brand-accent">{req.apartment?.number || "—"}</td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.category}>{req.category}</Badge></td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.priority} /></td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.status} /></td>
@@ -376,7 +376,7 @@ export default function MaintenancePage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Link href={`/dashboard/maintenance/${req.id}`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors">
+                            <Link href={`/dashboard/maintenance/${req.id}`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors">
                               <Eye className="w-3.5 h-3.5" /> View
                             </Link>
                           </td>
@@ -388,18 +388,18 @@ export default function MaintenancePage() {
               </div>
 
               {/* Mobile card list */}
-              <div className="md:hidden divide-y divide-bastet-border">
+              <div className="md:hidden divide-y divide-brand-border">
                 {filtered.map((req) => {
                   const cd = crossData[req.id];
                   return (
                     <Link
                       key={req.id}
                       href={`/dashboard/maintenance/${req.id}`}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-bastet-bg/50 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-brand-bg/50 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-mono text-bastet-gold">{req.apartment?.number || "—"}</span>
+                          <span className="text-sm font-mono text-brand-accent">{req.apartment?.number || "—"}</span>
                           <Badge variant="status" status={req.priority} />
                           <Badge variant="status" status={req.status} />
                           {cd?.is_occupied && (

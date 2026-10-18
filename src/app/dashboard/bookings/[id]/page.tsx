@@ -49,7 +49,7 @@ export default function BookingDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -60,7 +60,7 @@ export default function BookingDetailPage() {
         <p className="text-text-secondary">Booking not found</p>
         <Link
           href="/dashboard/bookings"
-          className="text-bastet-gold hover:underline text-sm mt-2 inline-block"
+          className="text-brand-accent hover:underline text-sm mt-2 inline-block"
         >
           Back to bookings
         </Link>
@@ -74,7 +74,7 @@ export default function BookingDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/dashboard/bookings"
-          className="p-2 rounded-lg hover:bg-bastet-card transition-colors"
+          className="p-2 rounded-lg hover:bg-brand-card transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
@@ -103,7 +103,7 @@ export default function BookingDetailPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <CalendarDays className="w-5 h-5 text-bastet-gold" />
+                <CalendarDays className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-xs text-text-muted">Check-in</p>
                   <p className="text-sm font-semibold text-text-primary">
@@ -114,7 +114,7 @@ export default function BookingDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <CalendarDays className="w-5 h-5 text-bastet-gold" />
+                <CalendarDays className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-xs text-text-muted">Check-out</p>
                   <p className="text-sm font-semibold text-text-primary">
@@ -125,7 +125,7 @@ export default function BookingDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <Moon className="w-5 h-5 text-bastet-gold" />
+                <Moon className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-xs text-text-muted">Nights</p>
                   <p className="text-lg font-mono font-bold text-text-primary">
@@ -136,7 +136,7 @@ export default function BookingDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <User className="w-5 h-5 text-bastet-gold" />
+                <User className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-xs text-text-muted">Guests</p>
                   <p className="text-sm font-semibold text-text-primary">
@@ -160,7 +160,7 @@ export default function BookingDetailPage() {
                     <p className="text-xs text-text-muted">Name</p>
                     <Link
                       href={`/dashboard/guests/${booking.guest.id}`}
-                      className="text-sm text-bastet-gold hover:underline mt-0.5 inline-block"
+                      className="text-sm text-brand-accent hover:underline mt-0.5 inline-block"
                     >
                       {booking.guest.first_name} {booking.guest.last_name}
                     </Link>
@@ -176,7 +176,7 @@ export default function BookingDetailPage() {
                     <p className="text-sm text-text-primary mt-0.5 capitalize">
                       {booking.guest.loyalty_tier}
                       {booking.guest.vip_status && (
-                        <span className="ml-1 text-bastet-gold text-xs">VIP</span>
+                        <span className="ml-1 text-brand-accent text-xs">VIP</span>
                       )}
                     </p>
                   </div>
@@ -197,7 +197,7 @@ export default function BookingDetailPage() {
                     <p className="text-xs text-text-muted">Number</p>
                     <Link
                       href={`/dashboard/apartments/${booking.apartment.id}`}
-                      className="text-sm font-mono text-bastet-gold hover:underline mt-0.5 inline-block"
+                      className="text-sm font-mono text-brand-accent hover:underline mt-0.5 inline-block"
                     >
                       {booking.apartment.number}
                     </Link>
@@ -355,7 +355,7 @@ function TimelineItem({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-2 h-2 rounded-full bg-bastet-gold mt-1.5 shrink-0" />
+      <div className="w-2 h-2 rounded-full bg-brand-accent mt-1.5 shrink-0" />
       <div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-text-primary">{label}</span>

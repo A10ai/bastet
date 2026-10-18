@@ -34,13 +34,13 @@ export function Header({ onMenuToggle }: HeaderProps) {
   }, [dropdownOpen]);
 
   return (
-    <header className="h-16 bg-bastet-card border-b border-bastet-border flex items-center justify-between px-4 md:px-6 theme-transition">
+    <header className="h-16 bg-brand-card border-b border-brand-border flex items-center justify-between px-4 md:px-6 theme-transition">
       <div className="flex items-center gap-3">
         {/* Hamburger menu - mobile only */}
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}
-            className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bastet-bg transition-colors md:hidden"
+            className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-brand-bg transition-colors md:hidden"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
@@ -51,7 +51,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
             onClick={() => hasMultiple && setDropdownOpen((prev) => !prev)}
             className={`flex items-center gap-2 text-sm text-text-muted ${hasMultiple ? "hover:text-text-primary cursor-pointer" : "cursor-default"} transition-colors`}
           >
-            <Building2 className="w-4 h-4 text-bastet-gold shrink-0" />
+            <Building2 className="w-4 h-4 text-brand-accent shrink-0" />
             <span>
               HospitAI{activeProperty?.name ? ` — ${activeProperty.name}` : ""}
             </span>
@@ -62,7 +62,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
           {/* Dropdown */}
           {dropdownOpen && hasMultiple && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-bastet-card border border-bastet-border rounded-lg shadow-lg py-1 z-50">
+            <div className="absolute top-full left-0 mt-1 w-64 bg-brand-card border border-brand-border rounded-lg shadow-lg py-1 z-50">
               {properties.map((property) => (
                 <button
                   key={property.id}
@@ -72,8 +72,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
                   }}
                   className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors ${
                     property.id === activeProperty?.id
-                      ? "text-bastet-gold bg-bastet-gold/5"
-                      : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg"
+                      ? "text-brand-accent bg-brand-accent/5"
+                      : "text-text-secondary hover:text-text-primary hover:bg-brand-bg"
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
@@ -94,7 +94,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bastet-bg transition-colors"
+          className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-brand-bg transition-colors"
           aria-label={
             theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
           }
@@ -114,8 +114,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
         {/* User menu */}
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-8 h-8 rounded-full bg-bastet-gold-muted flex items-center justify-center">
-            <User className="w-4 h-4 text-bastet-gold" />
+          <div className="w-8 h-8 rounded-full bg-brand-accent-muted flex items-center justify-center">
+            <User className="w-4 h-4 text-brand-accent" />
           </div>
           {staff && (
             <div className="hidden md:block">

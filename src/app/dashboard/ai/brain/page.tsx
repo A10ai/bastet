@@ -1,5 +1,6 @@
 "use client";
 
+import type { DataSnapshot } from "@/lib/ai-brain";
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,14 +59,14 @@ interface BrainDecision {
   executed: boolean;
   approved: boolean | null;
   created_at: string;
-  event_to_emit?: { type: string; payload: Record<string, any> };
+  event_to_emit?: { type: string; payload: Record<string, unknown> };
 }
 
 interface BrainCycleResult {
   cycle_id: string;
   mode: "supervised" | "autonomous";
   timestamp: string;
-  data_snapshot: Record<string, any>;
+  data_snapshot: Record<string, unknown>;
   decisions: BrainDecision[];
   summary: string;
 }
@@ -231,7 +232,7 @@ export default function AIBrainPage() {
             </div>
             {/* Pulsing indicator */}
             <span className={cn(
-              "absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-bastet-card",
+              "absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-brand-card",
               config?.enabled
                 ? config.mode === "autonomous"
                   ? "bg-amber-400 animate-pulse"
@@ -255,7 +256,7 @@ export default function AIBrainPage() {
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* Mode toggle */}
-          <div className="flex items-center bg-bastet-bg rounded-lg p-1">
+          <div className="flex items-center bg-brand-bg rounded-lg p-1">
             <button
               onClick={() => updateConfig({ mode: "supervised" })}
               className={cn(
@@ -295,8 +296,8 @@ export default function AIBrainPage() {
               runningCycle
                 ? "bg-cyan-400/10 text-cyan-400 cursor-wait"
                 : config?.enabled
-                  ? "bg-cyan-400 text-bastet-bg hover:bg-cyan-300"
-                  : "bg-bastet-bg text-text-muted cursor-not-allowed"
+                  ? "bg-cyan-400 text-brand-bg hover:bg-cyan-300"
+                  : "bg-brand-bg text-text-muted cursor-not-allowed"
             )}
           >
             {runningCycle ? (
@@ -339,7 +340,7 @@ export default function AIBrainPage() {
                   </button>
                   <button
                     onClick={() => setConfirmAutonomous(false)}
-                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-bastet-bg text-text-secondary hover:text-text-primary transition-colors"
+                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-brand-bg text-text-secondary hover:text-text-primary transition-colors"
                   >
                     Cancel
                   </button>
@@ -538,7 +539,7 @@ export default function AIBrainPage() {
           </h2>
           <div className="space-y-2">
             {pastCycles.map((cycle) => (
-              <Card key={cycle.cycle_id} className="hover:border-bastet-border/80 transition-colors">
+              <Card key={cycle.cycle_id} className="hover:border-brand-border/80 transition-colors">
                 <CardContent className="py-3">
                   <button
                     onClick={() =>
@@ -571,7 +572,7 @@ export default function AIBrainPage() {
                   </button>
 
                   {expandedCycle === cycle.cycle_id && (
-                    <div className="mt-3 pt-3 border-t border-bastet-border space-y-2">
+                    <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
                       {cycle.decisions.map((d) => (
                         <DecisionCard
                           key={d.id}
@@ -630,7 +631,7 @@ export default function AIBrainPage() {
             {/* Mode */}
             <div>
               <label className="text-text-secondary text-xs font-medium block mb-2">Mode</label>
-              <div className="px-3 py-2 rounded-lg border border-bastet-border bg-bastet-bg text-sm">
+              <div className="px-3 py-2 rounded-lg border border-brand-border bg-brand-bg text-sm">
                 <span className={cn(
                   config?.mode === "autonomous" ? "text-amber-400" : "text-emerald-400"
                 )}>
@@ -650,7 +651,7 @@ export default function AIBrainPage() {
               <select
                 value={config?.cycle_interval_minutes || 30}
                 onChange={(e) => updateConfig({ cycle_interval_minutes: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 rounded-lg border border-bastet-border bg-bastet-bg text-text-primary text-sm focus:outline-none focus:border-cyan-400/50"
+                className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-bg text-text-primary text-sm focus:outline-none focus:border-cyan-400/50"
               >
                 <option value={15}>Every 15 minutes</option>
                 <option value={30}>Every 30 minutes</option>
@@ -772,7 +773,7 @@ function DecisionCard({
               {/* Confidence bar */}
               <div className="flex items-center gap-2">
                 <span className="text-text-muted text-xs">Confidence</span>
-                <div className="w-20 h-1.5 bg-bastet-bg rounded-full overflow-hidden">
+                <div className="w-20 h-1.5 bg-brand-bg rounded-full overflow-hidden">
                   <div
                     className={cn("h-full rounded-full transition-all", confidenceColor)}
                     style={{ width: `${decision.confidence}%` }}
@@ -831,8 +832,8 @@ function DecisionCard({
 // Snapshot Preview
 // ---------------------------------------------------------------------------
 
-function SnapshotPreview({ snapshot }: { snapshot: Record<string, any> }) {
-  const s = snapshot as Record<string, any>;
+function SnapshotPreview({ snapshot }: { snapshot: Partial<DataSnapshot> }) {
+  const s = snapshot;
   if (!s.occupancy) {
     return (
       <Card>

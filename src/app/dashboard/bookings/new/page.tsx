@@ -115,7 +115,7 @@ export default function NewBookingPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/dashboard/bookings"
-          className="p-2 rounded-lg hover:bg-bastet-card transition-colors"
+          className="p-2 rounded-lg hover:bg-brand-card transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
@@ -173,7 +173,7 @@ export default function NewBookingPage() {
                   value={apartmentId}
                   onChange={(e) => setApartmentId(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 >
                   <option value="">Choose an apartment...</option>
                   {apartments
@@ -202,7 +202,7 @@ export default function NewBookingPage() {
                     <select
                       value={guestId}
                       onChange={(e) => setGuestId(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">No guest (walk-in)</option>
                       {guests.map((guest) => (
@@ -215,7 +215,7 @@ export default function NewBookingPage() {
                   </div>
                   <Link
                     href="/dashboard/guests/new"
-                    className="text-xs text-bastet-gold hover:underline"
+                    className="text-xs text-brand-accent hover:underline"
                   >
                     + Create new guest
                   </Link>
@@ -237,7 +237,7 @@ export default function NewBookingPage() {
                     <select
                       value={channelId}
                       onChange={(e) => setChannelId(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">Select channel...</option>
                       {channels.map((ch) => (
@@ -280,7 +280,7 @@ export default function NewBookingPage() {
                     <select
                       value={guestCurrency}
                       onChange={(e) => setGuestCurrency(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="GBP">GBP</option>
                       <option value="EUR">EUR</option>
@@ -307,7 +307,7 @@ export default function NewBookingPage() {
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                       placeholder="Guest special requests..."
                     />
                   </div>
@@ -319,7 +319,7 @@ export default function NewBookingPage() {
                       value={internalNotes}
                       onChange={(e) => setInternalNotes(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                       placeholder="Internal staff notes..."
                     />
                   </div>

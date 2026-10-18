@@ -76,7 +76,7 @@ export function getLengthOfStayDiscount(nights: number): number {
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     available: "text-status-success",
-    occupied: "text-bastet-gold",
+    occupied: "text-brand-accent",
     maintenance: "text-status-warning",
     cleaning: "text-status-info",
     blocked: "text-status-error",
@@ -89,7 +89,7 @@ export function getStatusColor(status: string): string {
     no_show: "text-status-error",
     open: "text-status-warning",
     assigned: "text-status-info",
-    in_progress: "text-bastet-gold",
+    in_progress: "text-brand-accent",
     completed: "text-status-success",
     verified: "text-status-success",
     on_hold: "text-status-warning",
@@ -97,7 +97,7 @@ export function getStatusColor(status: string): string {
     draft: "text-text-secondary",
     sent: "text-status-info",
     paid: "text-status-success",
-    partially_paid: "text-bastet-gold",
+    partially_paid: "text-brand-accent",
     overdue: "text-status-error",
     refunded: "text-status-warning",
     high: "text-status-warning",
@@ -112,7 +112,7 @@ export function getStatusColor(status: string): string {
 export function getStatusBgColor(status: string): string {
   const colors: Record<string, string> = {
     available: "bg-status-success/10 text-status-success",
-    occupied: "bg-bastet-gold-muted text-bastet-gold",
+    occupied: "bg-brand-accent-muted text-brand-accent",
     maintenance: "bg-status-warning/10 text-status-warning",
     cleaning: "bg-status-info/10 text-status-info",
     blocked: "bg-status-error/10 text-status-error",
@@ -123,7 +123,7 @@ export function getStatusBgColor(status: string): string {
     cancelled: "bg-status-error/10 text-status-error",
     open: "bg-status-warning/10 text-status-warning",
     assigned: "bg-status-info/10 text-status-info",
-    in_progress: "bg-bastet-gold-muted text-bastet-gold",
+    in_progress: "bg-brand-accent-muted text-brand-accent",
     completed: "bg-status-success/10 text-status-success",
     verified: "bg-status-success/10 text-status-success",
     urgent: "bg-status-error/10 text-status-error",
@@ -133,7 +133,7 @@ export function getStatusBgColor(status: string): string {
     draft: "bg-text-secondary/10 text-text-secondary",
     sent: "bg-status-info/10 text-status-info",
     paid: "bg-status-success/10 text-status-success",
-    partially_paid: "bg-bastet-gold-muted text-bastet-gold",
+    partially_paid: "bg-brand-accent-muted text-brand-accent",
     overdue: "bg-status-error/10 text-status-error",
     refunded: "bg-status-warning/10 text-status-warning",
     high: "bg-status-warning/10 text-status-warning",

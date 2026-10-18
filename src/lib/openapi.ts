@@ -15,7 +15,7 @@ const specBase = {
   info: {
     title: "HospitAI API",
     version: "1.0.0",
-    description: "Hotel property management system API for Bastet Hurghada. All endpoints require authentication except /health and /login.",
+    description: "Hotel property management system API. All endpoints require authentication except /health and /login.",
     contact: {
       name: "HospitAI",
       url: "https://hospitai.uk",

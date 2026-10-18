@@ -103,7 +103,7 @@ export default function AuditPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -115,7 +115,7 @@ export default function AuditPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-bastet-gold" />
+          <Shield className="w-6 h-6 text-brand-accent" />
           <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
             Audit Trail
           </h1>
@@ -146,7 +146,7 @@ export default function AuditPage() {
         <Card>
           <CardContent>
             <p className="text-xs text-text-muted">AI Decisions</p>
-            <p className="text-lg font-mono font-bold text-bastet-gold mt-1">
+            <p className="text-lg font-mono font-bold text-brand-accent mt-1">
               {stats?.recent_ai_decisions || 0}
             </p>
           </CardContent>
@@ -168,8 +168,8 @@ export default function AuditPage() {
           className={cn(
             "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
             categoryFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           )}
         >
           All ({stats?.total_entries || 0})
@@ -181,8 +181,8 @@ export default function AuditPage() {
             className={cn(
               "px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors",
               categoryFilter === cat
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             )}
           >
             {cat.replace("_", " ")} ({stats?.by_category?.[cat] || 0})
@@ -198,7 +198,7 @@ export default function AuditPage() {
           </h3>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-bastet-border max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-brand-border max-h-[600px] overflow-y-auto">
             {entries.map((entry) => {
               const Icon = categoryIcons[entry.category] || Server;
               const colorClass = categoryColors[entry.category] || "text-gray-400 bg-gray-400/10";
@@ -207,7 +207,7 @@ export default function AuditPage() {
               return (
                 <div
                   key={entry.id}
-                  className="px-4 py-3 hover:bg-bastet-bg/50 cursor-pointer transition-colors"
+                  className="px-4 py-3 hover:bg-brand-bg/50 cursor-pointer transition-colors"
                   onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                 >
                   <div className="flex items-start gap-3">
@@ -233,7 +233,7 @@ export default function AuditPage() {
 
                       {/* Expanded details */}
                       {isExpanded && (
-                        <div className="mt-3 p-3 rounded-lg bg-bastet-bg border border-bastet-border text-xs space-y-2">
+                        <div className="mt-3 p-3 rounded-lg bg-brand-bg border border-brand-border text-xs space-y-2">
                           {entry.resource_type && (
                             <div>
                               <span className="text-text-muted">Resource: </span>

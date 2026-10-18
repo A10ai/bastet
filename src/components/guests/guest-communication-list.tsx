@@ -44,7 +44,7 @@ export function GuestCommunicationList({ guestId }: GuestCommunicationListProps)
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="w-5 h-5 animate-spin text-bastet-gold" />
+          <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
         </CardContent>
       </Card>
     );
@@ -66,7 +66,7 @@ export function GuestCommunicationList({ guestId }: GuestCommunicationListProps)
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-bastet-border">
+              <tr className="border-b border-brand-border">
                 <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
                 <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Direction</th>
                 <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Subject</th>
@@ -78,7 +78,7 @@ export function GuestCommunicationList({ guestId }: GuestCommunicationListProps)
               {communications.map((comm) => (
                 <tr
                   key={comm.id}
-                  className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
+                  className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50"
                 >
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-2 text-text-secondary">
@@ -91,7 +91,7 @@ export function GuestCommunicationList({ guestId }: GuestCommunicationListProps)
                       className={`text-xs font-medium ${
                         comm.direction === "inbound"
                           ? "text-status-info"
-                          : "text-bastet-gold"
+                          : "text-brand-accent"
                       }`}
                     >
                       {comm.direction === "inbound" ? "↙ In" : "↗ Out"}

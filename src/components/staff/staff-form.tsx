@@ -55,7 +55,7 @@ export function staffFormToPayload(v: StaffFormValues) {
 }
 
 const selectClass =
-  "w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50";
+  "w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50";
 
 interface StaffFormFieldsProps {
   values: StaffFormValues;

@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
 
     // Sort apartments by building code then number
     const sortedApartments = (apartments || []).sort((a, b) => {
-      const buildingA = (a.building as Record<string, any> | null)?.code || "";
-      const buildingB = (b.building as Record<string, any> | null)?.code || "";
+      const buildingA = String((a.building as unknown as Record<string, unknown> | null)?.code ?? "");
+      const buildingB = String((b.building as unknown as Record<string, unknown> | null)?.code ?? "");
       if (buildingA !== buildingB) return buildingA.localeCompare(buildingB);
       return a.number.localeCompare(b.number, undefined, { numeric: true });
     });

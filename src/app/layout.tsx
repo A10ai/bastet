@@ -51,7 +51,7 @@ export default async function RootLayout(
         />
       </head>
       <body
-        className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased bg-bastet-bg text-text-primary theme-transition`}
+        className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased bg-brand-bg text-text-primary theme-transition`}
       >
         {children}
       </body>

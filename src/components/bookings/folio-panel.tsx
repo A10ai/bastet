@@ -108,7 +108,7 @@ export function FolioPanel({ bookingId, canManage }: { bookingId: string; canMan
           <p className="text-sm text-text-muted">No folio yet. It opens at check-in, or when a deposit is taken.</p>
         ) : (
           <>
-            <ul className="divide-y divide-bastet-border text-sm">
+            <ul className="divide-y divide-brand-border text-sm">
               {data.lines.length === 0 && <li className="py-2 text-text-muted">No charges posted yet.</li>}
               {data.lines.map((l) => (
                 <li key={l.id} className="py-2 flex items-center justify-between gap-3">
@@ -127,7 +127,7 @@ export function FolioPanel({ bookingId, canManage }: { bookingId: string; canMan
                 </li>
               ))}
             </ul>
-            <div className="grid grid-cols-2 gap-2 text-xs text-text-secondary border-t border-bastet-border pt-2">
+            <div className="grid grid-cols-2 gap-2 text-xs text-text-secondary border-t border-brand-border pt-2">
               <span>Charges {formatCurrency(data.totals.charges)}</span><span className="text-right">VAT {formatCurrency(data.totals.tax)}</span>
               <span>Payments {formatCurrency(data.totals.payments)}</span><span className="text-right">Refunds {formatCurrency(data.totals.refunds)}</span>
             </div>
@@ -157,7 +157,7 @@ export function FolioPanel({ bookingId, canManage }: { bookingId: string; canMan
 
         {mode === "charge" && (
           <form className="grid grid-cols-2 gap-2" onSubmit={(e) => { e.preventDefault(); act({ action: "post_charge", type: charge.type, description: charge.description, quantity: Number(charge.quantity), unit_amount_gbp: Number(charge.unit) }); }}>
-            <select value={charge.type} onChange={(e) => setCharge({ ...charge, type: e.target.value })} className="col-span-2 px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary" aria-label="Charge type">
+            <select value={charge.type} onChange={(e) => setCharge({ ...charge, type: e.target.value })} className="col-span-2 px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary" aria-label="Charge type">
               <option value="extra">Extra</option><option value="fnb">Food &amp; beverage</option><option value="adjustment">Adjustment</option>
             </select>
             <Input id="charge-desc" label="Description" value={charge.description} onChange={(e) => setCharge({ ...charge, description: e.target.value })} required className="col-span-2" />
@@ -171,7 +171,7 @@ export function FolioPanel({ bookingId, canManage }: { bookingId: string; canMan
             <Input id="pay-amount" label="Amount (GBP)" type="number" min="0.01" step="0.01" value={payment.amount} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} required />
             <div>
               <label htmlFor="pay-method" className="block text-sm font-medium text-text-secondary mb-1.5">Method</label>
-              <select id="pay-method" value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })} className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary">
+              <select id="pay-method" value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })} className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary">
                 <option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option>
               </select>
             </div>

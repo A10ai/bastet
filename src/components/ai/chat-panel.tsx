@@ -130,7 +130,7 @@ export function AIChatPanel() {
       {/* Chat panel */}
       <div
         className={cn(
-          "fixed z-50 flex flex-col bg-bastet-card border border-bastet-border shadow-2xl transition-all duration-300",
+          "fixed z-50 flex flex-col bg-brand-card border border-brand-border shadow-2xl transition-all duration-300",
           // Mobile: full-screen overlay
           "inset-0 md:inset-auto",
           // Desktop: positioned bottom-right with fixed size
@@ -141,9 +141,9 @@ export function AIChatPanel() {
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-bastet-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-bastet-gold" />
+            <Brain className="w-5 h-5 text-brand-accent" />
             <span className="font-semibold text-text-primary text-sm">
               HospitAI
             </span>
@@ -154,7 +154,7 @@ export function AIChatPanel() {
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="p-2 md:p-1 text-text-muted hover:text-text-primary transition-colors rounded-lg hover:bg-bastet-bg"
+            className="p-2 md:p-1 text-text-muted hover:text-text-primary transition-colors rounded-lg hover:bg-brand-bg"
             aria-label="Close chat"
           >
             <X className="w-5 h-5 md:w-4 md:h-4" />
@@ -172,8 +172,8 @@ export function AIChatPanel() {
               )}
             >
               {msg.role === "ai" && (
-                <div className="w-7 h-7 rounded-lg bg-bastet-gold-muted flex items-center justify-center shrink-0 mt-0.5">
-                  <Brain className="w-3.5 h-3.5 text-bastet-gold" />
+                <div className="w-7 h-7 rounded-lg bg-brand-accent-muted flex items-center justify-center shrink-0 mt-0.5">
+                  <Brain className="w-3.5 h-3.5 text-brand-accent" />
                 </div>
               )}
               <div
@@ -181,7 +181,7 @@ export function AIChatPanel() {
                   "max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
                   msg.role === "user"
                     ? "bg-cyan-400 text-navy-950"
-                    : "bg-bastet-bg border border-bastet-border text-text-primary"
+                    : "bg-brand-bg border border-brand-border text-text-primary"
                 )}
               >
                 {msg.content.split("\n").map((line, j) => {
@@ -213,10 +213,10 @@ export function AIChatPanel() {
 
           {loading && (
             <div className="flex gap-2">
-              <div className="w-7 h-7 rounded-lg bg-bastet-gold-muted flex items-center justify-center shrink-0">
-                <Brain className="w-3.5 h-3.5 text-bastet-gold animate-pulse" />
+              <div className="w-7 h-7 rounded-lg bg-brand-accent-muted flex items-center justify-center shrink-0">
+                <Brain className="w-3.5 h-3.5 text-brand-accent animate-pulse" />
               </div>
-              <div className="bg-bastet-bg border border-bastet-border rounded-xl px-4 py-3">
+              <div className="bg-brand-bg border border-brand-border rounded-xl px-4 py-3">
                 <Loader2 className="w-4 h-4 animate-spin text-text-muted" />
               </div>
             </div>
@@ -232,7 +232,7 @@ export function AIChatPanel() {
               <button
                 key={prompt}
                 onClick={() => sendMessage(prompt)}
-                className="text-[11px] px-2.5 py-1 rounded-full bg-bastet-bg border border-bastet-border text-text-secondary hover:text-bastet-gold hover:border-bastet-gold/30 transition-colors"
+                className="text-[11px] px-2.5 py-1 rounded-full bg-brand-bg border border-brand-border text-text-secondary hover:text-brand-accent hover:border-brand-accent/30 transition-colors"
               >
                 {prompt}
               </button>
@@ -241,7 +241,7 @@ export function AIChatPanel() {
         )}
 
         {/* Input */}
-        <div className="px-4 py-3 border-t border-bastet-border pb-safe">
+        <div className="px-4 py-3 border-t border-brand-border pb-safe">
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -250,7 +250,7 @@ export function AIChatPanel() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask HospitAI anything..."
-              className="flex-1 bg-bastet-bg border border-bastet-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-bastet-gold/40 transition-colors"
+              className="flex-1 bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-accent/40 transition-colors"
               disabled={loading}
             />
             <button

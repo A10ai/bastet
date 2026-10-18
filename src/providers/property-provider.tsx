@@ -72,11 +72,11 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           if (list.length === 0) {
             setProperties([{
               id: staff.property_id,
-              name: "Bastet Aparthotels",
-              slug: "bastet",
+              name: process.env.NEXT_PUBLIC_PROPERTY_NAME || "My property",
+              slug: "default",
               address: "",
-              city: "Hurghada",
-              country: "Egypt",
+              city: "",
+              country: "",
               total_apartments: 0,
               status: "active",
             }]);
@@ -91,11 +91,11 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           setActivePropertyId(staff.property_id);
           setProperties([{
             id: staff.property_id,
-            name: "Bastet Aparthotels",
-            slug: "bastet",
+            name: process.env.NEXT_PUBLIC_PROPERTY_NAME || "My property",
+            slug: "default",
             address: "",
-            city: "Hurghada",
-            country: "Egypt",
+            city: "",
+            country: "",
             total_apartments: 0,
             status: "active",
           }]);

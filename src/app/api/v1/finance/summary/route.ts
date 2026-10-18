@@ -27,9 +27,6 @@ export async function GET(request: NextRequest) {
     const revenue = days.reduce((s, d) => s + Number(d.room_revenue_gbp), 0);
     const occupiedNights = days.reduce((s, d) => s + Number(d.room_nights), 0);
     const totalAptNights = days.reduce((s, d) => s + Number(d.rooms_available), 0);
-    const { count: totalApartments } = await supabase
-      .from("apartments")
-      .select("id", { count: "exact", head: true });
 
     // Expenses: sum this month
     const { data: monthExpenses } = await supabase

@@ -49,7 +49,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link href="/dashboard/finance" className="text-sm text-text-secondary hover:text-bastet-gold">
+            <Link href="/dashboard/finance" className="text-sm text-text-secondary hover:text-brand-accent">
               Finance
             </Link>
             <span className="text-text-muted">/</span>
@@ -71,8 +71,8 @@ export default function InvoicesPage() {
           onClick={() => setStatusFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({invoices.length})
@@ -83,8 +83,8 @@ export default function InvoicesPage() {
             onClick={() => setStatusFilter(status)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               statusFilter === status
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -97,12 +97,12 @@ export default function InvoicesPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Invoice #</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Guest</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Booking</th>
@@ -120,10 +120,10 @@ export default function InvoicesPage() {
                   return (
                     <tr
                       key={inv.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
-                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                        <span className="text-sm font-mono font-semibold text-brand-accent">
                           {inv.invoice_number}
                         </span>
                       </td>
@@ -145,7 +145,7 @@ export default function InvoicesPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/finance/invoices/${inv.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

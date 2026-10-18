@@ -106,7 +106,7 @@ function LoginForm() {
 
   if (step === "mfa") {
     return (
-      <div className="bg-bastet-card border border-bastet-border rounded-xl p-8">
+      <div className="bg-brand-card border border-brand-border rounded-xl p-8">
         <h2 className="text-xl font-semibold text-text-primary mb-2">Two-factor verification</h2>
         <p className="text-sm text-text-secondary mb-6">Enter the six-digit code from your authenticator app.</p>
         <form onSubmit={handleMfa} className="space-y-4">
@@ -121,7 +121,7 @@ function LoginForm() {
               onChange={(e) => setCode(e.target.value)}
               required
               autoFocus
-              className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary tracking-widest text-center text-lg focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
+              className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary tracking-widest text-center text-lg focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
               placeholder="123456"
             />
           </div>
@@ -141,7 +141,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-bastet-card border border-bastet-border rounded-xl p-8">
+    <div className="bg-brand-card border border-brand-border rounded-xl p-8">
       <h2 className="text-xl font-semibold text-text-primary mb-6">
         Staff Login
       </h2>
@@ -160,7 +160,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
+            className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
             placeholder="you@hospitai.uk"
           />
         </div>
@@ -178,7 +178,7 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
+            className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/40 transition-colors"
             placeholder="Enter your password"
           />
         </div>
@@ -203,7 +203,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bastet-bg px-4">
+    <div className="min-h-screen flex items-center justify-center bg-brand-bg px-4">
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
@@ -217,7 +217,7 @@ export default function LoginPage() {
 
         <Suspense
           fallback={
-            <div className="bg-bastet-card border border-bastet-border rounded-xl p-8 text-center text-text-secondary">
+            <div className="bg-brand-card border border-brand-border rounded-xl p-8 text-center text-text-secondary">
               Loading...
             </div>
           }

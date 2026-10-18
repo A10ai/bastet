@@ -29,11 +29,11 @@ export interface WorkflowStep {
     | "emit_event"
     | "update_booking"
     | "custom";
-  action_params: Record<string, any>;
+  action_params: Record<string, unknown>;
   requires_approval: boolean;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   executed_at: string | null;
-  result: Record<string, any> | null;
+  result: Record<string, unknown> | null;
 }
 
 export interface Workflow {
@@ -54,7 +54,7 @@ export interface Workflow {
   approved_by: string | null;
   approved_at: string | null;
   completed_at: string | null;
-  outcome: Record<string, any> | null;
+  outcome: Record<string, unknown> | null;
   outcome_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -70,7 +70,7 @@ export interface CreateWorkflowInput {
   steps: Array<{
     title: string;
     action_type: WorkflowStep["action_type"];
-    action_params: Record<string, any>;
+    action_params: Record<string, unknown>;
     requires_approval?: boolean;
   }>;
   created_by?: string;
@@ -330,7 +330,7 @@ export async function executeNextStep(
   const claimedVersion = (claimed as { version: number }).version;
 
   // Execute the step action
-  let result: Record<string, any> = {};
+  let result: Record<string, unknown> = {};
   let success = false;
 
   try {
@@ -366,7 +366,7 @@ export async function executeNextStep(
     nextStatus = "awaiting_approval";
   }
 
-  const updatePayload: Record<string, any> = {
+  const updatePayload: Record<string, unknown> = {
     steps,
     current_step: nextStep,
     status: nextStatus,
@@ -444,7 +444,7 @@ export async function executeNextStep(
 async function executeStepAction(
   supabase: SupabaseClient,
   step: WorkflowStep
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   const params = step.action_params;
 
   switch (step.action_type) {
@@ -621,7 +621,7 @@ async function executeStepAction(
       const { event_type, source_system, payload } = params as {
         event_type?: string;
         source_system?: string;
-        payload?: Record<string, any>;
+        payload?: Record<string, unknown>;
       };
 
       if (!event_type) throw new Error("emit_event requires event_type");
@@ -736,7 +736,7 @@ export async function cancelWorkflow(
 export async function recordOutcome(
   supabase: SupabaseClient,
   id: string,
-  outcome: Record<string, any>,
+  outcome: Record<string, unknown>,
   notes: string
 ): Promise<Workflow | null> {
   const workflow = await getWorkflow(supabase, id);
@@ -797,11 +797,11 @@ export async function createWorkflowFromBrainDecision(
         const multiplier = isIncrease ? 1 + pct / 100 : 1 - pct / 100;
 
         for (const t of types) {
-          const newRate = Math.round(((t as Record<string, any>).base_weekly_rate_gbp || 0) * multiplier * 100) / 100;
+          const newRate = Math.round((Number((t as Record<string, unknown>).base_weekly_rate_gbp) || 0) * multiplier * 100) / 100;
           steps.push({
-            title: `Adjust ${(t as Record<string, any>).name} rate to ${newRate.toFixed(2)}`,
+            title: `Adjust ${String((t as Record<string, unknown>).name)} rate to ${newRate.toFixed(2)}`,
             action_type: "update_rate",
-            action_params: { type_id: (t as Record<string, any>).id, new_rate: newRate },
+            action_params: { type_id: (t as Record<string, unknown>).id as string, new_rate: newRate },
             requires_approval: requiresApproval,
           });
         }

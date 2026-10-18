@@ -85,7 +85,7 @@ export default function GuestDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -94,7 +94,7 @@ export default function GuestDetailPage() {
     return (
       <div className="text-center py-24">
         <p className="text-text-secondary">Guest not found</p>
-        <Link href="/dashboard/guests" className="text-bastet-gold hover:underline text-sm mt-2 inline-block">
+        <Link href="/dashboard/guests" className="text-brand-accent hover:underline text-sm mt-2 inline-block">
           Back to guests
         </Link>
       </div>
@@ -105,7 +105,7 @@ export default function GuestDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/guests" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href="/dashboard/guests" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div className="flex-1">
@@ -115,14 +115,14 @@ export default function GuestDetailPage() {
             </h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
               guest.loyalty_tier === "platinum" ? "bg-purple-400/20 text-purple-300" :
-              guest.loyalty_tier === "gold" ? "bg-bastet-gold-muted text-bastet-gold" :
+              guest.loyalty_tier === "gold" ? "bg-brand-accent-muted text-brand-accent" :
               guest.loyalty_tier === "silver" ? "bg-gray-400/20 text-gray-300" :
               "bg-orange-900/20 text-orange-400"
             }`}>
               {guest.loyalty_tier}
             </span>
             {guest.vip_status && (
-              <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+              <Star className="w-4 h-4 text-brand-accent fill-brand-accent" />
             )}
           </div>
           <p className="text-sm text-text-secondary mt-1">
@@ -135,7 +135,7 @@ export default function GuestDetailPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
-            <CalendarDays className="w-5 h-5 text-bastet-gold" />
+            <CalendarDays className="w-5 h-5 text-brand-accent" />
             <div>
               <p className="text-lg font-mono font-bold text-text-primary">{guest.total_stays}</p>
               <p className="text-xs text-text-muted">Total Stays</p>
@@ -144,7 +144,7 @@ export default function GuestDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
-            <Moon className="w-5 h-5 text-bastet-gold" />
+            <Moon className="w-5 h-5 text-brand-accent" />
             <div>
               <p className="text-lg font-mono font-bold text-text-primary">{guest.total_nights}</p>
               <p className="text-xs text-text-muted">Total Nights</p>
@@ -153,7 +153,7 @@ export default function GuestDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
-            <Wallet className="w-5 h-5 text-bastet-gold" />
+            <Wallet className="w-5 h-5 text-brand-accent" />
             <div>
               <p className="text-lg font-mono font-bold text-text-primary">
                 {formatCurrency(guest.total_spend_gbp)}
@@ -164,7 +164,7 @@ export default function GuestDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
-            <Trophy className="w-5 h-5 text-bastet-gold" />
+            <Trophy className="w-5 h-5 text-brand-accent" />
             <div>
               <p className="text-lg font-mono font-bold text-text-primary">
                 {guest.loyalty_points.toLocaleString()}
@@ -176,7 +176,7 @@ export default function GuestDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-bastet-border">
+      <div className="border-b border-brand-border">
         <div className="flex gap-0">
           {TABS.map((tab) => (
             <button
@@ -184,13 +184,13 @@ export default function GuestDetailPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
-                  ? "text-bastet-gold"
+                  ? "text-brand-accent"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
               {tab.label}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-bastet-gold" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-accent" />
               )}
             </button>
           ))}
@@ -265,7 +265,7 @@ export default function GuestDetailPage() {
                       value={String(editData.notes || "")}
                       onChange={(e) => setEditData({ ...editData, notes: e.target.value || null })}
                       rows={3}
-                      className="w-full px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary"
+                      className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary"
                     />
                   ) : (
                     <p className="text-sm text-text-secondary">{guest.notes || "—"}</p>
@@ -299,7 +299,7 @@ export default function GuestDetailPage() {
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-bastet-border">
+                  <tr className="border-b border-brand-border">
                     <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Reference</th>
                     <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Apartment</th>
                     <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Check-in</th>
@@ -310,11 +310,11 @@ export default function GuestDetailPage() {
                 </thead>
                 <tbody>
                   {guest.bookings.map((booking: Booking) => (
-                    <tr key={booking.id} className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50">
+                    <tr key={booking.id} className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50">
                       <td className="px-6 py-3">
                         <Link
                           href={`/dashboard/bookings/${booking.id}`}
-                          className="text-sm font-mono text-bastet-gold hover:underline"
+                          className="text-sm font-mono text-brand-accent hover:underline"
                         >
                           {booking.reference}
                         </Link>
@@ -376,7 +376,7 @@ function renderField(
           type="text"
           value={String((editData as Record<string, unknown>)[key] || "")}
           onChange={(e) => setEditData({ ...editData, [key]: e.target.value || null })}
-          className="w-full px-2 py-1 bg-bastet-bg border border-bastet-border rounded text-sm text-text-primary"
+          className="w-full px-2 py-1 bg-brand-bg border border-brand-border rounded text-sm text-text-primary"
         />
       ) : (
         <p className="text-sm text-text-primary">{String(value || "—")}</p>

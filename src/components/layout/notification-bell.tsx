@@ -218,7 +218,7 @@ export function NotificationBell({ staffId }: NotificationBellProps) {
       <button
         ref={buttonRef}
         onClick={togglePanel}
-        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bastet-bg transition-colors"
+        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-brand-bg transition-colors"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -235,12 +235,12 @@ export function NotificationBell({ staffId }: NotificationBellProps) {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full mt-2 w-[380px] max-h-[400px] bg-bastet-card border border-bastet-border rounded-xl shadow-2xl shadow-black/40 z-50 flex flex-col overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-[380px] max-h-[400px] bg-brand-card border border-brand-border rounded-xl shadow-2xl shadow-black/40 z-50 flex flex-col overflow-hidden"
           role="dialog"
           aria-label="Notifications panel"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-bastet-border">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
             <h3 className="text-sm font-semibold text-text-primary">
               Notifications
             </h3>
@@ -276,7 +276,7 @@ export function NotificationBell({ staffId }: NotificationBellProps) {
                     <li key={notification.id}>
                       <button
                         onClick={() => handleNotificationClick(notification)}
-                        className={`w-full text-left px-4 py-3 hover:bg-bastet-bg/50 transition-colors flex gap-3 ${
+                        className={`w-full text-left px-4 py-3 hover:bg-brand-bg/50 transition-colors flex gap-3 ${
                           !notification.read
                             ? "border-l-2 border-l-cyan-400"
                             : "border-l-2 border-l-transparent"

@@ -118,7 +118,7 @@ export default function SecuritySettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/settings" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href="/dashboard/settings" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
@@ -177,7 +177,7 @@ export default function SecuritySettingsPage() {
           )}
 
           {enrolled && !enrolling && (
-            <ul className="divide-y divide-bastet-border">
+            <ul className="divide-y divide-brand-border">
               {status!.factors.map((f) => (
                 <li key={f.id} className="flex items-center justify-between py-3">
                   <div>

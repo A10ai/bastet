@@ -188,7 +188,7 @@ export default function ApartmentsPage() {
   const energyBadge = (status?: string) => {
     switch (status) {
       case "active":
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-bastet-gold/15 text-bastet-gold">Active</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-accent/15 text-brand-accent">Active</span>;
       case "waste":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-status-error/15 text-status-error">Waste</span>;
       case "standby":
@@ -222,7 +222,7 @@ export default function ApartmentsPage() {
           <select
             value={floorFilter}
             onChange={(e) => setFloorFilter(e.target.value)}
-            className="bg-bastet-card border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="bg-brand-card border border-brand-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
             aria-label="Filter by floor"
           >
             <option value="all">All Floors</option>
@@ -240,8 +240,8 @@ export default function ApartmentsPage() {
             onClick={() => setStatusFilter("all")}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               statusFilter === "all"
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             All ({apartments.length})
@@ -252,8 +252,8 @@ export default function ApartmentsPage() {
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
                 statusFilter === status
-                  ? "bg-bastet-gold text-bastet-bg"
-                  : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                  ? "bg-brand-accent text-brand-bg"
+                  : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
               }`}
             >
               {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -339,8 +339,8 @@ export default function ApartmentsPage() {
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {statusChartData.map((entry: Record<string, any>) => (
-                        <Cell key={entry.key} fill={STATUS_COLORS[entry.key] || "#6B7280"} />
+                      {statusChartData.map((entry: Record<string, unknown>) => (
+                        <Cell key={String(entry.key)} fill={STATUS_COLORS[entry.key as string] || "#6B7280"} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -357,14 +357,14 @@ export default function ApartmentsPage() {
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-3 justify-center">
-                {statusChartData.map((entry: Record<string, any>) => (
-                  <div key={entry.key} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                {statusChartData.map((entry: Record<string, unknown>) => (
+                  <div key={String(entry.key)} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
-                      style={{ backgroundColor: STATUS_COLORS[entry.key] || "#6B7280" }}
+                      style={{ backgroundColor: STATUS_COLORS[entry.key as string] || "#6B7280" }}
                     />
-                    <span className="capitalize">{entry.name}</span>
-                    <span className="text-text-muted">({entry.value})</span>
+                    <span className="capitalize">{String(entry.name)}</span>
+                    <span className="text-text-muted">({String(entry.value)})</span>
                   </div>
                 ))}
               </div>
@@ -405,13 +405,13 @@ export default function ApartmentsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Number</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Floor</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
@@ -430,10 +430,10 @@ export default function ApartmentsPage() {
                   return (
                     <tr
                       key={apt.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
-                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                        <span className="text-sm font-mono font-semibold text-brand-accent">
                           {apt.number}
                         </span>
                       </td>
@@ -472,7 +472,7 @@ export default function ApartmentsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/apartments/${apt.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

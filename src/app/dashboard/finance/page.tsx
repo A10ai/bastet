@@ -273,7 +273,7 @@ export default function FinancePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -334,8 +334,8 @@ export default function FinancePage() {
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-bastet-gold" />
+              <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-brand-accent" />
               </div>
               <div>
                 <p className="text-xs text-text-muted">Net Profit</p>
@@ -574,7 +574,7 @@ export default function FinancePage() {
               </div>
               <div className="space-y-3">
                 {roomTypeBarData.map((item, index) => (
-                  <div key={item.type} className="p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border/50">
+                  <div key={item.type} className="p-3 rounded-lg bg-brand-bg/50 border border-brand-border/50">
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: ROOM_TYPE_COLORS[index % ROOM_TYPE_COLORS.length] }} />
                       <span className="text-sm font-medium text-text-primary">{item.type}</span>
@@ -816,7 +816,7 @@ export default function FinancePage() {
               </ResponsiveContainer>
               <div className="space-y-3">
                 {arBarData.map((item) => (
-                  <div key={item.bucket} className="flex items-center justify-between p-3 rounded-lg bg-bastet-bg/50 border border-bastet-border/50">
+                  <div key={item.bucket} className="flex items-center justify-between p-3 rounded-lg bg-brand-bg/50 border border-brand-border/50">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }} />
                       <span className="text-sm text-text-secondary">{item.bucket}</span>
@@ -827,7 +827,7 @@ export default function FinancePage() {
                     </div>
                   </div>
                 ))}
-                <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+                <div className="flex items-center justify-between pt-2 border-t border-brand-border">
                   <span className="text-sm font-medium text-text-primary">Total Outstanding</span>
                   <span className="text-sm font-mono font-bold text-amber-400">
                     {formatCurrency(arBarData.reduce((s, d) => s + d.total, 0))}
@@ -897,7 +897,7 @@ export default function FinancePage() {
                   </div>
                 </div>
                 {deptData.map((dept, index) => (
-                  <div key={dept.department} className="flex items-center justify-between text-xs py-1.5 border-b border-bastet-border/30 last:border-0">
+                  <div key={dept.department} className="flex items-center justify-between text-xs py-1.5 border-b border-brand-border/30 last:border-0">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: DEPT_COLORS[index % DEPT_COLORS.length] }} />
                       <span className="text-text-secondary">{dept.department}</span>
@@ -1030,13 +1030,13 @@ export default function FinancePage() {
       {/* ===== Channel Analysis + Revenue Forecast ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Channel Analysis */}
-        <Card className="border-bastet-gold/10">
+        <Card className="border-brand-accent/10">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-bastet-gold" />
+              <Globe className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">Channel Analysis</h3>
             </div>
-            <Link href="/dashboard/ai/revenue" className="text-xs text-bastet-gold hover:underline">
+            <Link href="/dashboard/ai/revenue" className="text-xs text-brand-accent hover:underline">
               Revenue Copilot
             </Link>
           </CardHeader>
@@ -1045,15 +1045,15 @@ export default function FinancePage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-text-secondary">Direct Bookings</span>
-                  <span className="text-sm font-mono font-semibold text-bastet-gold">{channelAnalysis.direct_pct}%</span>
+                  <span className="text-sm font-mono font-semibold text-brand-accent">{channelAnalysis.direct_pct}%</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-text-secondary">OTA Bookings</span>
                   <span className="text-sm font-mono text-text-primary">{channelAnalysis.ota_pct}%</span>
                 </div>
-                <div className="w-full h-3 bg-bastet-bg rounded-full overflow-hidden flex">
+                <div className="w-full h-3 bg-brand-bg rounded-full overflow-hidden flex">
                   <div
-                    className="h-full bg-bastet-gold rounded-l-full"
+                    className="h-full bg-brand-accent rounded-l-full"
                     style={{ width: `${channelAnalysis.direct_pct}%` }}
                     title={`Direct: ${channelAnalysis.direct_pct}%`}
                   />
@@ -1063,7 +1063,7 @@ export default function FinancePage() {
                     title={`OTA: ${channelAnalysis.ota_pct}%`}
                   />
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+                <div className="flex items-center justify-between pt-2 border-t border-brand-border">
                   <span className="text-sm text-text-secondary">Commission Cost</span>
                   <span className="text-sm font-mono text-status-error font-semibold">
                     {formatCurrency(channelAnalysis.commission_cost_gbp)}
@@ -1077,10 +1077,10 @@ export default function FinancePage() {
         </Card>
 
         {/* Revenue Forecast */}
-        <Card className="border-bastet-gold/10">
+        <Card className="border-brand-accent/10">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-bastet-gold" />
+              <TrendingUp className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">7-Day Revenue Forecast</h3>
             </div>
           </CardHeader>
@@ -1093,9 +1093,9 @@ export default function FinancePage() {
                     <span className="font-mono text-text-primary">{formatCurrency(day.projected_gbp)}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+                <div className="flex items-center justify-between pt-2 border-t border-brand-border">
                   <span className="text-sm font-medium text-text-primary">7-Day Total</span>
-                  <span className="text-sm font-mono font-bold text-bastet-gold">
+                  <span className="text-sm font-mono font-bold text-brand-accent">
                     {formatCurrency(forecast.total_7day_gbp)}
                   </span>
                 </div>
@@ -1127,11 +1127,11 @@ export default function FinancePage() {
       {/* ===== Navigation Cards ===== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/dashboard/finance/invoices">
-          <Card className="hover:border-bastet-gold/50 transition-colors cursor-pointer">
+          <Card className="hover:border-brand-accent/50 transition-colors cursor-pointer">
             <CardContent className="py-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-bastet-gold" />
+                <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-text-primary">Invoices</p>
@@ -1146,11 +1146,11 @@ export default function FinancePage() {
         </Link>
 
         <Link href="/dashboard/finance/expenses">
-          <Card className="hover:border-bastet-gold/50 transition-colors cursor-pointer">
+          <Card className="hover:border-brand-accent/50 transition-colors cursor-pointer">
             <CardContent className="py-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <Receipt className="w-5 h-5 text-bastet-gold" />
+                <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <Receipt className="w-5 h-5 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-text-primary">Expenses</p>

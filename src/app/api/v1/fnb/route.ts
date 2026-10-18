@@ -5,20 +5,20 @@ import { requireRole, ROLES } from "@/lib/api-auth";
 /** Audit Oct 2026: this route serves hardcoded sample data. */
 const DEMO_META = { demo: true, note: "Sample data: no F&B system is connected" } as const;
 
-// ─── Hardcoded F&B data for Bastet Hurghada aparthotel ───
+// ─── Sample F&B data (demo; no outlet system connected) ───
 // Will be replaced with Supabase queries once F&B tables are created
 
 const OUTLETS = [
-  { id: "rest1", name: "Bastet Restaurant", type: "restaurant", location: "Ground Floor", status: "open", covers_today: 145, revenue_today_gbp: 1240, avg_spend_gbp: 8.55 },
+  { id: "rest1", name: "Main Restaurant", type: "restaurant", location: "Ground Floor", status: "open", covers_today: 145, revenue_today_gbp: 1240, avg_spend_gbp: 8.55 },
   { id: "bar1", name: "Rooftop Lounge", type: "bar", location: "Rooftop", status: "open", covers_today: 62, revenue_today_gbp: 890, avg_spend_gbp: 14.35 },
   { id: "bar2", name: "Pool Bar", type: "bar", location: "Pool Deck", status: "open", covers_today: 48, revenue_today_gbp: 420, avg_spend_gbp: 8.75 },
 ];
 
 const MENU_CATEGORIES = [
-  { category: "Breakfast Buffet", outlet: "Bastet Restaurant", items: 35, avg_price_gbp: 0, note: "Included with room" },
-  { category: "Starters", outlet: "Bastet Restaurant", items: 12, avg_price_gbp: 4.50 },
-  { category: "Main Courses", outlet: "Bastet Restaurant", items: 18, avg_price_gbp: 8.50 },
-  { category: "Desserts", outlet: "Bastet Restaurant", items: 8, avg_price_gbp: 3.50 },
+  { category: "Breakfast Buffet", outlet: "Main Restaurant", items: 35, avg_price_gbp: 0, note: "Included with room" },
+  { category: "Starters", outlet: "Main Restaurant", items: 12, avg_price_gbp: 4.50 },
+  { category: "Main Courses", outlet: "Main Restaurant", items: 18, avg_price_gbp: 8.50 },
+  { category: "Desserts", outlet: "Main Restaurant", items: 8, avg_price_gbp: 3.50 },
   { category: "Cocktails", outlet: "Rooftop Lounge", items: 15, avg_price_gbp: 7.00 },
   { category: "Spirits & Wine", outlet: "Rooftop Lounge", items: 25, avg_price_gbp: 5.50 },
   { category: "Bar Snacks", outlet: "Rooftop Lounge", items: 10, avg_price_gbp: 4.00 },
@@ -41,7 +41,7 @@ const PERFORMANCE = {
   outlets: [
     {
       id: "rest1",
-      name: "Bastet Restaurant",
+      name: "Main Restaurant",
       revenue_per_cover_gbp: 8.55,
       table_turnover: 2.4,
       peak_hours: ["07:00-09:30", "12:30-14:00", "19:00-21:30"],

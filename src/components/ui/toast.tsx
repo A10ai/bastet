@@ -135,7 +135,7 @@ function ToastItem({
 
   return (
     <div
-      className={`pointer-events-auto w-80 bg-bastet-card border border-bastet-border border-l-4 ${styles.border} ${styles.bg} rounded-lg shadow-xl shadow-black/30 transition-all duration-300 ${
+      className={`pointer-events-auto w-80 bg-brand-card border border-brand-border border-l-4 ${styles.border} ${styles.bg} rounded-lg shadow-xl shadow-black/30 transition-all duration-300 ${
         isVisible && !isLeaving
           ? "opacity-100 translate-x-0"
           : "opacity-0 translate-x-4"

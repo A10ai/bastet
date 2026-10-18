@@ -318,7 +318,7 @@ export default function FnBDashboard() {
 
       <DemoDataBanner>
         Every figure on this page is sample data for demonstration. No F&amp;B outlet, point of sale
-        or menu is connected yet; covers, revenue and trends are not from Bastet operations.
+        or menu is connected yet; covers, revenue and trends are not from live operations.
       </DemoDataBanner>
 
       {/* ----------------------------------------------------------------- */}
@@ -539,7 +539,7 @@ export default function FnBDashboard() {
                   {breakfast.paid_guests ?? 0} guests
                 </span>
               </div>
-              <div className="border-t border-bastet-border pt-2 flex items-center justify-between">
+              <div className="border-t border-brand-border pt-2 flex items-center justify-between">
                 <span className="text-xs text-text-muted">
                   Revenue from paid breakfast
                 </span>
@@ -575,7 +575,7 @@ export default function FnBDashboard() {
                   {formatCurrency(room_service.revenue_today ?? 0)}
                 </span>
               </div>
-              <div className="border-t border-bastet-border pt-2 flex items-center justify-between">
+              <div className="border-t border-brand-border pt-2 flex items-center justify-between">
                 <span className="text-xs text-text-muted">
                   Avg order value
                 </span>
@@ -678,7 +678,7 @@ export default function FnBDashboard() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left">
                         <thead>
-                          <tr className="border-b border-bastet-border">
+                          <tr className="border-b border-brand-border">
                             <th className="text-[10px] text-text-muted uppercase tracking-wider py-2 pr-4">
                               Category
                             </th>
@@ -694,7 +694,7 @@ export default function FnBDashboard() {
                           {categories.map((cat) => (
                             <tr
                               key={cat.category}
-                              className="border-b border-bastet-border/50"
+                              className="border-b border-brand-border/50"
                             >
                               <td className="text-xs text-text-primary py-2 pr-4 capitalize">
                                 {cat.category}
@@ -732,7 +732,7 @@ export default function FnBDashboard() {
 const defaultOutlets: OutletData[] = [
   {
     id: "restaurant",
-    name: "Bastet Restaurant",
+    name: "Main Restaurant",
     location: "Ground Floor",
     status: "open",
     covers_today: 0,

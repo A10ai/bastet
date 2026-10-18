@@ -205,7 +205,7 @@ function EfficiencyBar({ value }: { value: number }) {
 
   return (
     <div className="flex items-center gap-2 min-w-[120px]">
-      <div className="flex-1 h-2 bg-bastet-bg rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-brand-bg rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${Math.min(100, (pct / 150) * 100)}%` }}
@@ -510,7 +510,7 @@ function WhatIfSimulator({
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full bg-bastet-bg border border-bastet-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             {ratePerformance.map((r) => (
               <option key={r.apartment_type_id} value={r.apartment_type_id}>
@@ -539,7 +539,7 @@ function WhatIfSimulator({
               type="number"
               value={newRate}
               onChange={(e) => setNewRate(Number(e.target.value))}
-              className="w-20 bg-bastet-bg border border-bastet-border rounded-lg px-2 py-1.5 text-sm text-text-primary text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-20 bg-brand-bg border border-brand-border rounded-lg px-2 py-1.5 text-sm text-text-primary text-right focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
           </div>
         </div>
@@ -571,7 +571,7 @@ function WhatIfSimulator({
       {/* Results */}
       {result && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-bastet-bg rounded-lg p-4 space-y-1">
+          <div className="bg-brand-bg rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted">Rate Change</p>
             <p
               className={`text-xl font-bold ${
@@ -590,7 +590,7 @@ function WhatIfSimulator({
             </p>
           </div>
 
-          <div className="bg-bastet-bg rounded-lg p-4 space-y-1">
+          <div className="bg-brand-bg rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted">Projected Occupancy</p>
             <p
               className={`text-xl font-bold ${
@@ -609,7 +609,7 @@ function WhatIfSimulator({
             </p>
           </div>
 
-          <div className="bg-bastet-bg rounded-lg p-4 space-y-1">
+          <div className="bg-brand-bg rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted">Revenue Impact</p>
             <p
               className={`text-xl font-bold ${
@@ -629,7 +629,7 @@ function WhatIfSimulator({
             </p>
           </div>
 
-          <div className="bg-bastet-bg rounded-lg p-4 space-y-1">
+          <div className="bg-brand-bg rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted">Recommendation</p>
             <p
               className={`text-xl font-bold capitalize ${
@@ -650,7 +650,7 @@ function WhatIfSimulator({
       )}
 
       {result && (
-        <div className="bg-bastet-bg rounded-lg p-4">
+        <div className="bg-brand-bg rounded-lg p-4">
           <p className="text-sm text-text-secondary">{result.reasoning}</p>
         </div>
       )}
@@ -786,7 +786,7 @@ export default function RevenueCopilotPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" role="table" aria-label="Channel mix breakdown">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left py-2 px-3 text-text-muted font-medium">Channel</th>
                   <th className="text-right py-2 px-3 text-text-muted font-medium">Bookings</th>
                   <th className="text-right py-2 px-3 text-text-muted font-medium">Revenue</th>
@@ -800,7 +800,7 @@ export default function RevenueCopilotPage() {
                 {channel_mix.channels.map((ch) => (
                   <tr
                     key={ch.channel_code}
-                    className="border-b border-bastet-border/50 hover:bg-bastet-bg/50 transition-colors"
+                    className="border-b border-brand-border/50 hover:bg-brand-bg/50 transition-colors"
                   >
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
@@ -865,7 +865,7 @@ export default function RevenueCopilotPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" role="table" aria-label="Rate performance by apartment type">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left py-2 px-3 text-text-muted font-medium">Type</th>
                   <th className="text-right py-2 px-3 text-text-muted font-medium">Base Rate</th>
                   <th className="text-right py-2 px-3 text-text-muted font-medium">Avg Actual</th>
@@ -879,7 +879,7 @@ export default function RevenueCopilotPage() {
                 {rate_performance.map((rp) => (
                   <tr
                     key={rp.apartment_type_id}
-                    className="border-b border-bastet-border/50 hover:bg-bastet-bg/50 transition-colors"
+                    className="border-b border-brand-border/50 hover:bg-brand-bg/50 transition-colors"
                   >
                     <td className="py-2.5 px-3 text-text-primary font-medium">
                       {rp.apartment_type_name}
@@ -969,7 +969,7 @@ export default function RevenueCopilotPage() {
                           {formatCurrency(br.total_revenue_gbp)}
                         </span>
                       </div>
-                      <div className="h-2 bg-bastet-bg rounded-full overflow-hidden">
+                      <div className="h-2 bg-brand-bg rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
                           style={{ width: `${Math.max(2, pct)}%` }}
@@ -985,7 +985,7 @@ export default function RevenueCopilotPage() {
               </div>
 
               {/* Discount tiers */}
-              <div className="mt-4 pt-4 border-t border-bastet-border">
+              <div className="mt-4 pt-4 border-t border-brand-border">
                 <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">
                   Current Discount Tiers
                 </h4>
@@ -1039,7 +1039,7 @@ export default function RevenueCopilotPage() {
           <ForecastChart forecast={revenue_forecast} />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-bastet-bg rounded-lg p-3 text-center">
+            <div className="bg-brand-bg rounded-lg p-3 text-center">
               <p className="text-xs text-text-muted">Conservative</p>
               <p className="text-lg font-bold text-text-secondary">
                 {formatCurrency(revenue_forecast.total_projected_low)}
@@ -1051,7 +1051,7 @@ export default function RevenueCopilotPage() {
                 {formatCurrency(revenue_forecast.total_projected_mid)}
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-3 text-center">
+            <div className="bg-brand-bg rounded-lg p-3 text-center">
               <p className="text-xs text-text-muted">Optimistic</p>
               <p className="text-lg font-bold text-text-secondary">
                 {formatCurrency(revenue_forecast.total_projected_high)}

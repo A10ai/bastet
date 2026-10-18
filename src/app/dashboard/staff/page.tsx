@@ -236,15 +236,15 @@ export default function StaffPage() {
             placeholder="Search staff..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
-        <div className="flex gap-1 bg-bastet-card border border-bastet-border rounded-lg p-0.5">
+        <div className="flex gap-1 bg-brand-card border border-brand-border rounded-lg p-0.5">
           <button
             onClick={() => setActiveFilter("true")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === "true"
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -254,7 +254,7 @@ export default function StaffPage() {
             onClick={() => setActiveFilter("false")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === "false"
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -264,7 +264,7 @@ export default function StaffPage() {
             onClick={() => setActiveFilter("")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === ""
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -279,8 +279,8 @@ export default function StaffPage() {
           onClick={() => setRoleFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             roleFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({staff.length})
@@ -291,8 +291,8 @@ export default function StaffPage() {
             onClick={() => setRoleFilter(role)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               roleFilter === role
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {role} ({roleCounts[role] || 0})
@@ -305,13 +305,13 @@ export default function StaffPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Name</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Email</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Role</th>
@@ -327,7 +327,7 @@ export default function StaffPage() {
                   return (
                     <tr
                       key={member.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
                         <span className="text-sm font-semibold text-text-primary">
@@ -358,7 +358,7 @@ export default function StaffPage() {
                       </td>
                       <td className="px-6 py-3 hidden md:table-cell">
                         {taskCount > 0 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold bg-bastet-gold/15 text-bastet-gold">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold bg-brand-accent/15 text-brand-accent">
                             {taskCount}
                           </span>
                         ) : (
@@ -368,7 +368,7 @@ export default function StaffPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/staff/${member.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

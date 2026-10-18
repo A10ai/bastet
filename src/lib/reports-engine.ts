@@ -157,9 +157,9 @@ export async function getOccupancyReport(
   const aptToFloor = new Map<string, number>();
   const aptToType = new Map<string, string>();
   for (const apt of apartments || []) {
-    aptToBuilding.set(apt.id, ((apt.buildings as Record<string, any> | null)?.name as string) || "Unknown");
-    aptToFloor.set(apt.id, (apt as Record<string, any>).floor as number ?? 0);
-    aptToType.set(apt.id, ((apt.apartment_types as Record<string, any> | null)?.name as string) || "Unknown");
+    aptToBuilding.set(apt.id, ((apt.buildings as unknown as Record<string, unknown> | null)?.name as string) || "Unknown");
+    aptToFloor.set(apt.id, (apt as unknown as Record<string, unknown>).floor as number ?? 0);
+    aptToType.set(apt.id, ((apt.apartment_types as unknown as Record<string, unknown> | null)?.name as string) || "Unknown");
   }
 
   // Daily occupancy
@@ -319,7 +319,7 @@ export async function getRevenueReport(
   const typeRevMap = new Map<string, { revenue: number; bookings: number }>();
   for (const b of bookings || []) {
     const apt = (apartments || []).find((a) => a.id === b.apartment_id);
-    const typeName = ((apt?.apartment_types as Record<string, any> | null)?.name as string) || "Unknown";
+    const typeName = ((apt?.apartment_types as unknown as Record<string, unknown> | null)?.name as string) || "Unknown";
     const entry = typeRevMap.get(typeName) || { revenue: 0, bookings: 0 };
     entry.revenue += b.total_amount_gbp || 0;
     entry.bookings++;
@@ -366,8 +366,8 @@ export async function getRevenueReport(
   // Top 10 bookings
   const topBookings = (bookings || []).slice(0, 10).map((b) => ({
     ref: b.reference || "N/A",
-    guest_name: `${(b.guests as Record<string, any> | null)?.first_name || ""} ${(b.guests as Record<string, any> | null)?.last_name || ""}`.trim() || "Guest",
-    apartment: (b.apartments as Record<string, any> | null)?.number || "N/A",
+    guest_name: `${String((b.guests as unknown as Record<string, unknown> | null)?.first_name ?? "")} ${String((b.guests as unknown as Record<string, unknown> | null)?.last_name ?? "")}`.trim() || "Guest",
+    apartment: String((b.apartments as unknown as Record<string, unknown> | null)?.number ?? "N/A"),
     amount: round2(b.total_amount_gbp || 0),
     nights: b.nights || 0,
   }));
@@ -423,7 +423,7 @@ export async function getGuestReport(
   }>();
 
   for (const b of bookings || []) {
-    const guest = b.guests as Record<string, any> | null;
+    const guest = b.guests as unknown as Record<string, unknown> | null;
     if (!guest?.id) continue;
     const existing = guestMap.get(guest.id as string);
     if (existing) {
@@ -600,8 +600,8 @@ export async function getOperationsReport(
 
   for (const t of hkTasks || []) {
     if (!t.assigned_to) continue;
-    const staff = t.staff as Record<string, any> | null;
-    const name = staff ? `${staff.first_name || ""} ${staff.last_name || ""}`.trim() : t.assigned_to;
+    const staff = t.staff as unknown as Record<string, unknown> | null;
+    const name = staff ? `${String(staff.first_name ?? "")} ${String(staff.last_name ?? "")}`.trim() : t.assigned_to;
     const entry = staffMap.get(t.assigned_to) || { name, role: "Housekeeping", assigned: 0, completed: 0 };
     entry.assigned++;
     if (t.status === "completed" || t.status === "verified") entry.completed++;
@@ -610,8 +610,8 @@ export async function getOperationsReport(
 
   for (const r of mxRequests || []) {
     if (!r.assigned_to) continue;
-    const staff = r.staff as Record<string, any> | null;
-    const name = staff ? `${staff.first_name || ""} ${staff.last_name || ""}`.trim() : r.assigned_to;
+    const staff = r.staff as unknown as Record<string, unknown> | null;
+    const name = staff ? `${String(staff.first_name ?? "")} ${String(staff.last_name ?? "")}`.trim() : r.assigned_to;
     const entry = staffMap.get(r.assigned_to) || { name, role: "Maintenance", assigned: 0, completed: 0 };
     entry.assigned++;
     if (r.status === "completed") entry.completed++;

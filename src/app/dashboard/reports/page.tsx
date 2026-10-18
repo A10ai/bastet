@@ -255,7 +255,7 @@ export default function ReportsPage() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 />
               </div>
               <div>
@@ -264,7 +264,7 @@ export default function ReportsPage() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="px-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 />
               </div>
 
@@ -278,8 +278,8 @@ export default function ReportsPage() {
                       onClick={() => setReportType(t)}
                       className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                         reportType === t
-                          ? "bg-bastet-gold/20 text-cyan-400 border border-cyan-400/30"
-                          : "bg-bastet-bg border border-bastet-border text-text-secondary hover:text-text-primary"
+                          ? "bg-brand-accent/20 text-cyan-400 border border-cyan-400/30"
+                          : "bg-brand-bg border border-brand-border text-text-secondary hover:text-text-primary"
                       }`}
                     >
                       {REPORT_LABELS[t]}
@@ -310,7 +310,7 @@ export default function ReportsPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+            <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
           </div>
         )}
 
@@ -362,7 +362,7 @@ function ExecutiveView({ data }: { data: ExecutiveSummary }) {
           <Card key={m.label} className="report-card">
             <CardContent className="py-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-bastet-bg flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-brand-bg flex items-center justify-center">
                   <m.icon className={`w-5 h-5 ${m.color}`} />
                 </div>
                 <div>
@@ -705,7 +705,7 @@ function GuestView({ data }: { data: GuestReport }) {
               return (
                 <div
                   key={t.tier}
-                  className={`px-4 py-3 rounded-lg border ${tierColors[t.tier] || "bg-bastet-bg border-bastet-border text-text-secondary"}`}
+                  className={`px-4 py-3 rounded-lg border ${tierColors[t.tier] || "bg-brand-bg border-brand-border text-text-secondary"}`}
                 >
                   <p className="text-xs font-medium capitalize">{t.tier}</p>
                   <p className="text-xl font-semibold font-mono">{t.count}</p>
@@ -898,19 +898,19 @@ function FinancialView({ data }: { data: FinancialReport }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-bastet-border">
+            <div className="flex justify-between items-center py-2 border-b border-brand-border">
               <span className="text-sm font-medium text-text-primary">Total Revenue</span>
               <span className="text-sm font-mono font-semibold text-status-success">
                 {formatCurrency(data.total_revenue)}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-bastet-border">
+            <div className="flex justify-between items-center py-2 border-b border-brand-border">
               <span className="text-sm font-medium text-text-primary">Total Expenses</span>
               <span className="text-sm font-mono font-semibold text-status-error">
                 ({formatCurrency(data.total_expenses)})
               </span>
             </div>
-            <div className="flex justify-between items-center py-3 border-b-2 border-bastet-border">
+            <div className="flex justify-between items-center py-3 border-b-2 border-brand-border">
               <span className="text-base font-semibold text-text-primary">Gross Profit</span>
               <span className={`text-base font-mono font-bold ${data.gross_profit >= 0 ? "text-status-success" : "text-status-error"}`}>
                 {formatCurrency(data.gross_profit)}
@@ -1008,7 +1008,7 @@ function FinancialView({ data }: { data: FinancialReport }) {
                   ({formatCurrency(data.cash_flow?.expenses_paid || 0)})
                 </span>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-bastet-border">
+              <div className="flex justify-between text-sm pt-2 border-t border-brand-border">
                 <span className="font-medium text-text-primary">Net Cash Flow</span>
                 <span className={`font-mono font-semibold ${(data.cash_flow?.net || 0) >= 0 ? "text-status-success" : "text-status-error"}`}>
                   {formatCurrency(data.cash_flow?.net || 0)}
@@ -1190,7 +1190,7 @@ function ReportTable({ headers, rows }: { headers: string[]; rows: string[][] })
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-bastet-border">
+          <tr className="border-b border-brand-border">
             {headers.map((h) => (
               <th key={h} className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wider">
                 {h}
@@ -1202,7 +1202,7 @@ function ReportTable({ headers, rows }: { headers: string[]; rows: string[][] })
           {rows.map((row, i) => (
             <tr
               key={i}
-              className={`border-b border-bastet-border/50 ${i % 2 === 1 ? "bg-bastet-bg/30" : ""}`}
+              className={`border-b border-brand-border/50 ${i % 2 === 1 ? "bg-brand-bg/30" : ""}`}
             >
               {row.map((cell, j) => (
                 <td key={j} className="py-2 px-3 text-text-secondary">

@@ -154,7 +154,8 @@ function isUnitWasteful(apartmentId: string, status: string): boolean {
 }
 
 function getBuildingInfo(unit: ApartmentRow): { code: string; name: string } {
-  const b = unit.buildings as Record<string, any> | Record<string, any>[] | null;
+  type BuildingJoin = { code?: string | null; name?: string | null };
+  const b = unit.buildings as BuildingJoin | BuildingJoin[] | null;
   if (!b) return { code: "??", name: "Unknown" };
   // Supabase joins can return object or array depending on relationship
   if (Array.isArray(b)) {

@@ -110,7 +110,7 @@ function priorityClasses(priority: string) {
     case "medium":
       return "border-yellow-500/40 bg-yellow-500/5 hover:border-yellow-500/60";
     default:
-      return "border-bastet-border hover:border-bastet-gold/30";
+      return "border-brand-border hover:border-brand-accent/30";
   }
 }
 
@@ -253,7 +253,7 @@ export default function BriefingPage() {
                       {value}%
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-bastet-border rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-brand-border rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-[#22D3EE] transition-all duration-500"
                       style={{ width: `${Math.min(value, 100)}%` }}
@@ -288,7 +288,7 @@ export default function BriefingPage() {
 
             {/* Quick stats row */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg bg-bastet-border/30 p-3">
+              <div className="rounded-lg bg-brand-border/30 p-3">
                 <p className="text-xs text-text-secondary mb-0.5">Arrivals</p>
                 <p className="text-lg font-semibold text-text-primary">
                   {arrivalItem
@@ -296,7 +296,7 @@ export default function BriefingPage() {
                     : "--"}
                 </p>
               </div>
-              <div className="rounded-lg bg-bastet-border/30 p-3">
+              <div className="rounded-lg bg-brand-border/30 p-3">
                 <p className="text-xs text-text-secondary mb-0.5">
                   Departures
                 </p>
@@ -337,7 +337,7 @@ export default function BriefingPage() {
                   )}
                 >
                   {/* Number badge */}
-                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-bastet-border text-xs font-bold text-text-primary shrink-0">
+                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-brand-border text-xs font-bold text-text-primary shrink-0">
                     {idx + 1}
                   </span>
                   {/* Dot */}

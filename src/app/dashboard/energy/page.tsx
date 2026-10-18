@@ -143,7 +143,7 @@ function FloorBarChart({ floors }: { floors: BuildingEnergy[] }) {
           <div key={building.building_code} className="group">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1.5 gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-text-primary bg-bastet-bg px-2 py-0.5 rounded">
+                <span className="text-xs font-mono font-bold text-text-primary bg-brand-bg px-2 py-0.5 rounded">
                   {building.building_name}
                 </span>
                 <span className="text-xs text-text-muted">
@@ -166,7 +166,7 @@ function FloorBarChart({ floors }: { floors: BuildingEnergy[] }) {
                 )}
               </div>
             </div>
-            <div className="h-7 bg-bastet-bg rounded-md overflow-hidden flex">
+            <div className="h-7 bg-brand-bg rounded-md overflow-hidden flex">
               {occupiedWidth > 0 && (
                 <div
                   className="h-full bg-cyan-400/70 transition-all duration-500"
@@ -201,7 +201,7 @@ function FloorBarChart({ floors }: { floors: BuildingEnergy[] }) {
       })}
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 md:gap-5 pt-2 border-t border-bastet-border">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 pt-2 border-t border-brand-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-cyan-400/70" />
           <span className="text-[10px] text-text-muted">Occupied</span>
@@ -262,7 +262,7 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
     <div className="relative">
       {/* Tooltip */}
       {hoveredCell && (
-        <div className="absolute top-0 right-0 z-10 bg-bastet-card border border-bastet-border rounded-lg p-3 shadow-xl min-w-[200px]">
+        <div className="absolute top-0 right-0 z-10 bg-brand-card border border-brand-border rounded-lg p-3 shadow-xl min-w-[200px]">
           <p className="text-sm font-mono font-bold text-text-primary">
             Unit {hoveredCell.apartment_number}
           </p>
@@ -297,7 +297,7 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
           .map(([floor, floorCells]) => (
             <div key={floor}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-bold text-text-primary bg-bastet-bg px-2 py-0.5 rounded">
+                <span className="text-xs font-mono font-bold text-text-primary bg-brand-bg px-2 py-0.5 rounded">
                   {floorLabel(floor)}
                 </span>
                 <span className="text-xs text-text-muted">{floorCells.length} units</span>
@@ -325,7 +325,7 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 md:gap-5 mt-4 pt-3 border-t border-bastet-border">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 mt-4 pt-3 border-t border-brand-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-cyan-400/60" />
           <span className="text-[10px] text-text-muted">Occupied</span>
@@ -470,13 +470,13 @@ function RecommendationsPanel({
   const priorityStyles = {
     high: "border-red-500/30 bg-red-500/5",
     medium: "border-amber-500/20 bg-amber-500/5",
-    low: "border-bastet-border",
+    low: "border-brand-border",
   };
 
   const priorityBadge = {
     high: "bg-red-500/15 text-red-400",
     medium: "bg-amber-500/15 text-amber-400",
-    low: "bg-bastet-bg text-text-muted",
+    low: "bg-brand-bg text-text-muted",
   };
 
   return (
@@ -492,7 +492,7 @@ function RecommendationsPanel({
             )}
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 p-1.5 rounded-md bg-bastet-bg">
+              <div className="mt-0.5 p-1.5 rounded-md bg-brand-bg">
                 <Icon className="w-4 h-4 text-text-secondary" />
               </div>
               <div className="flex-1 min-w-0">
@@ -532,7 +532,7 @@ function RecommendationsPanel({
                       className={cn(
                         "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                         applyingId === rec.id
-                          ? "bg-bastet-bg text-text-muted cursor-wait"
+                          ? "bg-brand-bg text-text-muted cursor-wait"
                           : "bg-cyan-400/10 text-cyan-400 hover:bg-cyan-400/20"
                       )}
                     >
@@ -550,7 +550,7 @@ function RecommendationsPanel({
                     {rec.unit_numbers.map((num) => (
                       <span
                         key={num}
-                        className="text-[10px] font-mono bg-bastet-bg text-text-muted px-1.5 py-0.5 rounded"
+                        className="text-[10px] font-mono bg-brand-bg text-text-muted px-1.5 py-0.5 rounded"
                       >
                         {num}
                       </span>
@@ -754,7 +754,7 @@ export default function EnergyDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bastet-card border border-bastet-border">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-card border border-brand-border">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs font-medium text-text-secondary">
               Live monitoring
@@ -832,13 +832,13 @@ export default function EnergyDashboard() {
             <FloorBarChart floors={floorData} />
             {/* Occupancy Overlay */}
             {Object.keys(occupancyByFloor).length > 0 && (
-              <div className="mt-4 pt-3 border-t border-bastet-border">
+              <div className="mt-4 pt-3 border-t border-brand-border">
                 <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Occupancy Overlay</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {Object.entries(occupancyByFloor)
                     .sort(([a], [b]) => Number(a) - Number(b))
                     .map(([floor, counts]) => (
-                      <div key={floor} className="flex items-center justify-between p-2 rounded-lg bg-bastet-bg">
+                      <div key={floor} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg">
                         <span className="text-xs font-mono text-text-primary">{floorLabel(Number(floor))}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-cyan-400 font-mono">{counts.occupied} occ</span>
@@ -937,7 +937,7 @@ export default function EnergyDashboard() {
           <CardContent className="space-y-3">
             <button
               onClick={() => handleQuickAction("standby")}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-bastet-border bg-bastet-bg hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-brand-border bg-brand-bg hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <Power className="w-4 h-4 text-text-muted group-hover:text-cyan-400 transition-colors" />
@@ -955,7 +955,7 @@ export default function EnergyDashboard() {
 
             <button
               onClick={() => handleQuickAction("precool")}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-bastet-border bg-bastet-bg hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-colors group"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-brand-border bg-brand-bg hover:border-cyan-400/30 hover:bg-cyan-400/5 transition-colors group"
             >
               <div className="flex items-center gap-3">
                 <Thermometer className="w-4 h-4 text-text-muted group-hover:text-cyan-400 transition-colors" />
@@ -984,7 +984,7 @@ export default function EnergyDashboard() {
             )}
 
             {/* Summary stats */}
-            <div className="mt-4 pt-4 border-t border-bastet-border space-y-3">
+            <div className="mt-4 pt-4 border-t border-brand-border space-y-3">
               <div className="flex justify-between text-xs">
                 <span className="text-text-muted">Occupied</span>
                 <span className="font-mono text-cyan-400">
@@ -1009,7 +1009,7 @@ export default function EnergyDashboard() {
                   {overview.maintenance_units} units
                 </span>
               </div>
-              <div className="flex justify-between text-xs pt-2 border-t border-bastet-border">
+              <div className="flex justify-between text-xs pt-2 border-t border-brand-border">
                 <span className="text-text-muted">Optimal vs Actual</span>
                 <span className="font-mono text-emerald-400">
                   {overview.optimal_daily_consumption_kwh} /{" "}

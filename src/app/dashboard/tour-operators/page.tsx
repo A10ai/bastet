@@ -155,7 +155,7 @@ function FillRateBar({ rate }: { rate: number }) {
           : "bg-slate-600";
   return (
     <div className="flex items-center gap-2 min-w-[120px]">
-      <div className="flex-1 h-2.5 bg-bastet-bg rounded-full overflow-hidden">
+      <div className="flex-1 h-2.5 bg-brand-bg rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all", color)}
           style={{ width: `${Math.min(rate, 100)}%` }}
@@ -355,7 +355,7 @@ export default function TourOperatorsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-[10px] text-text-muted uppercase tracking-wider px-4 py-3">
                     Operator
                   </th>
@@ -389,7 +389,7 @@ export default function TourOperatorsPage() {
                 {contracts.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-bastet-border/50 hover:bg-bastet-bg/50 transition-colors"
+                    className="border-b border-brand-border/50 hover:bg-brand-bg/50 transition-colors"
                   >
                     <td className="px-4 py-3 font-mono font-semibold text-text-primary">
                       {c.operator}

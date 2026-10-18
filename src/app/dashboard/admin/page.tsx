@@ -201,7 +201,7 @@ export default function AdminOverviewPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-4 h-4 text-status-success" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -212,7 +212,7 @@ export default function AdminOverviewPage() {
                 Connected
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Database className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -223,7 +223,7 @@ export default function AdminOverviewPage() {
                 {Object.keys(tableCounts).length}
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -234,7 +234,7 @@ export default function AdminOverviewPage() {
                 {loading ? "..." : totalRecords.toLocaleString()}
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -249,19 +249,19 @@ export default function AdminOverviewPage() {
 
           {/* API Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-cyan-400">
                 {loading ? "..." : stats.totalBookings}
               </p>
               <p className="text-xs text-text-muted mt-1">Total Bookings</p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-emerald-400">
                 {loading ? "..." : stats.totalGuests}
               </p>
               <p className="text-xs text-text-muted mt-1">Total Guests</p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-cyan-300">
                 {loading ? "..." : stats.totalRevenue}
               </p>
@@ -294,7 +294,7 @@ export default function AdminOverviewPage() {
                       paddingAngle={2}
                       dataKey="value"
                     >
-                      {donutData.map((_: Record<string, any>, i: number) => (
+                      {donutData.map((_: Record<string, unknown>, i: number) => (
                         <Cell key={i} fill={TABLE_COLORS[i % TABLE_COLORS.length]} />
                       ))}
                     </Pie>
@@ -312,13 +312,13 @@ export default function AdminOverviewPage() {
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                {donutData.map((entry: Record<string, any>, i: number) => (
-                  <div key={entry.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                {donutData.map((entry: Record<string, unknown>, i: number) => (
+                  <div key={String(entry.name)} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
                       style={{ backgroundColor: TABLE_COLORS[i % TABLE_COLORS.length] }}
                     />
-                    {entry.name}
+                    {String(entry.name)}
                   </div>
                 ))}
               </div>
@@ -456,7 +456,7 @@ export default function AdminOverviewPage() {
                   <Link
                     key={table}
                     href={`/dashboard/admin/database?table=${table}`}
-                    className="bg-bastet-bg border border-bastet-border rounded-lg p-3 hover:border-cyan-400/30 transition-colors group"
+                    className="bg-brand-bg border border-brand-border rounded-lg p-3 hover:border-cyan-400/30 transition-colors group"
                   >
                     <p className="text-xs text-text-muted font-mono truncate group-hover:text-cyan-400 transition-colors">
                       {table}

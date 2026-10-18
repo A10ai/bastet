@@ -159,7 +159,7 @@ function MetricRing({
             fill="none"
             stroke="currentColor"
             strokeWidth="6"
-            className="text-bastet-border"
+            className="text-brand-border"
           />
           <circle
             cx="50"
@@ -268,7 +268,7 @@ function ForecastChart({ predictions }: { predictions: Prediction[] }) {
       </ResponsiveContainer>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-bastet-border">
+      <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-brand-border">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 bg-cyan-400 rounded" />
           <span className="text-[10px] text-text-muted">Predicted Occupancy</span>
@@ -331,7 +331,7 @@ function BacktestChart({
           <Bar dataKey="actual" fill="#34D399" fillOpacity={0.6} radius={[2, 2, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
-      <div className="flex items-center gap-4 mt-3 pt-2 border-t border-bastet-border">
+      <div className="flex items-center gap-4 mt-3 pt-2 border-t border-brand-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-cyan-400/60" />
           <span className="text-[10px] text-text-muted">Predicted</span>
@@ -762,7 +762,7 @@ export default function PredictionsPage() {
           <div className="overflow-x-auto">
             <table className="w-full" role="table" aria-label="Daily occupancy predictions">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Date</th>
                   <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Day</th>
                   <th className="text-right text-xs font-medium text-text-muted px-4 py-3">Occupancy</th>
@@ -780,9 +780,9 @@ export default function PredictionsPage() {
                     <tr
                       key={p.date}
                       className={cn(
-                        "border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50",
+                        "border-b border-brand-border last:border-0 hover:bg-brand-bg/50",
                         isToday && "bg-cyan-400/5",
-                        isWeekend && "bg-bastet-bg/30"
+                        isWeekend && "bg-brand-bg/30"
                       )}
                     >
                       <td className="px-4 py-2.5 text-sm font-mono text-text-primary">
@@ -824,7 +824,7 @@ export default function PredictionsPage() {
                           {p.factors.slice(0, 2).map((f, fi) => (
                             <span
                               key={fi}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-bastet-bg text-text-muted"
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-brand-bg text-text-muted"
                             >
                               {f}
                             </span>
@@ -859,7 +859,7 @@ export default function PredictionsPage() {
             {backtest ? (
               <>
                 <BacktestChart predictions={backtest.backtest_predictions} />
-                <div className="grid grid-cols-4 gap-3 mt-4 pt-3 border-t border-bastet-border">
+                <div className="grid grid-cols-4 gap-3 mt-4 pt-3 border-t border-brand-border">
                   <div className="text-center">
                     <p className="text-xs text-text-muted">MAE</p>
                     <p className="text-lg font-mono font-bold text-text-primary">{backtest.mae}%</p>
@@ -910,7 +910,7 @@ export default function PredictionsPage() {
                 {/* Side-by-side comparison */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Rules */}
-                  <div className="p-4 rounded-lg bg-bastet-bg/50 border border-bastet-border">
+                  <div className="p-4 rounded-lg bg-brand-bg/50 border border-brand-border">
                     <p className="text-[10px] text-text-muted uppercase tracking-wider mb-3">Rule-Based (Old)</p>
                     <div className="space-y-2">
                       <div className="flex justify-between">
@@ -953,7 +953,7 @@ export default function PredictionsPage() {
                   "flex items-center justify-center gap-2 py-3 px-4 rounded-lg",
                   comparison.improvement_pct > 0
                     ? "bg-emerald-400/10 border border-emerald-400/20"
-                    : "bg-bastet-bg border border-bastet-border"
+                    : "bg-brand-bg border border-brand-border"
                 )}>
                   {comparison.improvement_pct > 0 ? (
                     <>
@@ -1003,7 +1003,7 @@ export default function PredictionsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Trend Slope</p>
                 <p className={cn(
                   "text-lg font-mono font-bold mt-1",
@@ -1013,27 +1013,27 @@ export default function PredictionsPage() {
                 </p>
                 <p className="text-[9px] text-text-muted/60">%/day</p>
               </div>
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Intercept</p>
                 <p className="text-lg font-mono font-bold text-text-primary mt-1">{model.trend_intercept}%</p>
                 <p className="text-[9px] text-text-muted/60">baseline occupancy</p>
               </div>
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Avg Rate</p>
                 <p className="text-lg font-mono font-bold text-text-primary mt-1">{formatCurrency(model.avg_rate)}</p>
                 <p className="text-[9px] text-text-muted/60">per night</p>
               </div>
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Rate Sensitivity</p>
                 <p className="text-lg font-mono font-bold text-text-primary mt-1">{model.avg_rate_sensitivity}</p>
                 <p className="text-[9px] text-text-muted/60">occ% per GBP</p>
               </div>
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Momentum Weight</p>
                 <p className="text-lg font-mono font-bold text-text-primary mt-1">{model.momentum_weight}</p>
                 <p className="text-[9px] text-text-muted/60">booking pace factor</p>
               </div>
-              <div className="p-3 rounded-lg bg-bastet-bg">
+              <div className="p-3 rounded-lg bg-brand-bg">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider">Residual Std</p>
                 <p className="text-lg font-mono font-bold text-text-primary mt-1">{model.residual_std}%</p>
                 <p className="text-[9px] text-text-muted/60">prediction noise</p>

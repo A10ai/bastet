@@ -96,7 +96,7 @@ export default function SchedulerPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -109,7 +109,7 @@ export default function SchedulerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Timer className="w-6 h-6 text-bastet-gold" />
+            <Timer className="w-6 h-6 text-brand-accent" />
             <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               AI Scheduler
             </h1>
@@ -222,7 +222,7 @@ export default function SchedulerPage() {
                 setInterval(mins);
                 doAction("set_interval", { interval_minutes: mins });
               }}
-              className="bg-bastet-bg border border-bastet-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-bastet-gold/40"
+              className="bg-brand-bg border border-brand-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-brand-accent/40"
             >
               <option value={5}>5 minutes</option>
               <option value={10}>10 minutes</option>
@@ -233,13 +233,13 @@ export default function SchedulerPage() {
           </div>
 
           {/* What runs each cycle */}
-          <div className="pt-4 border-t border-bastet-border">
+          <div className="pt-4 border-t border-brand-border">
             <p className="text-xs text-text-muted uppercase tracking-wider mb-3">
               Each cycle runs:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-                <Brain className="w-4 h-4 text-bastet-gold" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-bg border border-brand-border">
+                <Brain className="w-4 h-4 text-brand-accent" />
                 <div>
                   <p className="text-sm font-medium text-text-primary">AI Brain</p>
                   <p className="text-xs text-text-muted">
@@ -249,15 +249,15 @@ export default function SchedulerPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-                <Workflow className="w-4 h-4 text-bastet-gold" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-bg border border-brand-border">
+                <Workflow className="w-4 h-4 text-brand-accent" />
                 <div>
                   <p className="text-sm font-medium text-text-primary">5 Automations</p>
                   <p className="text-xs text-text-muted">Pricing, HK, Maint, VIP, Energy</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-                <Sparkles className="w-4 h-4 text-bastet-gold" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-bg border border-brand-border">
+                <Sparkles className="w-4 h-4 text-brand-accent" />
                 <div>
                   <p className="text-sm font-medium text-text-primary">Fresh Insights</p>
                   <p className="text-xs text-text-muted">AI Command Centre updated</p>
@@ -356,8 +356,8 @@ export default function SchedulerPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Brain */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-              <Brain className="w-5 h-5 text-bastet-gold mt-0.5" />
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-brand-bg border border-brand-border">
+              <Brain className="w-5 h-5 text-brand-accent mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-text-primary">AI Brain</p>
                 {lastResult.brain.skipped ? (
@@ -380,8 +380,8 @@ export default function SchedulerPage() {
             </div>
 
             {/* Automations */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-              <Workflow className="w-5 h-5 text-bastet-gold mt-0.5" />
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-brand-bg border border-brand-border">
+              <Workflow className="w-5 h-5 text-brand-accent mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-text-primary">Automations</p>
                 {lastResult.automations.error ? (
@@ -395,8 +395,8 @@ export default function SchedulerPage() {
             </div>
 
             {/* Insights */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-bastet-bg border border-bastet-border">
-              <Sparkles className="w-5 h-5 text-bastet-gold mt-0.5" />
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-brand-bg border border-brand-border">
+              <Sparkles className="w-5 h-5 text-brand-accent mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-text-primary">Insights</p>
                 <p className="text-xs text-text-secondary">

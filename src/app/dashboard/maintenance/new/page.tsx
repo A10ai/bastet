@@ -66,7 +66,7 @@ export default function NewMaintenancePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/maintenance" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href="/dashboard/maintenance" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
@@ -91,7 +91,7 @@ export default function NewMaintenancePage() {
                     onChange={(e) => setDescription(e.target.value)}
                     rows={4}
                     required
-                    className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                    className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     placeholder="Detailed description of the problem..."
                   />
                 </div>
@@ -102,7 +102,7 @@ export default function NewMaintenancePage() {
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                       required
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">Select category...</option>
                       {MAINTENANCE_CATEGORIES.map((c) => (
@@ -115,7 +115,7 @@ export default function NewMaintenancePage() {
                     <select
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       {MAINTENANCE_PRIORITY_LEVELS.map((p) => (
                         <option key={p} value={p}>{p}</option>
@@ -143,7 +143,7 @@ export default function NewMaintenancePage() {
                   <select
                     value={apartmentId}
                     onChange={(e) => setApartmentId(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                    className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   >
                     <option value="">Common area / General</option>
                     {apartments.map((apt) => (

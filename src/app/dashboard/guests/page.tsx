@@ -31,7 +31,7 @@ const NAT_BAR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "
 const TIER_COLORS: Record<LoyaltyTier, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
   silver: "bg-gray-400/20 text-gray-300",
-  gold: "bg-bastet-gold-muted text-bastet-gold",
+  gold: "bg-brand-accent-muted text-brand-accent",
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
@@ -174,7 +174,7 @@ export default function GuestsPage() {
     else if (pct >= 30) color = "bg-status-warning";
     return (
       <div className="flex items-center gap-2">
-        <div className="w-16 h-2 bg-bastet-bg rounded-full overflow-hidden">
+        <div className="w-16 h-2 bg-brand-bg rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${color}`}
             style={{ width: `${pct}%` }}
@@ -290,15 +290,15 @@ export default function GuestsPage() {
             placeholder="Search name, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
         <button
           onClick={() => setVipOnly(!vipOnly)}
           className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors ${
             vipOnly
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           <Star className="w-3 h-3" />
@@ -312,8 +312,8 @@ export default function GuestsPage() {
           onClick={() => setTierFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             tierFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All Tiers
@@ -324,8 +324,8 @@ export default function GuestsPage() {
             onClick={() => setTierFilter(tier)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               tierFilter === tier
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {tier}
@@ -338,13 +338,13 @@ export default function GuestsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Name</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Email</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Tier</th>
@@ -364,7 +364,7 @@ export default function GuestsPage() {
                   return (
                     <tr
                       key={guest.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
                         <span className="text-sm font-semibold text-text-primary">
@@ -397,7 +397,7 @@ export default function GuestsPage() {
                       </td>
                       <td className="px-6 py-3">
                         {guest.vip_status && (
-                          <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+                          <Star className="w-4 h-4 text-brand-accent fill-brand-accent" />
                         )}
                       </td>
                       <td className="px-6 py-3 hidden md:table-cell">
@@ -416,7 +416,7 @@ export default function GuestsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/guests/${guest.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View
