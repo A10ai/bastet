@@ -6,6 +6,7 @@ import { FinanceKpiRows } from "@/components/finance/finance-kpis";
 import { FinanceRevenueCharts } from "@/components/finance/finance-charts";
 import { FinanceLedgersAndTrends } from "@/components/finance/finance-tables";
 import { FinanceOutlook } from "@/components/finance/finance-outlook";
+import { AccountingExportCard } from "@/components/finance/accounting-export-card";
 
 export default function FinancePage() {
   const { loading, summary, channelAnalysis, forecast, energyCost, expenseDonutData, revenueSourceData, channelDonutData, roomTypeBarData, arBarData, deptData, cporData, cashFlowData } = useFinanceDashboard();
@@ -32,6 +33,7 @@ export default function FinancePage() {
       <FinanceRevenueCharts summary={summary} expenseDonutData={expenseDonutData} revenueSourceData={revenueSourceData} channelDonutData={channelDonutData} roomTypeBarData={roomTypeBarData} />
       <FinanceLedgersAndTrends arBarData={arBarData} deptData={deptData} cporData={cporData} cashFlowData={cashFlowData} />
       <FinanceOutlook summary={summary} channelAnalysis={channelAnalysis} forecast={forecast} energyCost={energyCost} />
+      <AccountingExportCard />
     </div>
   );
 }

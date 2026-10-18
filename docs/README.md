@@ -8,6 +8,8 @@
 | [runbooks/](runbooks/README.md) | Deploy, rollback, key rotation, incident response, night audit, backup and restore |
 | [STAGING.md](STAGING.md) | Environments, secrets per environment, promotion flow |
 | [ALERTING.md](ALERTING.md) | What pages whom, monitor and Sentry rule setup, on-call |
+| [ACCOUNTING-EXPORT.md](ACCOUNTING-EXPORT.md) | How ledger lines become a balanced journal, the chart of accounts, importing into Xero, QuickBooks or Sage |
+| [INTEGRATIONS.md](INTEGRATIONS.md) | Where Stripe, email/SMS and a channel manager attach, and what each needs |
 | [LOAD-TEST.md](LOAD-TEST.md) | Capacity baseline and how to re-run the load test |
 | [hospitai-user-manual.md](hospitai-user-manual.md) | Front-desk and manager user guide |
 | [../README.md](../README.md) | Getting started, scripts, security configuration, money flow |

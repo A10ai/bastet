@@ -1816,6 +1816,45 @@ export const generatedPaths = {
       }
     }
   },
+  "/finance/accounts": {
+    "get": {
+      "tags": [
+        "Finance"
+      ],
+      "summary": "Chart of accounts used by the accounting export (migration 00031). (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "put": {
+      "tags": [
+        "Finance"
+      ],
+      "summary": "Chart of accounts used by the accounting export (migration 00031). (PUT)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/finance/budgets": {
     "get": {
       "tags": [
@@ -1845,6 +1884,25 @@ export const generatedPaths = {
         },
         "400": {
           "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/finance/export": {
+    "get": {
+      "tags": [
+        "Finance"
+      ],
+      "summary": "GET /finance/export",
+      "responses": {
+        "200": {
+          "description": "OK"
         },
         "401": {
           "description": "Unauthenticated"

@@ -2,7 +2,7 @@
 
 Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dictionary.py`; do not edit by hand. Schema source of truth: `supabase/migrations/`.
 
-64 tables, 38 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
+65 tables, 39 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
 
 ## Tables
 
@@ -38,6 +38,7 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [folio_lines](#folio_lines) | Append-only ledger lines (room, tax, levy, extra, payment, refund, reversal). Updates and deletes are rejected by trigger; corrections are reversing lines. | 16 | on |
 | [folios](#folios) | Guest account for a stay; opened at check-in or by a deposit, closed at check-out. | 11 | on |
 | [gdpr_requests](#gdpr_requests) | Subject access and erasure requests with their state. | 11 | on |
+| [gl_accounts](#gl_accounts) |  | 8 | on |
 | [guest_activity_log](#guest_activity_log) | Timeline of guest-facing events. | 8 | on |
 | [guest_communications](#guest_communications) | Outbound messages to guests and their delivery status. | 12 | on |
 | [guest_consent](#guest_consent) | GDPR consent records per guest and purpose. | 11 | on |
@@ -1022,6 +1023,35 @@ Row-level security policies:
 | Admin/owner can create GDPR requests | INSERT | `` | `(EXISTS ( SELECT 1    FROM staff   WHERE ((staff.auth_user_id = auth.uid()) AND ((staff.ro` |
 | Admin/owner can update GDPR requests | UPDATE | `(EXISTS ( SELECT 1    FROM staff   WHERE ((staff.auth_user_id = auth.uid()) AND ((staff.ro` | `` |
 | Staff can view GDPR requests | SELECT | `(EXISTS ( SELECT 1    FROM staff   WHERE (staff.auth_user_id = auth.uid())))` | `` |
+
+### gl_accounts
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| property_id | uuid |  |  | properties.id |
+| key | character varying(40) |  |  |  |
+| code | character varying(20) |  |  |  |
+| name | character varying(100) |  |  |  |
+| kind | character varying(20) |  |  |  |
+| created_at | timestamp with time zone |  | now() |  |
+| updated_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- check `gl_accounts_kind_check`: `CHECK (((kind)::text = ANY ((ARRAY['asset'::character varying, 'liability'::character varying, 'revenue'::character varying, 'expense'::character varying, 'equity'::character varying])::text[])))`
+- unique `gl_accounts_property_id_key_key`: `UNIQUE (property_id, key)`
+
+Triggers:
+
+- `gl_accounts_updated_at`: EXECUTE FUNCTION update_updated_at_column()
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| gl_accounts_manage | ALL | `(role_at_least(70) AND can_access_property(property_id))` | `(role_at_least(70) AND can_access_property(property_id))` |
+| gl_accounts_select | SELECT | `can_access_property(property_id)` | `` |
 
 ### guest_activity_log
 
@@ -2217,6 +2247,7 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | cancel_group | `p_group_id uuid, p_reason text` | jsonb | plpgsql |  |
 | checkin_booking | `p_booking_id uuid, p_notes text` | jsonb | plpgsql |  |
 | checkout_booking | `p_booking_id uuid, p_notes text, p_allow_outstanding_balance boolean, p_points_per_gbp numeric` | jsonb | plpgsql |  |
+| ensure_default_gl_accounts | `p_property_id uuid` | integer | plpgsql |  |
 | folio_balance | `p_folio_id uuid` | numeric | sql |  |
 | folio_lines_immutable | `` | trigger | plpgsql |  |
 | get_staff_id | `` | uuid | sql | yes |

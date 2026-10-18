@@ -449,6 +449,38 @@ async function posTests(owner, mgr, reception, hk) {
   await ctx.ctx.post(`/api/v1/bookings/${booking.id}/checkout`, { headers: H(ctx.csrf), data: { allow_outstanding_balance: true } }).catch(() => null);
 }
 
+// ---------------------------------------------------------------------------
+// Accounting export (00031): balanced journal from the folio ledger
+// ---------------------------------------------------------------------------
+async function exportTests(owner, mgr, reception) {
+  const m = mgr?.ok ? mgr : owner;
+  const from = plus(-60), to = plus(1);
+  if (reception?.ok) {
+    const r = await reception.ctx.get(`/api/v1/finance/export?from=${from}&to=${to}`);
+    rec("finance", "reception cannot download the accounting export -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
+  }
+  const bad = await m.ctx.get(`/api/v1/finance/export?from=${to}&to=${from}`);
+  rec("finance", "export with from after to -> 400", bad.status() === 400 ? "PASS" : "FAIL", bad.status());
+  const res = await m.ctx.get(`/api/v1/finance/export?from=${from}&to=${to}&type=journal&format=json`);
+  const body = (await j(res))?.data;
+  rec("finance", "journal export returns entries for the period", res.status() === 200 && Array.isArray(body?.entries) && body.entries.length > 0 ? "PASS" : "FAIL", `${res.status()} entries=${body?.entries?.length}`);
+  rec("finance", "journal debits equal credits (balanced)", body?.check?.balanced === true && body.check.total_debit === body.check.total_credit ? "PASS" : "FAIL", JSON.stringify(body?.check));
+  const perEntry = (body?.entries || []).every((e) => Math.abs((e.legs[0].debit + e.legs[1].debit) - (e.legs[0].credit + e.legs[1].credit)) < 0.005 && e.legs.every((l) => l.account_code));
+  rec("finance", "every journal entry is balanced and mapped to an account", perEntry ? "PASS" : "FAIL");
+  const types = new Set((body?.entries || []).map((e) => e.type));
+  rec("finance", "journal covers room charges, tax and payments", ["room", "tax", "payment"].every((t) => types.has(t)) ? "PASS" : "WARN", [...types].join(","));
+  const sum = (await j(await m.ctx.get(`/api/v1/finance/export?from=${from}&to=${to}&type=summary`)))?.data;
+  const guest = (sum?.accounts || []).find((a) => a.account_key === "guest_ledger");
+  rec("finance", "summary lists the guest ledger control account with totals", guest && guest.debit > 0 ? "PASS" : "FAIL", JSON.stringify(guest));
+  const csv = await m.ctx.get(`/api/v1/finance/export?from=${from}&to=${to}&format=csv`);
+  const text = await csv.text();
+  rec("finance", "CSV download has a filename, a header row and the balanced flag", csv.status() === 200 && /attachment; filename=/.test(csv.headers()["content-disposition"] || "") && text.startsWith("date,entry_id,type,booking,folio,account_code") && csv.headers()["x-journal-balanced"] === "true" ? "PASS" : "FAIL", `${csv.status()} ${csv.headers()["content-disposition"]}`);
+  const accounts = (await j(await m.ctx.get("/api/v1/finance/accounts")))?.data || [];
+  rec("finance", "chart of accounts has the eleven default accounts", accounts.length >= 11 && accounts.some((a) => a.key === "room_revenue") ? "PASS" : "FAIL", accounts.length);
+  const renamed = await m.ctx.put("/api/v1/finance/accounts", { headers: H(m.csrf), data: { accounts: [{ key: "room_revenue", code: "4000", name: "Room revenue" }] } });
+  rec("finance", "manager can update account codes", renamed.status() === 200 ? "PASS" : "FAIL", renamed.status());
+}
+
 async function transactionTests(owner, reception) {
   const ctx = owner.ctx, csrf = owner.csrf;
   const apts = (await j(await ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || (await j(await ctx.get("/api/v1/apartments")))?.data || [];
@@ -825,6 +857,7 @@ async function main() {
   if (MODE === "full") await safe("txn", () => groupTests(owner, rec_, hk));
   if (MODE === "full") await safe("txn", () => portalTests(owner, rec_, hk));
   if (MODE === "full") await safe("txn", () => posTests(owner, mgr, rec_, hk));
+  await safe("finance", () => exportTests(owner, mgr, rec_));
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) { try { ids = await transactionTests(owner, rec_); } catch (e) { rec("txn", "section crashed", "FAIL", String(e && e.message || e).split("\n")[0].slice(0, 200)); } }

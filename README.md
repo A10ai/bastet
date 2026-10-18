@@ -28,7 +28,7 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00030` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00031` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -38,6 +38,7 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00025_night_audit_and_idempotency.sql`: `daily_closes`, `run_night_audit()`, event idempotency, workflow versions
 - `00026_folio_ledger.sql`: `folios`, append-only `folio_lines`, `refunds`, `department_budgets`, room charges per night, invoices issued from the folio and frozen, `revenue_by_stay_date()`
 - `00027_rate_plans.sql`: `rate_plans` with a single-default trigger, `bookings.rate_plan_id` and `rate_plan_snapshot`, `quote_stay()` per-night pricing; seeds a BAR plan per property
+- `00031_gl_accounts.sql`: `gl_accounts` chart of accounts per property with defaults, used by the accounting export
 - `00030_pos.sql`: `pos_outlets`, `pos_items`, `pos_tickets`, `post_pos_ticket()` (outlet ticket to the in-house folio as charge and VAT lines), `void_pos_ticket()`
 - `00029_guest_portal.sql`: `booking_access_tokens` (hashed, expiring, revocable guest links), `bookings.precheckin` and `precheckin_completed_at`
 - `00028_group_bookings.sql`: `booking_groups`, `bookings.group_id`, `add_group_rooms()` (atomic room blocks), `group_statement()`, `record_group_payment()` (one payment allocated across room folios), `cancel_group()`
@@ -97,7 +98,7 @@ Front desk creates a link per booking (`POST /api/v1/bookings/:id/portal-link`);
 
 ## Money flow
 
-Outlets (restaurant, bars, spa, minibar) post tickets to the in-house guest's folio from the till at `/dashboard/pos`: items come from the outlet catalogue (`pos_items`), each item becomes a charge line with its VAT line through `post_folio_charge`, the ticket is kept in `pos_tickets` for outlet reporting, and a manager void (`void_pos_ticket`) reverses every line. Prices come from `quote_stay`: the seasonal rate per night (`rates`, Best Available Rate) adjusted by the booking's rate plan (`rate_plans`: percent off, markup, fixed nightly, with cancellation terms, minimum nights, validity and channel restrictions). The booking stores the plan id and a snapshot, so editing a plan never changes a sold stay. A group booking (`booking_groups`) owns several room bookings blocked atomically for the same dates; each room keeps its own folio and the organiser can pay in one go, allocated across the rooms (`record_group_payment`). Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`.
+Outlets (restaurant, bars, spa, minibar) post tickets to the in-house guest's folio from the till at `/dashboard/pos`: items come from the outlet catalogue (`pos_items`), each item becomes a charge line with its VAT line through `post_folio_charge`, the ticket is kept in `pos_tickets` for outlet reporting, and a manager void (`void_pos_ticket`) reverses every line. Prices come from `quote_stay`: the seasonal rate per night (`rates`, Best Available Rate) adjusted by the booking's rate plan (`rate_plans`: percent off, markup, fixed nightly, with cancellation terms, minimum nights, validity and channel restrictions). The booking stores the plan id and a snapshot, so editing a plan never changes a sold stay. A group booking (`booking_groups`) owns several room bookings blocked atomically for the same dates; each room keeps its own folio and the organiser can pay in one go, allocated across the rooms (`record_group_payment`). Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`. The accounting export (`/api/v1/finance/export`, see `docs/ACCOUNTING-EXPORT.md`) turns the ledger into a balanced double-entry journal mapped to the property's chart of accounts (`gl_accounts`).
 
 ## Operations
 
@@ -109,7 +110,7 @@ Outlets (restaurant, bars, spa, minibar) post tickets to the in-house guest's fo
 
 ## Known gaps
 
-See the October 2026 code audit for the full list. Not yet built: channel manager integration (OTA sync), card payments (Stripe), email and SMS delivery, guest self-service portal, rate plans and group bookings, POS to folio, accounting export, door-lock and BMS integration. Screens that show sample or modelled data carry a visible "Demo data" or "Modelled estimate" banner.
+See the October 2026 code audit for the full list. Not yet built: channel manager integration (OTA sync), card payments (Stripe), email and SMS delivery (all three need provider credentials; the seams are described in `docs/INTEGRATIONS.md`), door-lock and BMS integration. Screens that show sample or modelled data carry a visible "Demo data" or "Modelled estimate" banner.
 
 ## Project layout
 

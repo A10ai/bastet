@@ -300,6 +300,9 @@ JOIN (VALUES
 WHERE o.property_id = v_property_id
 ON CONFLICT (outlet_id, name) DO NOTHING;
 
+-- Chart of accounts (00031) for the accounting export
+PERFORM ensure_default_gl_accounts(v_property_id);
+
 -- ============================================================
 -- 10. Sample Bookings (15) — using apartment numbers to find IDs
 -- ============================================================
