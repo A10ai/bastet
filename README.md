@@ -49,12 +49,15 @@ Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`,
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `PII_ENCRYPTION_KEY` | Production | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts passport numbers at rest (AES-256-GCM, `src/lib/pii-crypto.ts`). Run `POST /api/v1/admin/encrypt-pii` once after setting it to encrypt rows created earlier. |
+| `SUPABASE_JWT_SECRET` | Recommended | Verifies session tokens locally (`src/lib/jwt-verify.ts`) instead of one auth-server call per API request. Projects on asymmetric signing keys need nothing: the JWKS is used. Without either, routes fall back to `auth.getUser()`. |
+| `PII_ENCRYPTION_KEY_PREVIOUS` | During rotation | The key being retired; see `docs/runbooks/key-rotation.md`. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Production on Vercel | Shared rate limiting for login, password reset and AI endpoints. Without them the limiter is per-instance and the server logs a warning. |
 | `MFA_ENFORCE` | Optional, default `true` | Owners and admins must enrol an authenticator app (Settings > Security) before using the system. Set `false` during rollout. |
 | `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
 | `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
 | `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
 | `CRON_SECRET` | Production | Bearer token Vercel Cron sends to `/api/v1/cron/*` (night audit 03:00 UTC, automations every 15 min, FX rates daily). Admins can also trigger these by hand. |
+| `ANTHROPIC_MODEL` | Optional, default `claude-sonnet-5-5` | Claude model for the AI brain and chat (`src/lib/ai-model.ts`). |
 | `OPEN_EXCHANGE_RATES_APP_ID` | Optional | Exchange-rate provider; without it ECB reference rates (frankfurter.app) are used. |
 
 Content-Security-Policy is generated per request in `src/middleware.ts` with a nonce; scripts never run from `unsafe-inline`. The CSRF cookie uses the `__Host-` prefix on https deployments.
@@ -68,7 +71,10 @@ Content-Security-Policy is generated per request in `src/middleware.ts` with a n
 | `npm run lint` | ESLint (`next lint`) |
 | `npm test` | Vitest unit tests |
 | `npm run test:coverage` | Unit tests with v8 coverage |
-| `npm run test:e2e` | Playwright smoke tests |
+| `npm run test:e2e` | Playwright smoke tests and authenticated journeys (`E2E_EMAIL`/`E2E_PASSWORD`) |
+| `node scripts/deep-test.mjs` | End-to-end API battery against a running server (see `docs/STAGING.md`) |
+| `npm run test:load` | Load test: 50 virtual users on dashboard, availability, bookings and a booking write path |
+| `npm run drill:backup` | Backup and restore drill against the local Supabase stack |
 
 ## Docker
 
@@ -85,9 +91,13 @@ docker run -p 3000:3000 --env-file .env.production hospitai
 
 Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`.
 
+## Operations
+
+`GET /api/v1/health` probes the database, the schema level, the auth server, cron freshness and the last night-audit close, and returns 503 when a hard dependency is down. Runbooks for deploy, rollback, key rotation, incident response, the night audit and backup/restore are in `docs/runbooks/`; environments and promotion in `docs/STAGING.md`; alert rules and on-call in `docs/ALERTING.md`.
+
 ## Known gaps
 
-See the October 2026 code audit for the full list. Not yet built: guest folio and ledger, night audit, channel manager integration, card payments, refunds, email and SMS delivery, door-lock and BMS integration. Screens that show sample or modelled data carry a visible "Demo data" or "Modelled estimate" banner.
+See the October 2026 code audit for the full list. Not yet built: channel manager integration (OTA sync), card payments (Stripe), email and SMS delivery, guest self-service portal, rate plans and group bookings, POS to folio, accounting export, door-lock and BMS integration. Screens that show sample or modelled data carry a visible "Demo data" or "Modelled estimate" banner.
 
 ## Project layout
 

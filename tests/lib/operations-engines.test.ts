@@ -149,9 +149,10 @@ describe("notifications", () => {
     const db = seedDb();
     const sb = createFakeSupabase(db);
     const created = await n.createNotification(sb, { title: "Hello", message: "World", type: "info", category: "system" });
-    expect(created.length).toBe(db.staff.length);
+    expect(created).toBe(db.staff.length);
+    expect(db.notifications.filter((r) => r.title === "Hello").length).toBe(db.staff.length);
     const one = await n.createNotification(sb, { staff_id: db.staff[0].id as string, title: "Direct", message: "Only you" });
-    expect(one.length).toBe(1);
+    expect(one).toBe(1);
     const list = await n.getNotifications(sb, db.staff[0].id as string, { limit: 10 });
     expect(list.length).toBeGreaterThan(0);
     expect(await n.getUnreadCount(sb, db.staff[0].id as string)).toBeGreaterThan(0);

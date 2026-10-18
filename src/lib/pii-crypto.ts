@@ -13,10 +13,23 @@ import { logger } from "@/lib/logger";
  * Without a key configured, values pass through unchanged and a warning is
  * logged once. That keeps development working but production must set the key
  * (the env validator requires it when NODE_ENV=production).
+ *
+ * Key rotation: set the new key in PII_ENCRYPTION_KEY and the old one in
+ * PII_ENCRYPTION_KEY_PREVIOUS. Reads fall back to the previous key, writes use
+ * the new one, and POST /api/v1/admin/encrypt-pii re-encrypts every row that
+ * still needs the old key. Remove the previous key once it reports zero
+ * remaining. See docs/runbooks/key-rotation.md.
  */
 
 const PREFIX = "enc:v1:";
 let warned = false;
+
+function toKey(raw: string): Buffer {
+  const buf = Buffer.from(raw, "base64");
+  if (buf.length === 32) return buf;
+  // Accept any string by hashing it; still 256-bit, but document the proper form.
+  return createHash("sha256").update(raw).digest();
+}
 
 function loadKey(): Buffer | null {
   const raw = process.env.PII_ENCRYPTION_KEY;
@@ -27,10 +40,19 @@ function loadKey(): Buffer | null {
     }
     return null;
   }
-  const buf = Buffer.from(raw, "base64");
-  if (buf.length === 32) return buf;
-  // Accept any string by hashing it; still 256-bit, but document the proper form.
-  return createHash("sha256").update(raw).digest();
+  return toKey(raw);
+}
+
+function loadPreviousKey(): Buffer | null {
+  const raw = process.env.PII_ENCRYPTION_KEY_PREVIOUS;
+  return raw ? toKey(raw) : null;
+}
+
+function decryptWith(key: Buffer, value: string): string {
+  const [, , ivB64, tagB64, dataB64] = value.split(":");
+  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivB64, "base64"));
+  decipher.setAuthTag(Buffer.from(tagB64, "base64"));
+  return Buffer.concat([decipher.update(Buffer.from(dataB64, "base64")), decipher.final()]).toString("utf8");
 }
 
 export function isEncrypted(value: string | null | undefined): boolean {
@@ -55,15 +77,44 @@ export function decryptPii(value: string | null | undefined): string | null {
   const key = loadKey();
   if (!key) return "[encrypted]";
   try {
-    const [, , ivB64, tagB64, dataB64] = value.split(":");
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivB64, "base64"));
-    decipher.setAuthTag(Buffer.from(tagB64, "base64"));
-    const out = Buffer.concat([decipher.update(Buffer.from(dataB64, "base64")), decipher.final()]);
-    return out.toString("utf8");
+    return decryptWith(key, value);
   } catch (err) {
+    const previous = loadPreviousKey();
+    if (previous) {
+      try {
+        return decryptWith(previous, value);
+      } catch {
+        /* fall through to the error below */
+      }
+    }
     logger.error({ err: String(err) }, "[pii-crypto] decrypt failed (wrong key or corrupted value)");
     return "[unreadable]";
   }
+}
+
+/**
+ * True when a stored value can only be read with PII_ENCRYPTION_KEY_PREVIOUS
+ * (or is plaintext) and should be rewritten under the current key.
+ */
+export function needsRekey(value: string | null | undefined): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  const key = loadKey();
+  if (!key) return false;
+  if (!isEncrypted(value)) return true;
+  try {
+    decryptWith(key, value);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/** Re-encrypt under the current key; returns the input unchanged if it already uses it. */
+export function rekeyPii(value: string): string {
+  if (!needsRekey(value)) return value;
+  const plain = decryptPii(value);
+  if (plain === "[unreadable]" || plain === "[encrypted]" || plain === null) return value;
+  return encryptPii(plain) ?? value;
 }
 
 /** Show only the last three characters, e.g. "•••••567". */

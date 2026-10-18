@@ -1,3 +1,4 @@
+import { CLAUDE_MODEL } from "@/lib/ai-model";
 import "server-only";
 /**
  * HospitAI Chat Intelligence
@@ -190,7 +191,7 @@ Rules:
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODEL,
         max_tokens: 1024,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],

@@ -1,45 +1,34 @@
 import { NextResponse } from "next/server";
+import { runHealthChecks, type HealthBody } from "@/lib/health";
 
-/**
- * Health check endpoint for Docker, load balancers, and monitoring.
- * Returns 200 if the app is running, 503 if critical dependencies fail.
- *
- * Used by:
- * - Dockerfile HEALTHCHECK
- * - docker-compose depends_on healthcheck
- * - Kubernetes liveness/readiness probes (future)
- * - Uptime monitoring (future)
- */
 // Never prerender: a cached health payload (timestamp frozen at build time)
 // defeats the purpose of a health check.
 export const dynamic = "force-dynamic";
 
+// Short memo so a public endpoint cannot be used to hammer the database:
+// however often monitors (or anyone) poll, the dependencies are probed at
+// most once every MEMO_MS per instance.
+/**
+ * GET /api/v1/health
+ *
+ * Public, unauthenticated. Returns 200 when the app can serve traffic and 503
+ * when a hard dependency (database or auth) is down. Soft problems (stale
+ * cron, missing night audit, per-instance rate limiting) mark the check
+ * "degraded" but keep 200 so a slow dependency does not take the site out
+ * of rotation. Details are deliberately coarse: no error text reaches callers.
+ *
+ * Used by: Dockerfile HEALTHCHECK, docker-compose, uptime monitors (see
+ * docs/ALERTING.md), and the deploy runbook's smoke step.
+ */
+const MEMO_MS = 10_000;
+let memo: { at: number; body: HealthBody; status: number } | null = null;
+
 export async function GET() {
-  const checks: Record<string, "ok" | "fail"> = {
-    app: "ok",
-  };
-
-  // Check if Supabase env vars are configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    checks.supabase = "fail";
-  } else {
-    checks.supabase = "ok";
+  if (memo && Date.now() - memo.at < MEMO_MS) {
+    return NextResponse.json({ ...memo.body, cached: true }, { status: memo.status, headers: { "Cache-Control": "no-store" } });
   }
-
-  // Check if critical env vars are set
-  const hasPropertyId = !!process.env.PROPERTY_ID;
-  checks.config = hasPropertyId ? "ok" : "fail";
-
-  const allOk = Object.values(checks).every((v) => v === "ok");
-
-  return NextResponse.json(
-    {
-      status: allOk ? "healthy" : "degraded",
-      checks,
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || "unknown",
-    },
-    { status: allOk ? 200 : 503 }
-  );
+  const { body, status } = await runHealthChecks();
+  memo = { at: Date.now(), body, status };
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
+

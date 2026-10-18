@@ -29,6 +29,7 @@ eval "$(supabase status -o env | sed 's/^/export /')"
 export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
 export NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
 export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+export SUPABASE_JWT_SECRET="$JWT_SECRET"
 export NEXT_PUBLIC_APP_URL="http://localhost:$PORT"
 export PROPERTY_ID
 PROPERTY_ID="$(docker exec -i "$(docker ps --format '{{.Names}}' | grep supabase_db)" psql -U postgres -d postgres -Atc 'select id from properties limit 1')"

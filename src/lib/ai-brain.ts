@@ -1,3 +1,4 @@
+import { CLAUDE_MODEL } from "@/lib/ai-model";
 import "server-only";
 /**
  * HospitAI AI Brain — Daily Operations Intelligence
@@ -468,7 +469,7 @@ Respond ONLY with valid JSON in this exact format:
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODEL,
         max_tokens: 2048,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMutatingMethod, validateCsrfToken, CSRF_HEADER_NAME, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { checkMfa } from "@/lib/mfa";
+import { verifyAccessToken } from "@/lib/jwt-verify";
 
 /**
  * HospitAI Role Hierarchy
@@ -88,7 +89,8 @@ function deny(code: string, message: string, status: number): AuthContext {
 /**
  * Verify the caller's identity against Supabase Auth.
  *
- * SECURITY: this uses `auth.getUser()`, which sends the access token to the
+ * SECURITY: the token's signature is verified (locally when key material is
+ * configured, see `src/lib/jwt-verify.ts`, otherwise with `auth.getUser()`, which sends the access token to the
  * Auth server and verifies its signature. `auth.getSession()` only decodes the
  * cookie and must never be used to establish identity on the server.
  */
@@ -97,6 +99,18 @@ export async function getVerifiedUser(
 ): Promise<{ id: string; email?: string } | null> {
   try {
     const supabase = requestScopedClient(request);
+    // Fast path: verify the access token's signature locally (SUPABASE_JWT_SECRET
+    // or the project JWKS). getSession() only reads the cookie here; it does
+    // not trust it, and we never use its user object.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      const verified = await verifyAccessToken(session.access_token);
+      if (verified.ok) return { id: verified.claims.sub, email: verified.claims.email };
+      if (verified.reason === "invalid") return null;
+    }
+    // No local key material: ask the auth server (one network call).
     const {
       data: { user },
       error,

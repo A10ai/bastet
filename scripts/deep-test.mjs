@@ -53,6 +53,11 @@ async function unauthTests() {
   const hb = await j(h);
   const stale = hb?.timestamp && (Date.now() - Date.parse(hb.timestamp)) > 3600_000;
   rec("unauth", "health timestamp is live (not prerendered)", stale ? "WARN" : "PASS", hb?.timestamp);
+  rec("unauth", "health probes the database", hb?.checks?.database?.status === "ok" ? "PASS" : "FAIL", JSON.stringify(hb?.checks?.database));
+  rec("unauth", "health probes the auth server", hb?.checks?.auth?.status === "ok" ? "PASS" : "FAIL", JSON.stringify(hb?.checks?.auth));
+  rec("unauth", "health reports schema at expected migration level", hb?.checks?.database?.detail?.includes("missing") ? "FAIL" : "PASS", hb?.checks?.database?.detail || "ok");
+  rec("unauth", "health leaks no stack traces or hostnames", /at .*\.js|postgres:\/\/|supabase\.co/i.test(JSON.stringify(hb)) ? "FAIL" : "PASS");
+  rec("unauth", "health is not cached by proxies", /no-store/.test(h.headers()["cache-control"] || "") ? "PASS" : "FAIL", h.headers()["cache-control"]);
   for (const p of ["/api/v1/bookings", "/api/v1/guests", "/api/v1/admin/users", "/api/v1/finance/summary", "/api/v1/audit"]) {
     const r = await ctx.get(p);
     rec("unauth", `GET ${p} -> 401`, r.status() === 401 ? "PASS" : "FAIL", r.status());
@@ -76,18 +81,39 @@ async function unauthTests() {
 // ---------------------------------------------------------------------------
 // 2. Forged session cookie must not authenticate (gap 2)
 // ---------------------------------------------------------------------------
+function b64url(x) { return Buffer.from(typeof x === "string" ? x : JSON.stringify(x)).toString("base64url"); }
+function hs256(payload, secret, header = { alg: "HS256", typ: "JWT" }) {
+  const data = `${b64url(header)}.${b64url(payload)}`;
+  const sig = createHmac("sha256", secret).update(data).digest("base64url");
+  return `${data}.${sig}`;
+}
 async function forgedCookieTest(ownerCtx) {
   const state = await ownerCtx.storageState();
   const authCookie = state.cookies.find((c) => c.name.includes("auth-token") && !c.name.endsWith(".1"));
   if (!authCookie) { rec("security", "locate session cookie", "WARN", "no auth-token cookie found"); return; }
-  const forged = { access_token: "forged.jwt.token", refresh_token: "x", expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: "bearer", user: { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", role: "authenticated", email: "owner@bastet.com" } };
-  const value = "base64-" + Buffer.from(JSON.stringify(forged)).toString("base64url");
-  const ctx = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: { cookie: `${authCookie.name.replace(/\.0$/, "")}=${value}` } });
-  for (const p of ["/api/v1/admin/users", "/api/v1/staff", "/api/v1/bookings"]) {
-    const r = await ctx.get(p);
-    rec("security", `forged cookie GET ${p} rejected`, r.status() === 401 || r.status() === 403 ? "PASS" : "FAIL", r.status());
+  const cookieName = authCookie.name.replace(/\.0$/, "");
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { sub: "00000000-0000-0000-0000-000000000001", aud: "authenticated", role: "authenticated", email: "owner@bastet.com", aal: "aal2", session_id: "11111111-1111-1111-1111-111111111111", iat: now, exp: now + 3600 };
+  const variants = {
+    "garbage token": "forged.jwt.token",
+    "HS256 signed with the wrong secret": hs256(claims, "not-the-project-secret-but-long-enough-to-look-real"),
+    "alg none": `${b64url({ alg: "none", typ: "JWT" })}.${b64url(claims)}.`,
+    "service_role claim with wrong secret": hs256({ ...claims, role: "service_role" }, "x".repeat(40)),
+  };
+  if (process.env.SB_JWT_SECRET) {
+    variants["expired token with the real secret"] = hs256({ ...claims, iat: now - 7200, exp: now - 3600 }, process.env.SB_JWT_SECRET);
+    variants["real secret but role=anon"] = hs256({ ...claims, role: "anon" }, process.env.SB_JWT_SECRET);
   }
-  await ctx.dispose();
+  for (const [label, token] of Object.entries(variants)) {
+    const forged = { access_token: token, refresh_token: "x", expires_at: now + 3600, token_type: "bearer", user: { id: claims.sub, aud: "authenticated", role: "authenticated", email: claims.email } };
+    const value = "base64-" + b64url(forged);
+    const ctx = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: { cookie: `${cookieName}=${value}` } });
+    for (const p of ["/api/v1/admin/users", "/api/v1/bookings"]) {
+      const r = await ctx.get(p);
+      rec("security", `forged session (${label}) GET ${p} rejected`, r.status() === 401 || r.status() === 403 ? "PASS" : "FAIL", r.status());
+    }
+    await ctx.dispose();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +221,23 @@ async function roleTests(hk, mgr, owner) {
 // ---------------------------------------------------------------------------
 // 6. Transactions (full mode only, local DB)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Broadcast notifications must reach OTHER staff (RLS + RETURNING regression)
+// ---------------------------------------------------------------------------
+async function notificationTests(owner, reception) {
+  if (!reception?.ok) return;
+  const title = `Deep test broadcast ${Date.now()}`;
+  const before = (await j(await reception.ctx.get("/api/v1/notifications?unread_only=true&limit=50")))?.unread_count ?? 0;
+  const post = await owner.ctx.post("/api/v1/notifications", { headers: H(owner.csrf), data: { action: "create", title, message: "If you can read this, broadcast works", type: "info", category: "system" } });
+  const body = await j(post);
+  rec("txn", "owner broadcasts a notification -> 201 with a count", post.status() === 201 && body?.data?.created > 1 ? "PASS" : "FAIL", `${post.status()} ${JSON.stringify(body)?.slice(0, 80)}`);
+  const after = await j(await reception.ctx.get("/api/v1/notifications?unread_only=true&limit=50"));
+  const seen = (after?.notifications || []).some((n) => n.title === title);
+  rec("txn", "reception receives the broadcast in their unread list", seen ? "PASS" : "FAIL", `unread ${before} -> ${after?.unread_count}`);
+  const ownSeen = ((await j(await owner.ctx.get("/api/v1/notifications?unread_only=true&limit=50")))?.notifications || []).some((n) => n.title === title);
+  rec("txn", "owner receives their own copy of the broadcast", ownSeen ? "PASS" : "FAIL");
+}
+
 async function transactionTests(owner, reception) {
   const ctx = owner.ctx, csrf = owner.csrf;
   const apts = (await j(await ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || (await j(await ctx.get("/api/v1/apartments")))?.data || [];
@@ -561,6 +604,7 @@ async function main() {
 
   await apiTests(owner.ctx, "owner");
   await roleTests(hk, mgr, owner);
+  if (MODE === "full") await notificationTests(owner, rec_);
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);

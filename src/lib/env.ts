@@ -12,6 +12,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  // Lets API routes verify session tokens locally instead of calling the auth
+  // server per request (legacy HS256 projects and the local CLI stack).
+  SUPABASE_JWT_SECRET: z.string().min(32).optional(),
 
   // App
   PROPERTY_ID: z.string().optional(),
@@ -19,6 +22,7 @@ const envSchema = z.object({
 
   // AI
   ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().optional(),
 
   // Integrations (all optional — only needed if feature is active)
   STRIPE_SECRET_KEY: z.string().optional(),

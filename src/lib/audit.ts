@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { verifyAccessToken } from "@/lib/jwt-verify";
 import { logger } from "@/lib/logger";
 
 export interface AuditEntry {
@@ -65,6 +66,12 @@ async function resolveActor(
     return { user_id: entry.user_id, user_email: entry.user_email || "unknown" };
   }
   try {
+    // Prefer the locally verified token (no auth-server round trip per write).
+    const session = (await supabase.auth.getSession?.())?.data?.session;
+    if (session?.access_token) {
+      const verified = await verifyAccessToken(session.access_token);
+      if (verified.ok) return { user_id: verified.claims.sub, user_email: verified.claims.email || "unknown" };
+    }
     const {
       data: { user },
     } = await supabase.auth.getUser();

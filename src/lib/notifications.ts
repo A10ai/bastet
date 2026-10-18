@@ -45,36 +45,33 @@ export interface Notification {
 // createNotification
 // ---------------------------------------------------------------------------
 
+/**
+ * Create a notification for one staff member, or for every active staff
+ * member when `staff_id` is omitted (broadcast). Returns how many were created.
+ *
+ * The insert deliberately does not ask for the rows back: with row-level
+ * security, INSERT ... RETURNING also has to pass the SELECT policy, and a
+ * manager cannot read a receptionist's notifications, so a broadcast with
+ * RETURNING was rejected wholesale ("new row violates row-level security
+ * policy") and no one was ever notified. Found 18 Oct 2026.
+ */
 export async function createNotification(
   supabase: SupabaseClient,
   input: NotificationInput
-): Promise<Notification[]> {
+): Promise<number> {
   const { staff_id, title, message, type = "info", category, link } = input;
+  const base = { title, message, type, category: category || null, link: link || null };
 
-  // If staff_id is provided, create a single notification
   if (staff_id) {
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert({
-        staff_id,
-        title,
-        message,
-        type,
-        category: category || null,
-        link: link || null,
-      })
-      .select("*")
-      .single();
-
+    const { error } = await supabase.from("notifications").insert({ staff_id, ...base });
     if (error) {
       logger.error({ err: error.message }, "[Notifications] Failed to create notification");
-      return [];
+      return 0;
     }
-
-    return data ? [data as Notification] : [];
+    return 1;
   }
 
-  // Broadcast: create a notification for every active staff member
+  // Broadcast: one row per active staff member
   const { data: staffMembers, error: staffError } = await supabase
     .from("staff")
     .select("id")
@@ -83,46 +80,21 @@ export async function createNotification(
   if (staffError || !staffMembers || staffMembers.length === 0) {
     logger.error({ err: staffError?.message }, "[Notifications] Failed to fetch staff for broadcast");
     // Still create one with null staff_id as fallback
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert({
-        staff_id: null,
-        title,
-        message,
-        type,
-        category: category || null,
-        link: link || null,
-      })
-      .select("*")
-      .single();
-
+    const { error } = await supabase.from("notifications").insert({ staff_id: null, ...base });
     if (error) {
       logger.error({ err: error.message }, "[Notifications] Fallback insert failed");
-      return [];
+      return 0;
     }
-    return data ? [data as Notification] : [];
+    return 1;
   }
 
-  const rows = staffMembers.map((s: { id: string }) => ({
-    staff_id: s.id,
-    title,
-    message,
-    type,
-    category: category || null,
-    link: link || null,
-  }));
-
-  const { data, error } = await supabase
-    .from("notifications")
-    .insert(rows)
-    .select("*");
-
+  const rows = staffMembers.map((s: { id: string }) => ({ staff_id: s.id, ...base }));
+  const { error } = await supabase.from("notifications").insert(rows);
   if (error) {
     logger.error({ err: error.message }, "[Notifications] Broadcast insert failed");
-    return [];
+    return 0;
   }
-
-  return (data || []) as Notification[];
+  return rows.length;
 }
 
 // ---------------------------------------------------------------------------

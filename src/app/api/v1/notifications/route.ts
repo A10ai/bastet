@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        const notifications = await createNotification(supabase, {
+        const created = await createNotification(supabase, {
           staff_id: validated.staff_id || null,
           title,
           message,
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
           description: `Created notification: ${title}`,
           new_data: validated,
         });
-        return NextResponse.json({ notifications });
+        return NextResponse.json({ data: { created } }, { status: created > 0 ? 201 : 500 });
       }
 
       default:
