@@ -10,6 +10,10 @@ import { NextResponse } from "next/server";
  * - Kubernetes liveness/readiness probes (future)
  * - Uptime monitoring (future)
  */
+// Never prerender: a cached health payload (timestamp frozen at build time)
+// defeats the purpose of a health check.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const checks: Record<string, "ok" | "fail"> = {
     app: "ok",

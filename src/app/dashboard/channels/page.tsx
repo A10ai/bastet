@@ -259,10 +259,16 @@ export default function ChannelsPage() {
           perfRes.json(),
           rateRes.json(),
         ]);
+        // Each endpoint wraps its payload differently; never hand a non-array
+        // to list state (this crashed the page with "is not iterable").
+        const asArray = (json: Record<string, unknown>, ...keys: string[]): unknown[] => {
+          const candidates = [json.data, ...keys.map((k) => (json.data as Record<string, unknown> | undefined)?.[k]), ...keys.map((k) => json[k])];
+          return (candidates.find(Array.isArray) as unknown[] | undefined) ?? [];
+        };
         setOverview(ovJson.data || ovJson);
-        setConnections(connJson.data || connJson.channels || []);
-        setPerformance(perfJson.data || perfJson.channels || []);
-        setRates(rateJson.data || rateJson.rates || []);
+        setConnections(asArray(connJson, "connections", "channels") as ChannelConnection[]);
+        setPerformance(asArray(perfJson, "performance", "channels") as PerformanceRow[]);
+        setRates(asArray(rateJson, "rates") as RateRow[]);
       } catch {
         /* silent — cards show empty state */
       } finally {

@@ -61,8 +61,8 @@ BEGIN
 -- ============================================================
 -- 1. Property
 -- ============================================================
-INSERT INTO properties (name, slug, address, city, country, latitude, longitude, timezone, default_currency, reporting_currency, star_rating, total_apartments, status, phone, email, website)
-VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Kawthar District, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 270, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com')
+INSERT INTO properties (name, slug, address, city, country, latitude, longitude, timezone, default_currency, reporting_currency, star_rating, total_apartments, status, phone, email, website, vat_rate_percent)
+VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Kawthar District, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 270, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com', 14.00)
 RETURNING id INTO v_property_id;
 
 -- ============================================================

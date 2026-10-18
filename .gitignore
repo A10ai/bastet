@@ -41,3 +41,4 @@ next-env.d.ts
 
 # business collateral lives outside the product repo
 *.pdf
+deep-test-results.json
