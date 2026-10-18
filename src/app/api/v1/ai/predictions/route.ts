@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import {
   forecast30Days,
   trainModel,
@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
     const supabase = createServerSupabaseClient();
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
 
     const supabase = createServerSupabaseClient();

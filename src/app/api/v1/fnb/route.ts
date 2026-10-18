@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 
 // ─── Hardcoded F&B data for Bastet Hurghada aparthotel ───
 // Will be replaced with Supabase queries once F&B tables are created
@@ -98,7 +98,7 @@ const PERFORMANCE = {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
     // supabase client available for future F&B table queries
     const _supabase = createServerSupabaseClient();

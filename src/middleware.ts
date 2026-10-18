@@ -64,10 +64,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] = null;
+  // SECURITY: getUser() verifies the token signature with the Auth server.
+  // getSession() only decodes the cookie and can be forged.
+  let session: { id: string } | null = null;
   try {
-    const result = await supabase.auth.getSession();
-    session = result.data.session;
+    const { data, error } = await supabase.auth.getUser();
+    session = !error && data.user ? { id: data.user.id } : null;
   } catch {
     session = null;
   }

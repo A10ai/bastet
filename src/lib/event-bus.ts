@@ -95,7 +95,9 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
   if (!apartment_id) return results;
 
-  // 1. Create housekeeping task (checkout_clean, high priority)
+  // Housekeeping task creation and the apartment status change are performed
+  // atomically inside checkout_booking() (migration 00020). This handler only
+  // records the fact and continues with notifications.
   const { data: apt } = await supabase
     .from("apartments")
     .select("id, number, property_id")
@@ -103,37 +105,11 @@ registerHandler("booking.checked_out", async (event, supabase) => {
     .single();
 
   if (apt) {
-    const { error: hkError } = await supabase.from("housekeeping_tasks").insert({
-      property_id: apt.property_id,
-      apartment_id: apartment_id,
-      type: "checkout_clean",
-      status: "pending",
-      priority: "high",
-      scheduled_date: new Date().toISOString().split("T")[0],
-    });
-
     results.push({
       handler: "checkout_housekeeping",
       target_system: "housekeeping",
-      action: "create_task",
-      description: hkError
-        ? `Failed to create cleaning task for unit ${apt.number}: ${hkError.message}`
-        : `Checkout triggered cleaning task for unit ${apt.number}`,
-      success: !hkError,
-      timestamp: new Date().toISOString(),
-    });
-
-    // 2. Set apartment status to cleaning
-    await supabase
-      .from("apartments")
-      .update({ status: "cleaning" })
-      .eq("id", apartment_id);
-
-    results.push({
-      handler: "checkout_apartment_status",
-      target_system: "apartments",
-      action: "update_status",
-      description: `Set unit ${apt.number} status to cleaning`,
+      action: "task_created_in_transaction",
+      description: `Checkout created cleaning task for unit ${apt.number} (task ${String((event.payload as { housekeeping_task_id?: string }).housekeeping_task_id ?? "n/a")})`,
       success: true,
       timestamp: new Date().toISOString(),
     });

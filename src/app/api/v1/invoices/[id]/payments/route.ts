@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
-import { getInvoicePaymentStatus } from "@/lib/finance-engine";
+import { requireRole, ROLES } from "@/lib/api-auth";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, paymentSchema } from "@/lib/validation";
 
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
@@ -34,7 +34,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
@@ -56,70 +56,25 @@ export async function POST(
       notes,
     } = validated;
 
-    // Verify invoice exists and is payable
-    const { data: invoice } = await supabase
-      .from("invoices")
-      .select("id, status, total_gbp")
-      .eq("id", params.id)
-      .single();
+    const { data: result, error: rpcError } = await supabase.rpc("record_invoice_payment", {
+      p_invoice_id: params.id,
+      p_amount_gbp: amount_gbp,
+      p_method: method,
+      p_amount_original: amount_original ?? null,
+      p_currency: currency,
+      p_fx_rate: fx_rate ?? null,
+      p_reference: reference ?? null,
+      p_received_by: received_by ?? auth.staffId ?? null,
+      p_notes: notes ?? null,
+    });
 
-    if (!invoice) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
+    if (rpcError) return rpcErrorResponse(rpcError, "record_invoice_payment");
 
-    if (!["sent", "partially_paid"].includes(invoice.status)) {
-      return NextResponse.json(
-        { error: `Cannot record payment for invoice with status: ${invoice.status}` },
-        { status: 400 }
-      );
-    }
-
-    // Record payment
-    const { data: payment, error: payError } = await supabase
-      .from("payments")
-      .insert({
-        invoice_id: params.id,
-        amount_gbp,
-        amount_original: amount_original || amount_gbp,
-        currency,
-        fx_rate: fx_rate || null,
-        method,
-        status: "completed",
-        reference: reference || null,
-        received_by: received_by || null,
-        received_at: new Date().toISOString(),
-        notes: notes || null,
-      })
-      .select()
-      .single();
-
-    if (payError) {
-      return NextResponse.json({ error: payError.message }, { status: 400 });
-    }
-
-    // Get total payments for this invoice
-    const { data: allPayments } = await supabase
-      .from("payments")
-      .select("amount_gbp")
-      .eq("invoice_id", params.id)
-      .eq("status", "completed");
-
-    const paymentsSum = (allPayments || []).reduce(
-      (sum, p) => sum + p.amount_gbp,
-      0
-    );
-
-    // Update invoice status
-    const newStatus = getInvoicePaymentStatus(invoice.total_gbp, paymentsSum);
-    const updateData: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "paid") {
-      updateData.paid_at = new Date().toISOString();
-    }
-
-    await supabase
-      .from("invoices")
-      .update(updateData)
-      .eq("id", params.id);
+    const { payment, invoice_status: newStatus, outstanding_gbp } = result as {
+      payment: { id: string };
+      invoice_status: string;
+      outstanding_gbp: number;
+    };
 
     await logAudit(supabase, {
       action: "invoice.payment",

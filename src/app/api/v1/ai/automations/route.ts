@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import {
   getAutomations,
   runAutomation,
@@ -14,7 +14,7 @@ import { validateBody, formatZodErrors, automationSchema } from "@/lib/validatio
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
     const automations = getAutomations();
     return NextResponse.json({ data: automations });
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();

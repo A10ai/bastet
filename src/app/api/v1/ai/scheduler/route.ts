@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { runBrainCycle, getBrainConfig } from "@/lib/ai-brain";
 import { runAllAutomations } from "@/lib/automations-engine";
 import { generateInsights } from "@/lib/ai-engine";
@@ -18,7 +18,7 @@ let totalCycles = 0;
  * GET — Returns scheduler status
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ROLES.MANAGEMENT);
   if (!auth.authenticated) return auth.error!;
 
   return NextResponse.json({
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
  * Actions: start, stop, run_now, set_interval
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {

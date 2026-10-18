@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth, requireRole } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/api-error";
 import { logger } from "@/lib/logger";
@@ -17,7 +17,7 @@ import { validateBody, formatZodErrors, gdprActionSchema } from "@/lib/validatio
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
     const { searchParams } = new URL(request.url);
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
     const body = await request.json();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES, roleAtLeast } from "@/lib/api-auth";
 import {
   getBrainConfig,
   updateBrainConfig,
@@ -12,7 +12,7 @@ import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const config = await getBrainConfig();
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
       }
 
       case "update_config": {
+        if (!roleAtLeast(auth.role, "admin")) {
+          return NextResponse.json(
+            { error: { code: "FORBIDDEN", message: "Only admin or owner may change AI brain configuration" } },
+            { status: 403 }
+          );
+        }
         const { config } = validated;
         if (!config || typeof config !== "object") {
           return NextResponse.json(

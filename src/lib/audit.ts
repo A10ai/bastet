@@ -36,26 +36,71 @@ export interface AuditEntry {
 /**
  * Log an action to the audit trail.
  */
+const SENSITIVE_KEYS = /password|passport|secret|token|card_number|cvv/i;
+
+/**
+ * Strip secrets and identity-document numbers from audit payloads so the
+ * audit trail never becomes a second copy of them.
+ */
+export function redactAuditData(
+  data?: Record<string, unknown>
+): Record<string, unknown> | null {
+  if (!data) return null;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    out[key] = SENSITIVE_KEYS.test(key) ? "[REDACTED]" : value;
+  }
+  return out;
+}
+
+/**
+ * Resolve the acting user from the request-scoped client. Falls back to
+ * "system" only when there is genuinely no user (cron, service-role jobs).
+ */
+async function resolveActor(
+  supabase: SupabaseClient,
+  entry: AuditEntry
+): Promise<{ user_id: string; user_email: string }> {
+  if (entry.user_id) {
+    return { user_id: entry.user_id, user_email: entry.user_email || "unknown" };
+  }
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) return { user_id: user.id, user_email: user.email || "unknown" };
+  } catch {
+    // service-role client or no session: fall through
+  }
+  return { user_id: "system", user_email: "system@hospitai.uk" };
+}
+
+/**
+ * Log an action to the audit trail.
+ */
 export async function logAudit(
   supabase: SupabaseClient,
   entry: AuditEntry
 ): Promise<void> {
   try {
-    await supabase.from("audit_log").insert({
-      user_id: entry.user_id || "system",
-      user_email: entry.user_email || "system@hospitai.uk",
+    const actor = await resolveActor(supabase, entry);
+    const { error } = await supabase.from("audit_log").insert({
+      ...actor,
       action: entry.action,
       category: entry.category,
       resource_type: entry.resource_type,
       resource_id: entry.resource_id,
       description: entry.description,
-      old_data: entry.old_data || null,
-      new_data: entry.new_data || null,
+      old_data: redactAuditData(entry.old_data),
+      new_data: redactAuditData(entry.new_data),
       metadata: entry.metadata || {},
     });
-  } catch {
+    if (error) {
+      logger.error({ action: entry.action, err: error.message }, "[Audit] Insert failed");
+    }
+  } catch (err) {
     // Non-critical — don't break the main operation
-    logger.error({ action: entry.action }, "[Audit] Failed to log");
+    logger.error({ action: entry.action, err: String(err) }, "[Audit] Failed to log");
   }
 }
 
@@ -68,21 +113,25 @@ export async function logAuditBatch(
 ): Promise<void> {
   if (entries.length === 0) return;
   try {
+    const actor = await resolveActor(supabase, entries[0]);
     const rows = entries.map((entry) => ({
-      user_id: entry.user_id || "system",
-      user_email: entry.user_email || "system@hospitai.uk",
+      user_id: entry.user_id || actor.user_id,
+      user_email: entry.user_email || actor.user_email,
       action: entry.action,
       category: entry.category,
       resource_type: entry.resource_type,
       resource_id: entry.resource_id,
       description: entry.description,
-      old_data: entry.old_data || null,
-      new_data: entry.new_data || null,
+      old_data: redactAuditData(entry.old_data),
+      new_data: redactAuditData(entry.new_data),
       metadata: entry.metadata || {},
     }));
-    await supabase.from("audit_log").insert(rows);
-  } catch {
-    logger.error({ entries: entries.length }, "[Audit] Failed to batch log");
+    const { error } = await supabase.from("audit_log").insert(rows);
+    if (error) {
+      logger.error({ entries: entries.length, err: error.message }, "[Audit] Batch insert failed");
+    }
+  } catch (err) {
+    logger.error({ entries: entries.length, err: String(err) }, "[Audit] Failed to batch log");
   }
 }
 

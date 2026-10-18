@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createApartmentTypeSchema } from "@/lib/validation";
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const { data, error } = await supabase
@@ -32,7 +32,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();

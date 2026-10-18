@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { runAllAutomations, getAutomations } from "@/lib/automations-engine";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { validateBody, formatZodErrors, runAutomationSchema } from "@/lib/validation";
 
 /**
@@ -10,7 +10,7 @@ import { validateBody, formatZodErrors, runAutomationSchema } from "@/lib/valida
  * Returns per-automation results and updated automation metadata.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {

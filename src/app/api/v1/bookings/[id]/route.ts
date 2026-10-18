@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, updateBookingSchema } from "@/lib/validation";
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 
@@ -38,7 +38,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
     const body = await request.json();
@@ -67,7 +67,14 @@ export async function PATCH(
       }
     }
 
-    // If confirming, set status
+    // Status may only move pending -> confirmed here (schema restricts the
+    // enum; this guards the transition itself).
+    if ("status" in updates && updates.status !== "confirmed") {
+      return NextResponse.json(
+        { error: "Use the checkin, checkout or cancel endpoints to change booking status" },
+        { status: 400 }
+      );
+    }
     if (updates.status === "confirmed") {
       // Verify current status is pending
       const { data: current } = await supabase

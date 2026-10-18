@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { getActivePropertyId } from "@/lib/api-property";
 import { format, startOfWeek } from "date-fns";
 import { calculateHealthScore } from "@/lib/ai-engine";
@@ -32,7 +32,7 @@ function getGreeting(): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
     const supabase = createServerSupabaseClient();
 

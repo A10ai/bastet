@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import {
   getOccupancyReport,
   getRevenueReport,
@@ -125,7 +125,7 @@ function toCSVString(rows: Record<string, unknown>[]): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") as ReportType | null;

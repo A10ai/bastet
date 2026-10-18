@@ -51,7 +51,12 @@ export const createBookingSchema = z.object({
 });
 
 export const updateBookingSchema = z.object({
-  status: z.enum(["pending", "confirmed", "checked_in", "checked_out", "cancelled", "no_show"]).optional(),
+  /**
+   * Only the pending -> confirmed transition may be made here. Check-in,
+   * check-out and cancellation have dedicated endpoints that enforce the
+   * state machine, availability and balance rules.
+   */
+  status: z.enum(["confirmed"]).optional(),
   adults: z.number().int().min(1).max(20).optional(),
   children: z.number().int().min(0).max(20).optional(),
   special_requests: z.string().max(2000).optional().nullable(),
@@ -261,6 +266,8 @@ export const checkinSchema = z.object({
 
 export const checkoutSchema = z.object({
   notes: z.string().max(2000).optional(),
+  /** Manager+ only: check out with an unpaid balance (recorded in audit). */
+  allow_outstanding_balance: z.boolean().optional(),
 }).strict();
 
 // ── Guest preferences ──────────────────────────────────────────────────────
