@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHANNEL_COMMISSIONS, LENGTH_OF_STAY_DISCOUNTS } from "@/lib/constants";
+import { commissionFraction } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,7 +143,8 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.max(1, Math.round((b.getTime() - a.getTime()) / 86_400_000));
 }
 
-function getCommissionRate(channelCode: string): number {
+function getCommissionRate(channelCode: string, dbRate?: number | null): number {
+  if (dbRate !== undefined && dbRate !== null) return commissionFraction(dbRate);
   const code = (channelCode || "direct").toLowerCase();
   return CHANNEL_COMMISSIONS[code] ?? 0;
 }
@@ -210,7 +212,7 @@ export async function getRevenueOverview(
     if (checkIn >= lastMonthStart && checkIn <= lastMonthEnd) revenueLastMonth += revenue;
 
     const ch = channelMap.get(b.channel_id);
-    const commRate = ch ? getCommissionRate(ch.code) : 0;
+    const commRate = ch ? getCommissionRate(ch.code, ch.commission_rate) : 0;
     totalCommission += revenue * commRate;
 
     if (ch && ["direct", "phone", "walk-in"].includes(ch.code?.toLowerCase())) {
@@ -275,7 +277,7 @@ export async function getChannelMix(
     const ch = channelMap.get(b.channel_id);
     const name = ch?.name || "Unknown";
     const code = ch?.code || "unknown";
-    const commRate = ch ? getCommissionRate(ch.code) : 0;
+    const commRate = ch ? getCommissionRate(ch.code, ch.commission_rate) : 0;
     const revenue = b.total_amount_gbp || 0;
     totalRevenue += revenue;
 

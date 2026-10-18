@@ -62,8 +62,35 @@ export async function POST(request: NextRequest) {
       guest_currency = "GBP",
       due_date,
       notes,
-      tax_rate = 0,
+      tax_rate,
     } = validated;
+
+    // Resolve the property first: the booking's, else the caller's.
+    let propertyId: string | null = null;
+    if (booking_id) {
+      const { data: booking } = await supabase
+        .from("bookings")
+        .select("property_id")
+        .eq("id", booking_id)
+        .single();
+      propertyId = booking?.property_id || null;
+    }
+    if (!propertyId) propertyId = auth.propertyId ?? null;
+    if (!propertyId) {
+      return NextResponse.json({ error: "No property resolved for this invoice" }, { status: 400 });
+    }
+
+    // Tax: explicit percent from the request, else the property's VAT rate
+    // (migration 00021). Never a silent zero.
+    let taxRatePercent = tax_rate;
+    if (tax_rate === undefined || tax_rate === null) {
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("vat_rate_percent")
+        .eq("id", propertyId)
+        .single();
+      taxRatePercent = Number(prop?.vat_rate_percent ?? 0);
+    }
 
     // Calculate line item totals
     const processedItems = line_items.map(
@@ -75,7 +102,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    const totals = calculateInvoiceTotals(processedItems, tax_rate);
+    const totals = calculateInvoiceTotals(processedItems, taxRatePercent);
 
     // Get FX rate and convert
     let totalGuestCurrency: number | null = null;
@@ -86,25 +113,6 @@ export async function POST(request: NextRequest) {
         totalGuestCurrency = converted.amount;
         fxRate = converted.rate;
       }
-    }
-
-    // Get property_id
-    let propertyId: string | null = null;
-    if (booking_id) {
-      const { data: booking } = await supabase
-        .from("bookings")
-        .select("property_id")
-        .eq("id", booking_id)
-        .single();
-      propertyId = booking?.property_id || null;
-    }
-    if (!propertyId) {
-      const { data: prop } = await supabase
-        .from("properties")
-        .select("id")
-        .limit(1)
-        .single();
-      propertyId = prop?.id || null;
     }
 
     const invoiceNumber = await getNextInvoiceNumber(supabase);

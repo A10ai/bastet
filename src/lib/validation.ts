@@ -334,7 +334,8 @@ export const createInvoiceSchema = z.object({
   guest_currency: z.string().length(3).default("GBP"),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be YYYY-MM-DD"),
   notes: z.string().max(2000).optional().nullable(),
-  tax_rate: z.number().min(0).max(100).optional().default(0),
+  /** Percent (0-100). Omit to use the property VAT rate. */
+  tax_rate: z.number().min(0).max(100).optional(),
 }).strict();
 
 export const updateInvoiceSchema = z.object({

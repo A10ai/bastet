@@ -341,7 +341,7 @@ export async function getRevenueReport(
     channelMap.set(ch, entry);
   }
   const byChannel = Array.from(channelMap.entries()).map(([ch, d]) => {
-    const commRate = CHANNEL_COMMISSIONS[ch] || 0;
+    const commRate = CHANNEL_COMMISSIONS[ch] ?? CHANNEL_COMMISSIONS[ch.replace(/[.\s-]/g, "_")] ?? 0;
     const commission = round2(d.revenue * commRate);
     return {
       channel: ch,

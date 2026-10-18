@@ -1,4 +1,5 @@
 "use client";
+import { commissionPercent } from "@/lib/utils";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -872,7 +873,7 @@ export default function SystemConfigPage() {
                             />
                           ) : (
                             <span className="text-text-primary font-mono">
-                              {(Number(ch.commission_rate) * 100).toFixed(1)}%
+                              {commissionPercent(ch.commission_rate).toFixed(1)}%
                             </span>
                           )}
                         </td>

@@ -43,6 +43,21 @@ export function generateInvoiceNumber(sequenceNumber: number): string {
 }
 
 // Calculate length-of-stay discount
+/**
+ * Channel commission is stored as a PERCENT in `booking_channels.commission_rate`
+ * (e.g. 15.00). Older code and constants used a fraction (0.15). These helpers
+ * accept either and return one unit, so a 15% commission can never be applied
+ * as 1500%.
+ */
+export function commissionFraction(rate: number | null | undefined): number {
+  const r = Number(rate) || 0;
+  return r > 1 ? r / 100 : r;
+}
+
+export function commissionPercent(rate: number | null | undefined): number {
+  return commissionFraction(rate) * 100;
+}
+
 export function getLengthOfStayDiscount(nights: number): number {
   if (nights >= 28) return 0.2;
   if (nights >= 21) return 0.15;

@@ -73,12 +73,19 @@ export const LENGTH_OF_STAY_DISCOUNTS = [
   { min_nights: 28, discount: 0.2 },
 ] as const;
 
+/**
+ * Fallback commission FRACTIONS by channel code (seed codes). The database
+ * value in `booking_channels.commission_rate` (a percent) always takes
+ * precedence; see `commissionFraction()` in utils.
+ */
 export const CHANNEL_COMMISSIONS: Record<string, number> = {
   direct: 0,
+  booking_com: 0.15,
   "booking.com": 0.15,
   airbnb: 0.14,
   expedia: 0.18,
   phone: 0,
+  walkin: 0,
   "walk-in": 0,
 };
 

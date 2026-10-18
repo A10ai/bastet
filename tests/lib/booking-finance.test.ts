@@ -89,11 +89,22 @@ describe("calculateInvoiceTotals", () => {
         { quantity: 2, unit_price_gbp: 50 },
         { quantity: 1, unit_price_gbp: 100 },
       ],
-      0.2
+      20
     );
     expect(result.subtotal_gbp).toBe(200);
     expect(result.tax_amount_gbp).toBe(40);
     expect(result.total_gbp).toBe(240);
+  });
+
+  it("applies Egyptian VAT of 14% as a percent, never as a multiplier", () => {
+    const result = calculateInvoiceTotals([{ quantity: 1, unit_price_gbp: 100 }], 14);
+    expect(result.tax_amount_gbp).toBe(14);
+    expect(result.total_gbp).toBe(114);
+  });
+
+  it("rejects a tax rate outside 0-100", () => {
+    expect(() => calculateInvoiceTotals([{ quantity: 1, unit_price_gbp: 100 }], 140)).toThrow(RangeError);
+    expect(() => calculateInvoiceTotals([{ quantity: 1, unit_price_gbp: 100 }], -1)).toThrow(RangeError);
   });
 
   it("defaults tax rate to 0", () => {
@@ -106,7 +117,7 @@ describe("calculateInvoiceTotals", () => {
   });
 
   it("handles empty line items", () => {
-    const result = calculateInvoiceTotals([], 0.2);
+    const result = calculateInvoiceTotals([], 20);
     expect(result.subtotal_gbp).toBe(0);
     expect(result.tax_amount_gbp).toBe(0);
     expect(result.total_gbp).toBe(0);
@@ -115,7 +126,7 @@ describe("calculateInvoiceTotals", () => {
   it("handles fractional prices", () => {
     const result = calculateInvoiceTotals(
       [{ quantity: 3, unit_price_gbp: 33.33 }],
-      0.15
+      15
     );
     // subtotal = 99.99, tax = 14.9985, total = 114.9885
     expect(result.subtotal_gbp).toBe(99.99);

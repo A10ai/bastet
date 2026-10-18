@@ -2,16 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+import { commissionFraction } from "@/lib/utils";
 
-// Commission rates by channel code
-const CHANNEL_COMMISSIONS: Record<string, number> = {
-  direct: 0,
-  "booking.com": 0.15,
-  airbnb: 0.14,
-  expedia: 0.18,
-  phone: 0,
-  "walk-in": 0,
-};
 
 // Hardcoded OTA connection definitions
 const OTA_CONNECTIONS = [
@@ -57,7 +49,7 @@ export async function GET(request: NextRequest) {
         const ch = b.booking_channels as unknown as { id: string; name: string; code: string; commission_rate: number } | null;
         const name = ch?.name || "Unknown";
         const code = (ch?.code || "unknown").toLowerCase();
-        const commissionRate = CHANNEL_COMMISSIONS[code] ?? ch?.commission_rate ?? 0;
+        const commissionRate = commissionFraction(ch?.commission_rate); // fraction, from DB percent
 
         if (!channelMap[name]) {
           channelMap[name] = { name, code, bookings_count: 0, revenue_gbp: 0, commission_rate: commissionRate };

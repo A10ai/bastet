@@ -40,7 +40,8 @@ export async function getNextInvoiceNumber(
  */
 export function calculateInvoiceTotals(
   lineItems: { quantity: number; unit_price_gbp: number }[],
-  taxRate: number = 0
+  /** Tax rate as a PERCENT, e.g. 14 for Egyptian VAT. Values 0–100. */
+  taxRatePercent: number = 0
 ): {
   subtotal_gbp: number;
   tax_amount_gbp: number;
@@ -50,7 +51,10 @@ export function calculateInvoiceTotals(
     (sum, item) => sum + item.quantity * item.unit_price_gbp,
     0
   );
-  const tax = subtotal * taxRate;
+  if (taxRatePercent < 0 || taxRatePercent > 100) {
+    throw new RangeError(`taxRatePercent must be between 0 and 100, got ${taxRatePercent}`);
+  }
+  const tax = subtotal * (taxRatePercent / 100);
   const total = subtotal + tax;
 
   return {

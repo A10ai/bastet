@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, commissionFraction, commissionPercent } from "@/lib/utils";
 
 interface BookingFinancialSummaryProps {
   ratePerNight: number;
@@ -26,7 +26,7 @@ export function BookingFinancialSummary({
 }: BookingFinancialSummaryProps) {
   const subtotal = ratePerNight * nights;
   const discountAmount = subtotal * (discountPercentage / 100);
-  const commission = channelCommission ? totalAmountGbp * channelCommission : 0;
+  const commission = channelCommission ? totalAmountGbp * commissionFraction(channelCommission) : 0;
   const netRevenue = totalAmountGbp - commission;
 
   return (
@@ -85,7 +85,7 @@ export function BookingFinancialSummary({
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-text-secondary">
-                    Commission ({(channelCommission * 100).toFixed(0)}%)
+                    Commission ({commissionPercent(channelCommission).toFixed(0)}%)
                   </span>
                   <span className="font-mono text-status-error">
                     -{formatCurrency(commission)}
