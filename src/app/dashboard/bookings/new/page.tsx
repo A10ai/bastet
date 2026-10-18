@@ -57,8 +57,8 @@ export default function NewBookingPage() {
   useEffect(() => {
     // Fetch options in parallel
     Promise.all([
-      fetch("/api/v1/apartments").then((r) => r.json()),
-      fetch("/api/v1/guests").then((r) => r.json()),
+      fetch("/api/v1/apartments?status=available&limit=1000").then((r) => r.json()),
+      fetch("/api/v1/guests?limit=1000").then((r) => r.json()),
       fetch("/api/v1/booking-channels").then((r) => r.json()),
     ]).then(([aptRes, guestRes, channelRes]) => {
       setApartments(aptRes.data || []);

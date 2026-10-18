@@ -49,7 +49,7 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/v1/guests").then((r) => r.json()),
+      fetch("/api/v1/guests?limit=1000").then((r) => r.json()),
       fetch("/api/v1/bookings").then((r) => r.json()),
     ]).then(([guestRes, bookingRes]) => {
       setGuests(guestRes.data || []);

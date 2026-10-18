@@ -121,8 +121,8 @@ test("new booking form prices the stay through the quote endpoint and offers rat
   await page.fill("#checkIn", plus(60));
   await page.fill("#checkOut", plus(62));
   const apartmentSelect = page.locator("select").first();
-  const options = await apartmentSelect.locator("option").allTextContents();
-  expect(options.length).toBeGreaterThan(1);
+  // Options arrive from three parallel fetches; wait for them rather than reading once
+  await expect.poll(async () => apartmentSelect.locator("option").count(), { timeout: 15_000 }).toBeGreaterThan(1);
   await apartmentSelect.selectOption({ index: 1 });
   await expect(page.getByTestId("quote-total")).toBeVisible({ timeout: 15_000 });
   const defaultTotal = await page.getByTestId("quote-total").textContent();
@@ -190,4 +190,42 @@ test("group booking: create, block a room, take an organiser payment, cancel", a
   expect(statement.data.group.status).toBe("cancelled");
   expect(statement.data.room_count).toBe(0);
   await ctx.close();
+});
+
+test("guest portal: staff creates a link, the guest opens it without logging in and checks in online", async ({ browser }) => {
+  const ctx = await signedInContext(browser);
+  const page = await ctx.newPage();
+  // Find an upcoming confirmed booking with a guest through the API, then open its page
+  const plus = (d: number) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+  const csrf = (await (await ctx.request.get("/api/v1/csrf")).json()).data.token as string;
+  const apts = await (await ctx.request.get("/api/v1/apartments?status=available&limit=50")).json();
+  const guests = await (await ctx.request.get("/api/v1/guests?limit=1")).json();
+  const apt = (apts.data as Array<{ id: string; status: string }>).find((a) => a.status === "available");
+  const made = await ctx.request.post("/api/v1/bookings", { headers: { "X-CSRF-Token": csrf }, data: { apartment_id: apt!.id, guest_id: guests.data[0].id, check_in: plus(35), check_out: plus(37), adults: 2 } });
+  expect(made.status()).toBe(201);
+  const booking = (await made.json()).data as { id: string; reference: string };
+  await ctx.request.patch(`/api/v1/bookings/${booking.id}`, { headers: { "X-CSRF-Token": csrf }, data: { status: "confirmed" } });
+  await page.goto(`/dashboard/bookings/${booking!.id}`, { waitUntil: "networkidle" });
+  await page.getByTestId("portal-link-create").click();
+  const url = (await page.getByTestId("portal-link-url").textContent({ timeout: 15_000 }))!.trim();
+  expect(url).toMatch(/\/stay\/[A-Za-z0-9_-]{43}$/);
+  await ctx.close();
+
+  // Fresh browser context: no cookies, no session
+  const guest = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const gp = await guest.newPage();
+  await gp.goto(url, { waitUntil: "networkidle" });
+  await expect(gp.getByTestId("portal-reference")).toHaveText(booking!.reference, { timeout: 15_000 });
+  await gp.getByTestId("pc-arrival").fill("16:00");
+  await gp.getByTestId("pc-terms").check();
+  await gp.getByTestId("pc-submit").click();
+  await expect(gp.getByTestId("portal-precheckin-done")).toBeVisible({ timeout: 15_000 });
+  // The guest page must never be reachable as a dashboard page
+  const anon = await guest.request.get("/api/v1/bookings?limit=1");
+  expect(anon.status()).toBe(401);
+  await guest.close();
+  const cleanup = await browser.newContext({ storageState });
+  const csrf2 = (await (await cleanup.request.get("/api/v1/csrf")).json()).data.token as string;
+  await cleanup.request.post(`/api/v1/bookings/${booking.id}/cancel`, { headers: { "X-CSRF-Token": csrf2 }, data: { reason: "journey cleanup" } });
+  await cleanup.close();
 });

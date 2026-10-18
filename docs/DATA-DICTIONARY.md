@@ -2,7 +2,7 @@
 
 Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dictionary.py`; do not edit by hand. Schema source of truth: `supabase/migrations/`.
 
-60 tables, 36 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
+61 tables, 36 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
 
 ## Tables
 
@@ -16,10 +16,11 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [audit_log](#audit_log) | Who did what, when, from where. Written by API routes through logAudit. | 12 | on |
 | [availability](#availability) | Legacy per-day availability rows; overlap protection now lives on bookings. | 7 | on |
 | [beach_partnerships](#beach_partnerships) | Beach club arrangements. | 16 | on |
+| [booking_access_tokens](#booking_access_tokens) |  | 11 | on |
 | [booking_addons](#booking_addons) | Extras attached to a booking. | 8 | on |
 | [booking_channels](#booking_channels) | Distribution channels (direct, OTA ...) with commission as a percentage. | 8 | on |
 | [booking_groups](#booking_groups) |  | 21 | on |
-| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 29 | on |
+| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 31 | on |
 | [brain_config](#brain_config) | Configuration of the AI brain (mode, thresholds). | 9 | on |
 | [brain_decisions](#brain_decisions) | Decisions proposed or executed by the AI brain per cycle. | 16 | on |
 | [buildings](#buildings) | Physical buildings or wings of a property. | 11 | on |
@@ -298,6 +299,34 @@ Row-level security policies:
 | --- | --- | --- | --- |
 | staff_manage_beaches | ALL | `(property_id = get_staff_property_id())` | `(property_id = get_staff_property_id())` |
 
+### booking_access_tokens
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| booking_id | uuid |  |  | bookings.id |
+| property_id | uuid |  |  | properties.id |
+| token_hash | character(64) |  |  |  |
+| purpose | character varying(20) |  | 'portal'::character varying |  |
+| expires_at | timestamp with time zone |  |  |  |
+| revoked_at | timestamp with time zone | yes |  |  |
+| created_by | uuid | yes |  | staff.id |
+| created_at | timestamp with time zone |  | now() |  |
+| last_used_at | timestamp with time zone | yes |  |  |
+| use_count | integer |  | 0 |  |
+
+Constraints:
+
+- check `booking_access_tokens_purpose_check`: `CHECK (((purpose)::text = 'portal'::text))`
+- unique `booking_access_tokens_token_hash_key`: `UNIQUE (token_hash)`
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| booking_access_tokens_select | SELECT | `(role_at_least(50) AND can_access_property(property_id))` | `` |
+| booking_access_tokens_write | ALL | `(role_at_least(50) AND can_access_property(property_id))` | `(role_at_least(50) AND can_access_property(property_id))` |
+
 ### booking_addons
 
 Extras attached to a booking.
@@ -430,6 +459,8 @@ A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one u
 | rate_plan_id | uuid | yes |  | rate_plans.id |
 | rate_plan_snapshot | jsonb | yes |  |  |
 | group_id | uuid | yes |  | booking_groups.id |
+| precheckin | jsonb | yes |  |  |
+| precheckin_completed_at | timestamp with time zone | yes |  |  |
 
 Constraints:
 

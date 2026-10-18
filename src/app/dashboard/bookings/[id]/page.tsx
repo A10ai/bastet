@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { BookingStatusActions } from "@/components/bookings/booking-status-actions";
 import { BookingFinancialSummary } from "@/components/bookings/booking-financial-summary";
 import { FolioPanel } from "@/components/bookings/folio-panel";
+import { PortalLinkButton } from "@/components/bookings/portal-link-button";
 import { useAuth } from "@/providers/auth-provider";
 import {
   ArrowLeft,
@@ -318,6 +319,7 @@ export default function BookingDetailPage() {
             channelCommission={booking.channel?.commission_rate}
           />
 
+          <div className="mb-4"><PortalLinkButton bookingId={booking.id} disabled={["cancelled", "no_show"].includes(booking.status)} /></div>
           <FolioPanel bookingId={booking.id} canManage={canManageFolio} />
 
           {/* Channel */}

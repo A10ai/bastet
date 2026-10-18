@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 export type EventType =
   | "booking.checked_out"
   | "booking.checked_in"
+  | "booking.precheckin_completed"
   | "booking.confirmed"
   | "booking.cancelled"
   | "apartment.status_changed"

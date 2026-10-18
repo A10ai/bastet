@@ -108,7 +108,7 @@ export function useAIGuests() {
 
 /** Guests list (30s refresh, realtime on bookings table). */
 export function useGuests(params?: string) {
-  const url = params ? `/api/v1/guests?${params}` : "/api/v1/guests";
+  const url = params ? `/api/v1/guests?${params}` : "/api/v1/guests?limit=1000";
   return useApi<GuestsListData>(url, dashboardConfig, ["guests", "bookings"]);
 }
 
@@ -120,7 +120,7 @@ export function useBookings(params?: string) {
 
 /** Apartments list (5min refresh — rarely changes). */
 export function useApartments() {
-  return useApi<ApartmentsListData>("/api/v1/apartments", staticConfig, ["apartments"]);
+  return useApi<ApartmentsListData>("/api/v1/apartments?limit=1000", staticConfig, ["apartments"]);
 }
 
 /** Staff list (5min refresh). */

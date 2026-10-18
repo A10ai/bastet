@@ -156,6 +156,11 @@ async function pageTests(ownerCtx, ids) {
     const redirected = page.url().includes("/login");
     const ok = status === 200 && !broken && !redirected && errors.length === 0;
     rec("pages", route, ok ? "PASS" : "FAIL", `${status}${redirected ? " redirected-to-login" : ""}${broken ? " error-text" : ""}${errors.length ? " " + errors[0] : ""}`);
+    if (route === "/dashboard/bookings/new") {
+      const optionCount = await page.locator("select").first().locator("option").count();
+      const availableTotal = ((await j(await ownerCtx.get("/api/v1/apartments?status=available&limit=1000")))?.data || []).filter((a) => a.status === "available").length;
+      rec("pages", "/dashboard/bookings/new lists every available room", optionCount - 1 >= availableTotal && availableTotal > 0 ? "PASS" : "FAIL", `${optionCount - 1} options for ${availableTotal} available rooms`);
+    }
     const base = route.replace(/\/[0-9a-f-]{36}$/, "");
     if (DEMO_PAGES.includes(base)) {
       const banner = await page.locator('[role="note"][aria-label]').count();
@@ -338,6 +343,54 @@ async function groupTests(owner, reception, hk) {
   rec("txn", "cancelling the group cancels its rooms", cancel.status() === 200 && gone?.group?.status === "cancelled" && gone?.room_count === 0 ? "PASS" : "FAIL", `${cancel.status()} status=${gone?.group?.status} rooms=${gone?.room_count}`);
   const firstRoom = (await j(await owner.ctx.get(`/api/v1/bookings/${st.rooms[0].booking_id}`)))?.data;
   rec("txn", "cancelled group rooms are released (booking cancelled)", firstRoom?.status === "cancelled" ? "PASS" : "FAIL", firstRoom?.status);
+}
+
+// ---------------------------------------------------------------------------
+// Guest portal (00029): tokenised link, public stay view, pre-check-in, revoke
+// ---------------------------------------------------------------------------
+async function portalTests(owner, reception, hk) {
+  const ctx = reception?.ok ? reception : owner;
+  // Make our own upcoming confirmed stay so the test does not depend on seed dates
+  const apt = ((await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=50")))?.data || []).find((a) => a.status === "available");
+  const guest = ((await j(await owner.ctx.get("/api/v1/guests?limit=1")))?.data || [])[0];
+  if (!apt || !guest) { rec("txn", "portal tests need an available apartment and a guest", "WARN", "none"); return; }
+  const made = await ctx.ctx.post("/api/v1/bookings", { headers: H(ctx.csrf), data: { apartment_id: apt.id, guest_id: guest.id, check_in: plus(30), check_out: plus(32), adults: 2 } });
+  let upcoming = (await j(made))?.data;
+  if (!upcoming?.id) { rec("txn", "portal tests could not create a booking", "FAIL", `${made.status()} ${(await made.text()).slice(0, 80)}`); return; }
+  await ctx.ctx.patch(`/api/v1/bookings/${upcoming.id}`, { headers: H(ctx.csrf), data: { status: "confirmed" } });
+  upcoming = (await j(await owner.ctx.get(`/api/v1/bookings/${upcoming.id}`)))?.data || upcoming;
+  if (hk?.ok) {
+    const r = await hk.ctx.post(`/api/v1/bookings/${upcoming.id}/portal-link`, { headers: H(hk.csrf) });
+    rec("txn", "housekeeping cannot create portal links -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
+  }
+  const create = await ctx.ctx.post(`/api/v1/bookings/${upcoming.id}/portal-link`, { headers: H(ctx.csrf) });
+  const link = (await j(create))?.data;
+  rec("txn", "front desk creates a portal link -> 201 with a /stay URL", create.status() === 201 && /\/stay\/[A-Za-z0-9_-]{43}$/.test(link?.url || "") ? "PASS" : "FAIL", `${create.status()} ${link?.url}`);
+  if (!link?.url) return;
+  const token = link.url.split("/stay/")[1];
+  const pub = await request.newContext({ baseURL: BASE_URL });   // no cookies at all
+  const stayRes = await pub.get(`/api/v1/portal/${token}`);
+  const stay = (await j(stayRes))?.data;
+  rec("txn", "public portal returns the stay for the token (no session)", stayRes.status() === 200 && stay?.booking?.reference === upcoming.reference ? "PASS" : "FAIL", `${stayRes.status()} ${stay?.booking?.reference}`);
+  const raw = JSON.stringify(stay || {});
+  rec("txn", "portal payload has no passport, internal notes, guest email/phone or other bookings", !/passport|internal_notes|"email":"[^"]*@|"phone":"\+?\d/.test(raw.replace(JSON.stringify(stay?.property || {}), "")) ? "PASS" : "FAIL");
+  rec("txn", "portal payload shows the rate plan terms when the booking has a plan", !upcoming.rate_plan_id || stay?.booking?.rate_plan?.cancellation ? "PASS" : "FAIL");
+  const bad = await pub.get(`/api/v1/portal/${"A".repeat(43)}`);
+  rec("txn", "unknown token -> 404", bad.status() === 404 ? "PASS" : "FAIL", bad.status());
+  const malformed = await pub.get(`/api/v1/portal/not-a-token`);
+  rec("txn", "malformed token -> 404", malformed.status() === 404 ? "PASS" : "FAIL", malformed.status());
+  const noTerms = await pub.post(`/api/v1/portal/${token}/precheckin`, { headers: { "Content-Type": "application/json" }, data: { accept_terms: false, arrival_time: "15:00" } });
+  rec("txn", "pre-check-in without accepting terms -> 400", noTerms.status() === 400 ? "PASS" : "FAIL", noTerms.status());
+  const pc = await pub.post(`/api/v1/portal/${token}/precheckin`, { headers: { "Content-Type": "application/json" }, data: { accept_terms: true, arrival_time: "15:30", special_requests: "Deep test: cot please", adults: upcoming.adults || 1 } });
+  const after = (await j(await owner.ctx.get(`/api/v1/bookings/${upcoming.id}`)))?.data;
+  rec("txn", "pre-check-in stores answers on the booking and marks it completed", pc.status() === 201 && after?.precheckin_completed_at && after?.precheckin?.arrival_time === "15:30" && /cot please/.test(after?.special_requests || "") ? "PASS" : "FAIL", `${pc.status()} completed=${after?.precheckin_completed_at}`);
+  const notif = ((await j(await ctx.ctx.get("/api/v1/notifications?unread_only=true&limit=50")))?.notifications || []).some((n) => n.title === `Online check-in: ${upcoming.reference}`);
+  rec("txn", "front desk is notified of the online check-in", notif ? "PASS" : "FAIL");
+  const revoke = await ctx.ctx.delete(`/api/v1/bookings/${upcoming.id}/portal-link`, { headers: H(ctx.csrf) });
+  const gone = await pub.get(`/api/v1/portal/${token}`);
+  rec("txn", "revoked link -> 404", revoke.status() === 200 && gone.status() === 404 ? "PASS" : "FAIL", `${revoke.status()} ${gone.status()}`);
+  await pub.dispose();
+  await ctx.ctx.post(`/api/v1/bookings/${upcoming.id}/cancel`, { headers: H(ctx.csrf), data: { reason: "deep test cleanup" } });
 }
 
 async function transactionTests(owner, reception) {
@@ -709,6 +762,7 @@ async function main() {
   if (MODE === "full") await notificationTests(owner, rec_);
   if (MODE === "full") await ratePlanTests(owner, mgr, rec_, hk);
   if (MODE === "full") await groupTests(owner, rec_, hk);
+  if (MODE === "full") await portalTests(owner, rec_, hk);
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);

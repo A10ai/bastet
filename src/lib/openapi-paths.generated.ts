@@ -1250,6 +1250,98 @@ export const generatedPaths = {
       ]
     }
   },
+  "/bookings/{id}/portal-link": {
+    "delete": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "Guest portal link for a booking (migration 00029). Front desk and above. (DELETE)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "Guest portal link for a booking (migration 00029). Front desk and above. (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "post": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "Guest portal link for a booking (migration 00029). Front desk and above. (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
   "/bookings/{id}": {
     "get": {
       "tags": [
@@ -1862,7 +1954,7 @@ export const generatedPaths = {
   "/groups/{id}/payments": {
     "post": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "{ amount_gbp, method, reference?, notes? } (POST)",
       "responses": {
@@ -1895,7 +1987,7 @@ export const generatedPaths = {
   "/groups/{id}/rooms": {
     "post": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "{ apartment_ids, guest_ids?, adults?, rate_plan_id? } (POST)",
       "responses": {
@@ -1928,7 +2020,7 @@ export const generatedPaths = {
   "/groups/{id}": {
     "delete": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "One group. (DELETE)",
       "responses": {
@@ -1959,7 +2051,7 @@ export const generatedPaths = {
     },
     "get": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "One group. (GET)",
       "responses": {
@@ -1987,7 +2079,7 @@ export const generatedPaths = {
     },
     "patch": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "One group. (PATCH)",
       "responses": {
@@ -2020,7 +2112,7 @@ export const generatedPaths = {
   "/groups": {
     "get": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "Group bookings (migration 00028). (GET)",
       "responses": {
@@ -2037,7 +2129,7 @@ export const generatedPaths = {
     },
     "post": {
       "tags": [
-        "Core"
+        "Bookings"
       ],
       "summary": "Group bookings (migration 00028). (POST)",
       "responses": {
@@ -2987,6 +3079,71 @@ export const generatedPaths = {
       "security": []
     }
   },
+  "/portal/{token}/precheckin": {
+    "post": {
+      "tags": [
+        "Guests"
+      ],
+      "summary": "POST /portal/{token}/precheckin",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "security": []
+    }
+  },
+  "/portal/{token}": {
+    "get": {
+      "tags": [
+        "Guests"
+      ],
+      "summary": "GET /portal/{token}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "security": []
+    }
+  },
   "/properties": {
     "get": {
       "tags": [
@@ -3049,7 +3206,7 @@ export const generatedPaths = {
   "/rate-plans/{id}": {
     "delete": {
       "tags": [
-        "Core"
+        "Finance"
       ],
       "summary": "One rate plan. (DELETE)",
       "responses": {
@@ -3080,7 +3237,7 @@ export const generatedPaths = {
     },
     "get": {
       "tags": [
-        "Core"
+        "Finance"
       ],
       "summary": "One rate plan. (GET)",
       "responses": {
@@ -3108,7 +3265,7 @@ export const generatedPaths = {
     },
     "patch": {
       "tags": [
-        "Core"
+        "Finance"
       ],
       "summary": "One rate plan. (PATCH)",
       "responses": {
@@ -3141,7 +3298,7 @@ export const generatedPaths = {
   "/rate-plans": {
     "get": {
       "tags": [
-        "Core"
+        "Finance"
       ],
       "summary": "Rate plans (migration 00027). (GET)",
       "responses": {
@@ -3158,7 +3315,7 @@ export const generatedPaths = {
     },
     "post": {
       "tags": [
-        "Core"
+        "Finance"
       ],
       "summary": "Rate plans (migration 00027). (POST)",
       "responses": {

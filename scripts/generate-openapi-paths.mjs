@@ -27,6 +27,7 @@ const TAG_BY_SEGMENT = {
   guests: "Guests", messaging: "Guests", staff: "Staff", housekeeping: "Operations", maintenance: "Operations", fnb: "Operations",
   invoices: "Finance", expenses: "Finance", finance: "Finance", "currency-rates": "Finance", ai: "AI", admin: "Admin", gdpr: "GDPR",
   dashboard: "Core", briefing: "Core", reports: "Finance", notifications: "Core", audit: "Admin", cron: "Admin", rates: "Finance",
+  "rate-plans": "Finance", groups: "Bookings", portal: "Guests",
 };
 
 const paths = {};
@@ -42,7 +43,7 @@ for (const file of walk(ROOT).sort()) {
   const summaryBase = doc ? doc[1].replace(/^\s*(GET|POST|PUT|PATCH|DELETE)\s+\S+\s*/, "").trim() : "";
   const tag = TAG_BY_SEGMENT[rel.split("/")[0]] || "Core";
   const params = [...apiPath.matchAll(/\{(\w+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string", format: "uuid" } }));
-  const noAuth = ["/auth/login", "/auth/reset-password", "/csrf", "/health", "/openapi"].includes(apiPath);
+  const noAuth = ["/auth/login", "/auth/reset-password", "/csrf", "/health", "/openapi"].includes(apiPath) || apiPath.startsWith("/portal/");
   paths[apiPath] = {};
   for (const method of [...methods].sort()) {
     const op = {

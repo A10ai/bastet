@@ -24,7 +24,7 @@ export default function NewMaintenancePage() {
   const [estimatedCost, setEstimatedCost] = useState("");
 
   useEffect(() => {
-    fetch("/api/v1/apartments")
+    fetch("/api/v1/apartments?limit=1000")
       .then((r) => r.json())
       .then((json) => setApartments(json.data || []));
   }, []);

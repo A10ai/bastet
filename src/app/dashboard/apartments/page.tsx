@@ -45,7 +45,7 @@ export default function ApartmentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [floorFilter, setFloorFilter] = useState<string>("all");
 
-  const { data: aptRows, isLoading: loading } = useApi<Apartment[]>("/api/v1/apartments", undefined, ["apartments"]);
+  const { data: aptRows, isLoading: loading } = useApi<Apartment[]>("/api/v1/apartments?limit=1000", undefined, ["apartments"]);
   const apartments = useMemo(() => aptRows ?? [], [aptRows]);
   const { data: checkedInRows } = useApi<Array<{ apartment_id?: string | null; guest?: { first_name?: string; last_name?: string } | null }>>("/api/v1/bookings?status=checked_in&limit=500", undefined, ["bookings"]);
   type OpenRow = { apartment_id?: string | null; status: string };

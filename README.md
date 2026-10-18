@@ -28,7 +28,7 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00028` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00029` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -38,6 +38,7 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00025_night_audit_and_idempotency.sql`: `daily_closes`, `run_night_audit()`, event idempotency, workflow versions
 - `00026_folio_ledger.sql`: `folios`, append-only `folio_lines`, `refunds`, `department_budgets`, room charges per night, invoices issued from the folio and frozen, `revenue_by_stay_date()`
 - `00027_rate_plans.sql`: `rate_plans` with a single-default trigger, `bookings.rate_plan_id` and `rate_plan_snapshot`, `quote_stay()` per-night pricing; seeds a BAR plan per property
+- `00029_guest_portal.sql`: `booking_access_tokens` (hashed, expiring, revocable guest links), `bookings.precheckin` and `precheckin_completed_at`
 - `00028_group_bookings.sql`: `booking_groups`, `bookings.group_id`, `add_group_rooms()` (atomic room blocks), `group_statement()`, `record_group_payment()` (one payment allocated across room folios), `cancel_group()`
 
 ## Authorisation model
@@ -88,6 +89,10 @@ docker run -p 3000:3000 --env-file .env.production hospitai
 ```
 
 `docker-compose.yml` adds a PostgreSQL and an MQTT container for the Edge Box prototype. It does not run the Supabase auth stack, so point `NEXT_PUBLIC_SUPABASE_URL` at a hosted or locally running Supabase project.
+
+## Guest portal
+
+Front desk creates a link per booking (`POST /api/v1/bookings/:id/portal-link`); the guest opens `/stay/<token>` without logging in and sees the stay, the rate plan terms and the folio, and completes online check-in (arrival time, party size, requests, consent). Only the SHA-256 of the token is stored, links expire a week after check-out and can be revoked, public routes are rate limited per address, and the page never shows identity documents or internal notes.
 
 ## Money flow
 

@@ -616,3 +616,19 @@ export const groupPaymentSchema = z.object({
   notes: z.string().max(500).optional().nullable(),
 });
 export const cancelGroupSchema = z.object({ reason: z.string().min(3).max(500) });
+
+
+// ---------------------------------------------------------------------------
+// Guest portal (migration 00029)
+// ---------------------------------------------------------------------------
+export const precheckinSchema = z.object({
+  arrival_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM").optional().nullable(),
+  flight_or_transport: z.string().max(120).optional().nullable(),
+  adults: z.number().int().min(1).max(20).optional(),
+  children: z.number().int().min(0).max(20).optional(),
+  phone: z.string().max(50).optional().nullable(),
+  email: z.string().email().max(255).optional().nullable(),
+  special_requests: z.string().max(1000).optional().nullable(),
+  marketing_consent: z.boolean().default(false),
+  accept_terms: z.literal(true, { message: "You must accept the booking terms" }),
+});

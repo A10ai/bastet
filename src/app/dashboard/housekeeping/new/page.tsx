@@ -29,7 +29,7 @@ export default function NewHousekeepingPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/v1/apartments").then((r) => r.json()),
+      fetch("/api/v1/apartments?limit=1000").then((r) => r.json()),
       fetch("/api/v1/staff?is_active=true").then((r) => r.json()),
     ]).then(([aptRes, staffRes]) => {
       setApartments(aptRes.data || []);
