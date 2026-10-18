@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES, roleAtLeast } from "@/lib/api-auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   getBrainConfig,
   updateBrainConfig,
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "run_cycle": {
+        const rl = await rateLimit(`brain-cycle:${auth.propertyId ?? "global"}`, RATE_LIMITS.AI_BRAIN_CYCLE);
+        if (!rl.allowed) return rateLimitResponse(rl, "Brain cycle limit reached (6 per hour).");
         const config = await getBrainConfig();
         if (!config.enabled) {
           return NextResponse.json(

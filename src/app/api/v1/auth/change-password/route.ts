@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limit password changes
   const ip = getClientIp(request);
-  const rl = rateLimit(`pwchange:${ip}`, RATE_LIMITS.API_DEFAULT);
+  const rl = await rateLimit(`pwchange:${ip}`, RATE_LIMITS.API_DEFAULT);
   if (!rl.allowed) {
     return apiError("RATE_LIMITED", "Too many requests", 429);
   }

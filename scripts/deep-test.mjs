@@ -63,6 +63,10 @@ async function unauthTests() {
   rec("unauth", "POST without CSRF/session rejected", [401, 403].includes(noCsrf.status()) ? "PASS" : "FAIL", noCsrf.status());
   const hdr = await ctx.get("/login");
   const hs = hdr.headers();
+  const csp = hs["content-security-policy"] || "";
+  const scriptSrc = (csp.match(/script-src[^;]*/) || [""])[0];
+  rec("unauth", "CSP script-src uses a nonce and no unsafe-inline", /nonce-/.test(scriptSrc) && !/unsafe-inline/.test(scriptSrc) ? "PASS" : "FAIL", scriptSrc.slice(0, 120));
+  rec("unauth", "CSP forbids framing and objects", /frame-ancestors 'none'/.test(csp) && /object-src 'none'/.test(csp) ? "PASS" : "FAIL", "");
   for (const k of ["strict-transport-security", "x-frame-options", "content-security-policy", "x-content-type-options"]) {
     rec("unauth", `security header ${k}`, hs[k] ? "PASS" : "WARN", hs[k] ? "present" : "missing");
   }
@@ -160,7 +164,11 @@ async function apiTests(ctx, label) {
 // ---------------------------------------------------------------------------
 // 5. Role enforcement (gap 3)
 // ---------------------------------------------------------------------------
-async function roleTests(hk, mgr) {
+async function roleTests(hk, mgr, owner) {
+  if (owner?.ok) {
+    const foreign = await owner.ctx.get("/api/v1/briefing", { headers: { "X-Property-Id": "11111111-1111-1111-1111-111111111111" } });
+    rec("roles", "owner X-Property-Id without membership is denied", [400, 401, 403, 404].includes(foreign.status()) ? "PASS" : "FAIL", foreign.status());
+  }
   if (hk?.ok) {
     for (const [p, exp] of [["/api/v1/guests", 403], ["/api/v1/finance/summary", 403], ["/api/v1/staff", 403], ["/api/v1/audit", 403], ["/api/v1/invoices", 403], ["/api/v1/housekeeping", 200], ["/api/v1/bookings", 200], ["/api/v1/dashboard/stats", 200]]) {
       const r = await hk.ctx.get(p);
@@ -176,6 +184,11 @@ async function roleTests(hk, mgr) {
     rec("roles", "manager GET /staff -> 200", s.status() === 200 ? "PASS" : "FAIL", s.status());
     const a = await mgr.ctx.get("/api/v1/audit");
     rec("roles", "manager GET /audit -> 403", a.status() === 403 ? "PASS" : "FAIL", a.status());
+    const guests = (await j(await mgr.ctx.get("/api/v1/guests")))?.data || [];
+    if (guests[0]) {
+      const exp = await mgr.ctx.get(`/api/v1/gdpr?action=export&guest_id=${guests[0].id}`);
+      rec("roles", "manager GDPR export -> 403 (admin only)", exp.status() === 403 ? "PASS" : "FAIL", exp.status());
+    }
   }
 }
 
@@ -195,6 +208,15 @@ async function transactionTests(owner, reception) {
   const guest = (await j(g))?.data;
   rec("txn", "create guest", g.status() < 300 && guest?.id ? "PASS" : "FAIL", `${g.status()} ${guest?.id ? "property_id=" + guest.property_id : await g.text()}`);
   if (!guest?.id) return {};
+  if (SUPABASE_URL && SUPABASE_SERVICE) {
+    const raw = await (await request.newContext()).get(`${SUPABASE_URL}/rest/v1/guests?id=eq.${guest.id}&select=passport_number`, { headers: { apikey: SUPABASE_SERVICE, Authorization: `Bearer ${SUPABASE_SERVICE}` } });
+    const stored = (await j(raw))?.[0]?.passport_number || "";
+    rec("txn", "passport number encrypted at rest", stored.startsWith("enc:v1:") ? "PASS" : "FAIL", stored.slice(0, 24));
+  }
+  const listRow = ((await j(await ctx.get("/api/v1/guests")))?.data || []).find((x) => x.id === guest.id);
+  rec("txn", "passport number absent from guest list payload", listRow && !("passport_number" in listRow) ? "PASS" : "FAIL", listRow ? Object.keys(listRow).includes("passport_number") ? "present" : "absent" : "row not found");
+  const detail = (await j(await ctx.get(`/api/v1/guests/${guest.id}`)))?.data;
+  rec("txn", "passport number decrypted on guest detail for front desk", detail?.passport_number === "P1234567" ? "PASS" : "FAIL", detail?.passport_number);
 
   const b1 = await ctx.post("/api/v1/bookings", { headers: H(csrf), data: { apartment_id: aptA.id, guest_id: guest.id, channel_id: direct?.id, check_in: today, check_out: plus(2), adults: 1 } });
   const booking = (await j(b1))?.data;
@@ -255,7 +277,6 @@ async function transactionTests(owner, reception) {
   rec("txn", "apartment set to cleaning after check-out", aptAfterCo?.status === "cleaning" ? "PASS" : "FAIL", aptAfterCo?.status);
   const guestAfter = (await j(await ctx.get(`/api/v1/guests/${guest.id}`)))?.data;
   rec("txn", "loyalty points and stay count posted to guest", guestAfter && guestAfter.total_stays === 1 && guestAfter.loyalty_points > 0 ? "PASS" : "FAIL", `stays=${guestAfter?.total_stays} points=${guestAfter?.loyalty_points} tier=${guestAfter?.loyalty_tier}`);
-  rec("txn", "passport number not echoed in list payloads", /P1234567/.test(JSON.stringify(guestAfter)) ? "WARN" : "PASS", "guest detail includes passport (expected for front desk)");
 
   // Manager override of outstanding balance on a second stay
   const b2 = await ctx.post("/api/v1/bookings", { headers: H(csrf), data: { apartment_id: aptB.id, guest_id: guest.id, channel_id: direct?.id, check_in: today, check_out: plus(1), adults: 1 } });
@@ -282,6 +303,95 @@ async function transactionTests(owner, reception) {
   return { guest, booking, apartment: aptA.id, invoice };
 }
 
+
+// ---------------------------------------------------------------------------
+// TOTP (RFC 6238) for the MFA journey — base32 secret, SHA-1, 30 s, 6 digits
+// ---------------------------------------------------------------------------
+import { createHmac } from "node:crypto";
+function base32Decode(str) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "", out = [];
+  for (const ch of str.replace(/=+$/, "").toUpperCase()) {
+    const v = alphabet.indexOf(ch); if (v < 0) continue;
+    bits += v.toString(2).padStart(5, "0");
+  }
+  for (let i = 0; i + 8 <= bits.length; i += 8) out.push(parseInt(bits.slice(i, i + 8), 2));
+  return Buffer.from(out);
+}
+function totp(secret, at = Date.now()) {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const h = createHmac("sha1", base32Decode(secret)).update(counter).digest();
+  const o = h[h.length - 1] & 0xf;
+  const code = ((h[o] & 0x7f) << 24 | h[o + 1] << 16 | h[o + 2] << 8 | h[o + 3]) % 1_000_000;
+  return String(code).padStart(6, "0");
+}
+
+// ---------------------------------------------------------------------------
+// 7. MFA journey (manager account): enrol in the browser, then prove an aal1
+//    session is refused and the login MFA step upgrades it.
+// ---------------------------------------------------------------------------
+async function mfaTests(account) {
+  if (!account) return;
+  // 1. Enrol through the API with a password-only session.
+  const s1 = await login(account.email, account.password);
+  if (!s1.ok) { rec("mfa", "login for enrolment", "FAIL", s1.status); return; }
+  const before = await j(await s1.ctx.get("/api/v1/auth/mfa"));
+  rec("mfa", "MFA status readable, not yet enrolled", before?.data && before.data.enrolled === false ? "PASS" : "WARN", JSON.stringify(before?.data || {}).slice(0, 100));
+  const enr = await s1.ctx.post("/api/v1/auth/mfa", { headers: H(s1.csrf), data: { action: "enroll" } });
+  const enrBody = await j(enr);
+  const factorId = enrBody?.data?.factor_id, secret = enrBody?.data?.secret;
+  rec("mfa", "TOTP enrolment returns factor, QR and secret", enr.status() === 200 && factorId && secret ? "PASS" : "FAIL", `${enr.status()} ${JSON.stringify(enrBody).slice(0, 100)}`);
+  if (!secret) { await s1.ctx.dispose(); return; }
+  const wrong = await s1.ctx.post("/api/v1/auth/mfa", { headers: H(s1.csrf), data: { action: "verify", factor_id: factorId, code: "000000" } });
+  rec("mfa", "wrong code rejected", wrong.status() === 401 ? "PASS" : "FAIL", wrong.status());
+  const ver = await s1.ctx.post("/api/v1/auth/mfa", { headers: H(s1.csrf), data: { action: "verify", factor_id: factorId, code: totp(secret) } });
+  rec("mfa", "correct code verifies and upgrades the session to aal2", ver.status() === 200 ? "PASS" : "FAIL", `${ver.status()} ${(await ver.text()).slice(0, 80)}`);
+  const after = await j(await s1.ctx.get("/api/v1/auth/mfa"));
+  rec("mfa", "status shows enrolled and aal2", after?.data?.enrolled && after?.data?.current_level === "aal2" ? "PASS" : "FAIL", JSON.stringify(after?.data || {}).slice(0, 100));
+  const okApi = await s1.ctx.get("/api/v1/staff");
+  rec("mfa", "aal2 session reaches a protected API", okApi.status() === 200 ? "PASS" : "FAIL", okApi.status());
+
+  // 2. A fresh password-only session must now be refused and redirected.
+  const aal1 = await login(account.email, account.password);
+  const refused = await aal1.ctx.get("/api/v1/staff");
+  const body = await refused.text();
+  rec("mfa", "password-only (aal1) session refused with MFA_REQUIRED", refused.status() === 403 && /MFA_REQUIRED/.test(body) ? "PASS" : "FAIL", `${refused.status()} ${body.slice(0, 80)}`);
+  const dash = await aal1.ctx.get("/dashboard", { maxRedirects: 0 });
+  rec("mfa", "dashboard redirects aal1 session to the MFA step", dash.status() >= 300 && /step=mfa/.test(dash.headers().location || "") ? "PASS" : "FAIL", `${dash.status()} ${dash.headers().location || ""}`);
+  await aal1.ctx.dispose();
+
+  // 3. Browser journey: password, then the authenticator step, then dashboard.
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ baseURL: BASE_URL, viewport: { width: 1366, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await page.goto("/login", { waitUntil: "networkidle" });
+    await page.fill("#email", account.email);
+    await page.fill("#password", account.password);
+    await page.click("button[type=submit]");
+    await page.waitForSelector("#totp", { timeout: 20000 });
+    rec("mfa", "login shows the authenticator step for an enrolled user", "PASS", "");
+    await page.fill("#totp", totp(secret));
+    await page.click("button[type=submit]");
+    await page.waitForURL(/\/dashboard/, { timeout: 20000 });
+    const api = await context.request.get("/api/v1/staff");
+    rec("mfa", "after the code the browser session is aal2 and protected APIs respond", api.status() === 200 ? "PASS" : "FAIL", api.status());
+    await page.goto("/dashboard/settings/security", { waitUntil: "networkidle" });
+    await page.waitForSelector("[data-testid=mfa-status]", { timeout: 15000 });
+    const text = await page.locator("[data-testid=mfa-status]").innerText();
+    rec("mfa", "security page shows the factor as enabled and verified", /Enabled/.test(text) && /verified/.test(text) && !/not yet/.test(text) ? "PASS" : "FAIL", text);
+  } catch (e) {
+    rec("mfa", "browser login-with-code journey", "FAIL", e.message.split("\n")[0]);
+  }
+  await browser.close();
+
+  // 4. Clean up so later runs start unenrolled (needs the aal2 API session).
+  const rm = await s1.ctx.post("/api/v1/auth/mfa", { headers: H(s1.csrf), data: { action: "unenroll", factor_id: factorId } });
+  rec("mfa", "factor removed after test", rm.status() === 200 ? "PASS" : "WARN", rm.status());
+  await s1.ctx.dispose();
+}
+
 // ---------------------------------------------------------------------------
 async function main() {
   console.log(`Deep test: ${BASE_URL} mode=${MODE}`);
@@ -297,15 +407,11 @@ async function main() {
   if (hk) rec("auth", "housekeeping login", hk.ok ? "PASS" : "FAIL", hk.ok ? "" : hk.status);
   if (mgr) rec("auth", "manager login", mgr.ok ? "PASS" : "FAIL", mgr.ok ? "" : mgr.status);
   if (rec_) rec("auth", "reception login", rec_.ok ? "PASS" : "FAIL", rec_.ok ? "" : rec_.status);
-  // Fifth and last login attempt from this IP: a wrong password must be rejected
-  // (401), and the sixth attempt must hit the 5-per-15-minute login rate limit.
   const bad = ACCOUNTS.owner ? await login(ACCOUNTS.owner.email, "wrong-password") : null;
   rec("auth", "wrong password rejected", bad && !bad.ok && bad.status === 401 ? "PASS" : "FAIL", bad?.status);
-  const sixth = ACCOUNTS.owner ? await login(ACCOUNTS.owner.email, "wrong-password") : null;
-  rec("auth", "login rate limit engages on the sixth attempt (429)", sixth && sixth.status === 429 ? "PASS" : "WARN", sixth?.status);
 
   await apiTests(owner.ctx, "owner");
-  await roleTests(hk, mgr);
+  await roleTests(hk, mgr, owner);
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);
@@ -322,6 +428,19 @@ async function main() {
     finance: ids.invoice?.id || (await first("/api/v1/invoices")),
   };
   await pageTests(owner.ctx, ids);
+  if (MODE === "full") await mfaTests(ACCOUNTS.manager);
+  // Last: brute-force protection is per account (5 per 15 min). The owner has
+  // used two attempts so far; three more wrong passwords are allowed, the sixth
+  // attempt is refused, and the housekeeping account is unaffected.
+  if (ACCOUNTS.owner) {
+    let last = null;
+    for (let i = 0; i < 4; i++) last = await login(ACCOUNTS.owner.email, "wrong-password");
+    rec("auth", "account locked after five failed attempts (429)", last && last.status === 429 ? "PASS" : "FAIL", last?.status);
+    if (ACCOUNTS.housekeeping) {
+      const other = await login(ACCOUNTS.housekeeping.email, ACCOUNTS.housekeeping.password);
+      rec("auth", "lockout is per account, other staff on the same network still sign in", other.ok ? "PASS" : "FAIL", other.ok ? "" : other.status);
+    }
+  }
   finish();
 }
 function finish() {

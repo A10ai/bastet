@@ -52,17 +52,18 @@ export async function getActivePropertyId(request: NextRequest): Promise<string 
     const staff = await loadStaff(request);
     if (!staff) return null;
 
-    if (staff.role === "owner" || staff.role === "admin") {
-      const headerId = request.headers.get("X-Property-Id");
-      if (headerId) {
-        const admin = createAdminClient();
-        const { data: prop } = await admin
-          .from("properties")
-          .select("id")
-          .eq("id", headerId)
-          .single();
-        if (prop) return prop.id;
-      }
+    const headerId = request.headers.get("X-Property-Id");
+    if (headerId && headerId !== staff.property_id) {
+      // Cross-property access requires an explicit membership row
+      // (staff_properties, migration 00024) — never just a role.
+      const admin = createAdminClient();
+      const { data: membership } = await admin
+        .from("staff_properties")
+        .select("property_id")
+        .eq("staff_id", staff.id)
+        .eq("property_id", headerId)
+        .maybeSingle();
+      return membership ? membership.property_id : null;
     }
 
     return staff.property_id;

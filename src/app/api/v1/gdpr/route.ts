@@ -1,7 +1,8 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireRole, ROLES } from "@/lib/api-auth";
+import { requireRole, ROLES, roleAtLeast } from "@/lib/api-auth";
+import { revealGuestDocument } from "@/lib/pii-crypto";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/api-error";
 import { logger } from "@/lib/logger";
@@ -33,6 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "export") {
+      // Full personal-data export is an admin operation (right to portability
+      // is exercised by the data controller, not by every manager).
+      if (!roleAtLeast(auth.role, "admin")) {
+        return NextResponse.json({ error: { code: "FORBIDDEN", message: "Data export requires admin or owner" } }, { status: 403 });
+      }
       return await exportGuestData(guestId);
     } else if (action === "consent") {
       return await getGuestConsent(guestId);
@@ -119,7 +125,7 @@ async function exportGuestData(guestId: string) {
     .select("*")
     .eq("id", guestId)
     .single();
-  exportData.guest = guest;
+  exportData.guest = guest ? revealGuestDocument(guest, true) : null;
 
   // Guest preferences
   const { data: preferences } = await supabase

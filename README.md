@@ -40,6 +40,19 @@ Every API route under `src/app/api/v1` calls `requireRole(request, ROLES.<group>
 
 Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`, then `X-CSRF-Token` header).
 
+## Security configuration
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `PII_ENCRYPTION_KEY` | Production | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts passport numbers at rest (AES-256-GCM, `src/lib/pii-crypto.ts`). Run `POST /api/v1/admin/encrypt-pii` once after setting it to encrypt rows created earlier. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Production on Vercel | Shared rate limiting for login, password reset and AI endpoints. Without them the limiter is per-instance and the server logs a warning. |
+| `MFA_ENFORCE` | Optional, default `true` | Owners and admins must enrol an authenticator app (Settings > Security) before using the system. Set `false` during rollout. |
+| `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
+| `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
+| `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
+
+Content-Security-Policy is generated per request in `src/middleware.ts` with a nonce; scripts never run from `unsafe-inline`. The CSRF cookie uses the `__Host-` prefix on https deployments.
+
 ## Scripts
 
 | Command | What it does |

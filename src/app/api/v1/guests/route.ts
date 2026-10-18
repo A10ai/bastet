@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { encryptPii } from "@/lib/pii-crypto";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -32,10 +34,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, error } = await query;
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ data });
+    if (error) return rpcErrorResponse(error, "guests.list");
+    // Identity documents never travel in list payloads.
+    const rows = (data || []).map((g: Record<string, unknown>) => {
+      const { passport_number: _pp, ...rest } = g;
+      return rest;
+    });
+    return NextResponse.json({ data: rows });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
         nationality: nationality || null,
         language,
         preferred_currency,
-        passport_number: passport_number || null,
+        passport_number: encryptPii(passport_number),
         address_line1: address_line1 || null,
         address_line2: address_line2 || null,
         city: city || null,

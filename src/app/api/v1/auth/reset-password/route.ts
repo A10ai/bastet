@@ -12,7 +12,7 @@ import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 export async function POST(request: NextRequest) {
   // Rate limit: 3 requests per hour per IP
   const ip = getClientIp(request);
-  const rl = rateLimit(`pwreset:${ip}`, RATE_LIMITS.PASSWORD_RESET);
+  const rl = await rateLimit(`pwreset:${ip}`, RATE_LIMITS.PASSWORD_RESET);
   if (!rl.allowed) {
     return apiError("RATE_LIMITED", "Too many reset requests. Try again later.", 429);
   }

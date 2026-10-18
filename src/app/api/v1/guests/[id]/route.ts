@@ -3,10 +3,12 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { getByIdHandler } from "@/lib/crud";
+import { encryptPii, revealGuestDocument } from "@/lib/pii-crypto";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
-export const GET = getByIdHandler({
+const getGuest = getByIdHandler({
   table: "guests",
   roles: ROLES.FRONT_DESK,
   select: `
@@ -15,6 +17,14 @@ export const GET = getByIdHandler({
       `,
   label: "Guest",
 });
+
+/** Front desk and above see the decrypted document; the row is stored encrypted. */
+export async function GET(request: NextRequest, ctx: { params: { id: string } }) {
+  const res = await getGuest(request, ctx);
+  if (res.status !== 200) return res;
+  const json = await res.json();
+  return NextResponse.json({ ...json, data: revealGuestDocument(json.data, true) });
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -45,6 +55,9 @@ export async function PATCH(
         updates[key] = (validated as Record<string, unknown>)[key];
       }
     }
+    if ("passport_number" in updates) {
+      updates.passport_number = encryptPii(updates.passport_number as string | null);
+    }
 
     const { data, error } = await supabase
       .from("guests")
@@ -53,9 +66,7 @@ export async function PATCH(
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) return rpcErrorResponse(error, "guests.update");
 
     await logAudit(supabase, {
       action: "guest.update",
@@ -66,7 +77,7 @@ export async function PATCH(
       new_data: body,
     });
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: revealGuestDocument(data, true) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

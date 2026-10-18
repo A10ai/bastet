@@ -28,6 +28,11 @@ const envSchema = z.object({
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   OPEN_EXCHANGE_RATES_APP_ID: z.string().optional(),
 
+  // Security
+  PII_ENCRYPTION_KEY: z.string().min(16).optional(),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Wi-Fi credentials for messaging templates
   WIFI_SSID: z.string().optional(),
   WIFI_PASSWORD: z.string().optional(),
@@ -54,6 +59,13 @@ export function getEnv(): Env {
       `Environment variable validation failed:\n${errors}\n\n` +
         `Check .env.local or your deployment environment configuration.`
     );
+  }
+
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL) {
+    const missing = ["PII_ENCRYPTION_KEY", "UPSTASH_REDIS_REST_URL"].filter((k) => !result.data[k as keyof Env]);
+    if (missing.length) {
+      throw new Error(`Production deployment is missing required security configuration: ${missing.join(", ")}`);
+    }
   }
 
   validatedEnv = result.data;

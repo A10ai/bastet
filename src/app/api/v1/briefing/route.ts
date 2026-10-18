@@ -39,6 +39,12 @@ export async function GET(request: NextRequest) {
 
     // Resolve active property name
     const propertyId = await getActivePropertyId(request);
+    if (!propertyId) {
+      return NextResponse.json(
+        { error: { code: "PROPERTY_FORBIDDEN", message: "No access to the requested property" } },
+        { status: 403 }
+      );
+    }
     let propertyName = "Property";
     if (propertyId) {
       const { data: propData } = await supabase

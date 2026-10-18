@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -370,7 +372,10 @@ export default function SettingsPage() {
         </h1>
         <p className="text-sm text-text-secondary mt-1">
           Property configuration, booking policies, rates, and channel
-          commissions
+          commissions.{" "}
+          <Link href="/dashboard/settings/security" className="text-cyan-400 hover:underline">
+            Two-factor authentication &rarr;
+          </Link>
         </p>
       </div>
 

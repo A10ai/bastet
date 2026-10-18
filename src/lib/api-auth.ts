@@ -4,6 +4,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMutatingMethod, validateCsrfToken, CSRF_HEADER_NAME, CSRF_COOKIE_NAME } from "@/lib/csrf";
+import { checkMfa } from "@/lib/mfa";
 
 /**
  * HospitAI Role Hierarchy
@@ -61,7 +62,7 @@ export interface AuthContext {
   propertyId?: string;
 }
 
-function requestScopedClient(request: NextRequest) {
+export function requestScopedClient(request: NextRequest) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -151,7 +152,8 @@ export async function requireAuth(request: NextRequest): Promise<AuthContext> {
  */
 export async function requireRole(
   request: NextRequest,
-  allowedRoles: readonly StaffRole[]
+  allowedRoles: readonly StaffRole[],
+  options?: { /** Allow an aal1 session (only the MFA enrolment endpoints need this). */ skipMfa?: boolean }
 ): Promise<AuthContext> {
   const auth = await requireAuth(request);
   if (!auth.authenticated || !auth.userId) return auth;
@@ -182,6 +184,13 @@ export async function requireRole(
         `Requires role: ${allowedRoles.join(" or ")}. Your role: ${userRole}`,
         403
       );
+    }
+
+    // Second factor: enrolled users must have verified it this session;
+    // privileged roles must be enrolled at all (see src/lib/mfa.ts).
+    if (!options?.skipMfa) {
+      const mfa = await checkMfa(requestScopedClient(request), userRole);
+      if (!mfa.ok) return deny(mfa.code, mfa.message, 403);
     }
 
     return {
