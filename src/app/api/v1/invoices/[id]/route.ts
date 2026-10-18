@@ -49,11 +49,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       );
     }
 
+    // Totals are derived from line_items (draft only); issued invoices are frozen by a DB trigger.
     const allowedFields = [
       "line_items",
-      "subtotal_gbp",
-      "tax_amount_gbp",
-      "total_gbp",
       "due_date",
       "notes",
       "guest_id",

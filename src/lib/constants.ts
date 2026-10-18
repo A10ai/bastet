@@ -250,3 +250,6 @@ export const EXPENSE_CATEGORIES = [
   "travel",
   "other",
 ] as const;
+
+/** Hotel departments used for budgets and the finance department-cost view. */
+export const DEPARTMENTS = ["Rooms", "Personnel", "Energy", "Property", "Sales & Marketing", "Administration", "Technology", "General"] as const;

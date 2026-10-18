@@ -35,6 +35,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     const allowBalance =
       validation.data.allow_outstanding_balance === true && roleAtLeast(auth.role, "manager");
 
+    // Post the nights stayed to the folio in their own transaction, so that a
+    // refused check-out (unpaid balance) still leaves the charges visible.
+    const { error: postErr } = await supabase.rpc("post_booking_room_charges", { p_booking_id: params.id });
+    if (postErr) return rpcErrorResponse(postErr, "post_booking_room_charges");
+
     const { data: result, error } = await supabase.rpc("checkout_booking", {
       p_booking_id: params.id,
       p_notes: validation.data.notes ?? null,

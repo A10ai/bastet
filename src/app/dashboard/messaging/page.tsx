@@ -92,6 +92,19 @@ const CHANNEL_COLORS: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
+
+/** The messaging API returns the apartment as a joined object; the table wants a label. */
+function normaliseGuestRow(r: Record<string, unknown>): GuestRow {
+  const apt = r.apartment as { number?: string; floor?: number } | string | null | undefined;
+  const nights = r.nights as number | undefined;
+  return {
+    ...(r as unknown as GuestRow),
+    apartment: typeof apt === "object" && apt ? `${apt.number ?? ""}${apt.floor !== undefined ? ` (floor ${apt.floor})` : ""}`.trim() : (apt as string) || "—",
+    check_in_date: (r.check_in_date as string) ?? (r.check_in as string) ?? "",
+    nights: nights ?? 0,
+  };
+}
+
 export default function MessagingPage() {
   const [activeTab, setActiveTab] = useState<TabType>("arrivals");
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -141,7 +154,7 @@ export default function MessagingPage() {
     try {
       const res = await fetch("/api/v1/messaging?type=arrivals");
       const json = await res.json();
-      setArrivals(json.data || []);
+      setArrivals(((json.data || []) as Record<string, unknown>[]).map(normaliseGuestRow));
     } catch {
       setArrivals([]);
     } finally {
@@ -154,7 +167,7 @@ export default function MessagingPage() {
     try {
       const res = await fetch("/api/v1/messaging?type=departures");
       const json = await res.json();
-      setDepartures(json.data || []);
+      setDepartures(((json.data || []) as Record<string, unknown>[]).map(normaliseGuestRow));
     } catch {
       setDepartures([]);
     } finally {

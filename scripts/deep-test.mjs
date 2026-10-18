@@ -268,6 +268,13 @@ async function transactionTests(owner, reception) {
     rec("txn", "payment on a paid invoice rejected", again.status() === 409 ? "PASS" : "FAIL", again.status());
   }
 
+  // The stay's room nights live on the folio (migration 00026); settle it before departure.
+  const preCo = await reception.ctx.post(`/api/v1/bookings/${booking.id}/checkout`, { headers: H(reception.csrf), data: {} });
+  rec("txn", "check-out refused while the folio (room night + VAT) is unpaid", preCo.status() === 402 ? "PASS" : "FAIL", `${preCo.status()} ${(await preCo.text()).slice(0, 80)}`);
+  const fol = await j(await ctx.get(`/api/v1/bookings/${booking.id}/folio`));
+  const owed = Number(fol?.data?.balance_gbp || 0);
+  rec("txn", "folio shows the room night after the refused check-out", (fol?.data?.lines || []).some((l) => l.type === "room") && owed > 0 ? "PASS" : "FAIL", `balance=${owed}`);
+  if (owed > 0) await ctx.post(`/api/v1/bookings/${booking.id}/folio`, { headers: H(csrf), data: { action: "post_payment", amount_gbp: owed, method: "cash" } });
   const co = await reception.ctx.post(`/api/v1/bookings/${booking.id}/checkout`, { headers: H(reception.csrf), data: { notes: "deep test out" } });
   const coBody = await j(co);
   rec("txn", "check-out via checkout_booking() as receptionist", co.status() === 200 ? "PASS" : "FAIL", `${co.status()} ${JSON.stringify(coBody?.meta || coBody).slice(0, 100)}`);
@@ -293,6 +300,8 @@ async function transactionTests(owner, reception) {
 
   // Data integrity: concurrency, pagination, schema-aligned validation, night audit
   await integrityTests(ctx, csrf, guest, direct, available);
+  // Finance: folio ledger, refunds, voids, invoice from folio, budgets, revenue by stay date
+  await financeTests(ctx, csrf, reception, guest, direct, available);
 
   // Audit trail has real actors
   const audit = (await j(await ctx.get("/api/v1/audit?limit=50")));
@@ -440,6 +449,95 @@ async function integrityTests(ctx, csrf, guest, direct, available) {
   rec("integrity", "cron endpoint refuses without secret or admin session", noSecret.status() === 401 || noSecret.status() === 403 ? "PASS" : "FAIL", noSecret.status());
   const cyc = await cron.post("/api/v1/cron/automations", { data: {} });
   rec("integrity", "automation cycle runs from cron (no timers)", cyc.status() === 200 ? "PASS" : "FAIL", `${cyc.status()} ${(await cyc.text()).slice(0, 100)}`);
+  await cron.dispose();
+}
+
+// ---------------------------------------------------------------------------
+// 6c. Finance: folio and ledger
+// ---------------------------------------------------------------------------
+async function financeTests(ctx, csrf, reception, guest, direct, available) {
+  const apt = available[3] || available[0];
+  const b = (await j(await ctx.post("/api/v1/bookings", { headers: H(csrf), data: { apartment_id: apt.id, guest_id: guest.id, channel_id: direct?.id, check_in: today, check_out: plus(1), adults: 1 } })))?.data;
+  if (!b?.id) { rec("finance", "booking for folio test", "FAIL", "could not create"); return; }
+  await ctx.patch(`/api/v1/bookings/${b.id}`, { headers: H(csrf), data: { status: "confirmed" } });
+  const none = await j(await ctx.get(`/api/v1/bookings/${b.id}/folio`));
+  rec("finance", "no folio before check-in", none?.data === null ? "PASS" : "FAIL", JSON.stringify(none).slice(0, 80));
+  // Deposit before arrival opens the folio with a credit balance
+  const dep = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "post_payment", amount_gbp: 20, method: "card", reference: "DEP-1" } });
+  const depBody = await j(dep);
+  rec("finance", "deposit before arrival opens the folio with a credit", dep.status() === 201 && depBody?.folio?.balance_gbp === -20 ? "PASS" : "FAIL", `${dep.status()} balance=${depBody?.folio?.balance_gbp}`);
+  const ci = await ctx.post(`/api/v1/bookings/${b.id}/checkin`, { headers: H(csrf), data: {} });
+  rec("finance", "check-in returns the folio id", ci.status() === 200 && (await j(ci))?.data?.folio_id ? "PASS" : "FAIL", ci.status());
+  // Extra charge with VAT 14%
+  const ch = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "post_charge", type: "fnb", description: "Room service dinner", quantity: 2, unit_amount_gbp: 25 } });
+  const chBody = await j(ch);
+  const vatLine = (chBody?.folio?.lines || []).find((l) => l.type === "tax");
+  rec("finance", "charge posts net line plus VAT line at the property rate", ch.status() === 201 && Number(vatLine?.debit_gbp) === 7 ? "PASS" : "FAIL", `${ch.status()} vat=${vatLine?.debit_gbp} balance=${chBody?.folio?.balance_gbp}`);
+  // Ledger is append-only
+  if (SUPABASE_URL && SUPABASE_SERVICE && vatLine) {
+    const tamper = await (await request.newContext()).patch(`${SUPABASE_URL}/rest/v1/folio_lines?id=eq.${vatLine.id}`, { headers: { apikey: SUPABASE_SERVICE, Authorization: `Bearer ${SUPABASE_SERVICE}`, "Content-Type": "application/json", Prefer: "return=minimal" }, data: { debit_gbp: 0 } });
+    rec("finance", "ledger lines cannot be edited even with the service role", tamper.status() >= 400 && /LEDGER_IMMUTABLE/.test(await tamper.text()) ? "PASS" : "FAIL", tamper.status());
+  }
+  // Void the charge (manager), reversal lines appear and balance returns
+  const chargeLine = (chBody?.folio?.lines || []).find((l) => l.type === "fnb");
+  const voidAsReception = await reception.ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(reception.csrf), data: { action: "void_line", line_id: chargeLine.id, reason: "testing" } });
+  rec("finance", "receptionist cannot void a charge", voidAsReception.status() === 403 ? "PASS" : "FAIL", voidAsReception.status());
+  const vd = await j(await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "void_line", line_id: chargeLine.id, reason: "posted to wrong room" } }));
+  const reversals = (vd?.folio?.lines || []).filter((l) => l.type === "reversal").length;
+  rec("finance", "void posts reversals for the charge and its VAT; balance back to the deposit credit", reversals === 2 && vd?.folio?.balance_gbp === -20 ? "PASS" : "FAIL", `reversals=${reversals} balance=${vd?.folio?.balance_gbp}`);
+  const again = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "void_line", line_id: chargeLine.id, reason: "twice" } });
+  rec("finance", "a line cannot be voided twice", again.status() === 400 || again.status() === 409 ? "PASS" : "FAIL", again.status());
+  // Check-out posts the room night, then balance = room + VAT - deposit
+  const coBlocked = await ctx.post(`/api/v1/bookings/${b.id}/checkout`, { headers: H(csrf), data: {} });
+  const coBody = await j(coBlocked);
+  const fol = await j(await ctx.get(`/api/v1/bookings/${b.id}/folio`));
+  const roomLine = (fol?.data?.lines || []).find((l) => l.type === "room");
+  rec("finance", "check-out posts the room night with VAT to the folio", roomLine && Number(roomLine.debit_gbp) > 0 ? "PASS" : "FAIL", `room=${roomLine?.debit_gbp} balance=${fol?.data?.balance_gbp}`);
+  rec("finance", "check-out blocked while the folio balance is unpaid", coBlocked.status() === 402 ? "PASS" : "FAIL", `${coBlocked.status()} ${JSON.stringify(coBody).slice(0, 80)}`);
+  const owed = Number(fol?.data?.balance_gbp || 0);
+  const over = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "post_payment", amount_gbp: owed + 100, method: "cash" } });
+  rec("finance", "folio overpayment rejected", over.status() === 400 ? "PASS" : "FAIL", over.status());
+  const settle = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "post_payment", amount_gbp: owed, method: "cash" } });
+  const settleBody = await j(settle);
+  rec("finance", "settling payment brings the balance to zero", settle.status() === 201 && Math.abs(Number(settleBody?.folio?.balance_gbp)) < 0.005 ? "PASS" : "FAIL", `balance=${settleBody?.folio?.balance_gbp}`);
+  // Invoice issued from the folio, frozen
+  const inv = await j(await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "issue_invoice" } }));
+  const invoice = inv?.data?.invoice;
+  rec("finance", "invoice issued from the folio with ledger totals and paid status", invoice && Number(invoice.total_gbp) === Math.round((owed + 20) * 100) / 100 && invoice.status === "paid" ? "PASS" : "FAIL", `total=${invoice?.total_gbp} status=${invoice?.status} expected=${owed + 20}`);
+  if (invoice?.id) {
+    const freeze = await ctx.patch(`/api/v1/invoices/${invoice.id}`, { headers: H(csrf), data: { line_items: [{ description: "tamper", quantity: 1, unit_price_gbp: 1 }] } });
+    const ftxt = await freeze.text();
+    rec("finance", "issued invoice cannot be altered", freeze.status() >= 400 && (/INVOICE_IMMUTABLE/.test(ftxt) || freeze.status() === 409 || freeze.status() === 400) ? "PASS" : "FAIL", `${freeze.status()} ${ftxt.slice(0, 80)}`);
+    const twice = await j(await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "issue_invoice" } }));
+    rec("finance", "issuing again returns the same invoice", twice?.data?.already_issued === true && twice?.data?.invoice?.id === invoice.id ? "PASS" : "FAIL", "");
+  }
+  const co = await ctx.post(`/api/v1/bookings/${b.id}/checkout`, { headers: H(csrf), data: {} });
+  const final = await j(await ctx.get(`/api/v1/bookings/${b.id}/folio`));
+  rec("finance", "check-out succeeds at zero balance and closes the folio", co.status() === 200 && final?.data?.folio?.status === "closed" ? "PASS" : "FAIL", `${co.status()} folio=${final?.data?.folio?.status}`);
+  // Refund of the settled payment (manager), with reason, capped
+  const pay = (final?.data?.payments || []).find((p) => Number(p.amount_gbp) === owed) || (final?.data?.payments || [])[0];
+  if (pay) {
+    const overRefund = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "refund", payment_id: pay.id, amount_gbp: Number(pay.amount_gbp) + 1, reason: "too much" } });
+    rec("finance", "refund above the payment is rejected", overRefund.status() === 400 ? "PASS" : "FAIL", overRefund.status());
+    const rf = await ctx.post(`/api/v1/bookings/${b.id}/folio`, { headers: H(csrf), data: { action: "refund", payment_id: pay.id, amount_gbp: 10, reason: "goodwill for noise complaint" } });
+    const rfBody = await j(rf);
+    rec("finance", "partial refund recorded with reason; folio shows the debit", rf.status() === 201 && Number(rfBody?.folio?.totals?.refunds) === 10 ? "PASS" : "FAIL", `${rf.status()} ${JSON.stringify(rfBody?.folio?.totals)}`);
+  }
+  // Budgets table and stay-date revenue
+  const month = today.slice(0, 7);
+  const put = await ctx.put("/api/v1/finance/budgets", { headers: H(csrf), data: { month, budgets: [{ department: "Energy", budget_gbp: 1200 }, { department: "Personnel", budget_gbp: 9000 }] } });
+  rec("finance", "department budgets saved", put.status() === 200 ? "PASS" : "FAIL", `${put.status()} ${(await put.text()).slice(0, 80)}`);
+  const summary = await j(await ctx.get("/api/v1/finance/summary"));
+  rec("finance", "finance summary uses stay-date revenue and real budgets", summary?.data?.revenue_basis === "stay_date" && summary?.data?.budget_source === "department_budgets" ? "PASS" : "FAIL", `basis=${summary?.data?.revenue_basis} budgets=${summary?.data?.budget_source}`);
+  const rev = await j(await ctx.get(`/api/v1/finance/revenue?from=${plus(-7)}&to=${today}`));
+  rec("finance", "revenue by stay date reports room-nights, ADR and RevPAR", rev?.data && typeof rev.data.adr_gbp === "number" && Array.isArray(rev.data.by_day) && rev.data.by_day.length === 8 ? "PASS" : "FAIL", JSON.stringify(rev?.data || {}).slice(0, 120));
+  const hkBad = await reception.ctx.get("/api/v1/finance/revenue");
+  rec("finance", "revenue report requires manager", hkBad.status() === 403 ? "PASS" : "FAIL", hkBad.status());
+  // FX feed (network dependent)
+  const cron = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: { Authorization: `Bearer ${process.env.CRON_SECRET || ""}` } });
+  const fx = await cron.post("/api/v1/cron/fx", { data: {} });
+  const fxBody = await j(fx);
+  rec("finance", "FX rates refreshed from the provider", fx.status() === 200 ? "PASS" : fx.status() === 502 ? "WARN" : "FAIL", `${fx.status()} ${JSON.stringify(fxBody?.data?.rates || fxBody?.error || {}).slice(0, 80)}`);
   await cron.dispose();
 }
 

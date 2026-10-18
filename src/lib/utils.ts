@@ -19,13 +19,19 @@ export function formatCurrency(
 }
 
 // Format date for display (in Cairo timezone)
-export function formatDate(date: string | Date, pattern: string = "dd MMM yyyy"): string {
-  return format(new Date(date), pattern);
+export function formatDate(date: string | Date | null | undefined, pattern: string = "dd MMM yyyy"): string {
+  if (date === null || date === undefined || date === "") return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, pattern);
 }
 
 // Relative time (e.g., "2 hours ago")
-export function timeAgo(date: string | Date): string {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+export function timeAgo(date: string | Date | null | undefined): string {
+  if (date === null || date === undefined || date === "") return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return formatDistanceToNow(d, { addSuffix: true });
 }
 
 // Generate booking reference: BAS-HRG-YYNNNN

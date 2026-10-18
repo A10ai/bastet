@@ -28,11 +28,15 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00021` (October 2026 audit) must be applied to production before deploying the current `main`:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00026` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
 - `00021_property_vat.sql`: `properties.vat_rate_percent`
+- `00022_grants.sql`, `00023_collision_safe_references.sql`: role grants, collision-safe references
+- `00024_pii_and_property_membership.sql`: encrypted passport column, `staff_properties`
+- `00025_night_audit_and_idempotency.sql`: `daily_closes`, `run_night_audit()`, event idempotency, workflow versions
+- `00026_folio_ledger.sql`: `folios`, append-only `folio_lines`, `refunds`, `department_budgets`, room charges per night, invoices issued from the folio and frozen, `revenue_by_stay_date()`
 
 ## Authorisation model
 
@@ -50,6 +54,8 @@ Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`,
 | `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
 | `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
 | `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
+| `CRON_SECRET` | Production | Bearer token Vercel Cron sends to `/api/v1/cron/*` (night audit 03:00 UTC, automations every 15 min, FX rates daily). Admins can also trigger these by hand. |
+| `OPEN_EXCHANGE_RATES_APP_ID` | Optional | Exchange-rate provider; without it ECB reference rates (frankfurter.app) are used. |
 
 Content-Security-Policy is generated per request in `src/middleware.ts` with a nonce; scripts never run from `unsafe-inline`. The CSRF cookie uses the `__Host-` prefix on https deployments.
 
@@ -74,6 +80,10 @@ docker run -p 3000:3000 --env-file .env.production hospitai
 ```
 
 `docker-compose.yml` adds a PostgreSQL and an MQTT container for the Edge Box prototype. It does not run the Supabase auth stack, so point `NEXT_PUBLIC_SUPABASE_URL` at a hosted or locally running Supabase project.
+
+## Money flow
+
+Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`.
 
 ## Known gaps
 

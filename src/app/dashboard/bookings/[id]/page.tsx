@@ -7,6 +7,8 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookingStatusActions } from "@/components/bookings/booking-status-actions";
 import { BookingFinancialSummary } from "@/components/bookings/booking-financial-summary";
+import { FolioPanel } from "@/components/bookings/folio-panel";
+import { useAuth } from "@/providers/auth-provider";
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,6 +23,8 @@ import type { Booking } from "@/types";
 
 export default function BookingDetailPage() {
   const params = useParams();
+  const { staff } = useAuth();
+  const canManageFolio = !!staff && ["owner", "admin", "manager"].includes(staff.role);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -313,6 +317,8 @@ export default function BookingDetailPage() {
             channelName={booking.channel?.name}
             channelCommission={booking.channel?.commission_rate}
           />
+
+          <FolioPanel bookingId={booking.id} canManage={canManageFolio} />
 
           {/* Channel */}
           {booking.channel && (
