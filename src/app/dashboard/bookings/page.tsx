@@ -19,6 +19,7 @@ import {
   Wallet,
   TrendingUp,
   Globe,
+  Users,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -116,6 +117,12 @@ export default function BookingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/dashboard/bookings/groups">
+            <Button variant="secondary">
+              <Users className="w-4 h-4 mr-2" />
+              Groups
+            </Button>
+          </Link>
           <Link href="/dashboard/bookings/calendar">
             <Button variant="secondary">
               <CalendarDays className="w-4 h-4 mr-2" />

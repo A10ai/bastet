@@ -568,3 +568,51 @@ export const quoteStaySchema = z
   })
   .refine((v) => v.apartment_id || v.apartment_type_id, { message: "apartment_id or apartment_type_id is required", path: ["apartment_id"] })
   .refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });
+
+
+// ---------------------------------------------------------------------------
+// Group bookings (migration 00028)
+// ---------------------------------------------------------------------------
+export const GROUP_STATUSES = ["tentative", "confirmed", "cancelled", "completed"] as const;
+const groupBase = z.object({
+  property_id: z.string().uuid().optional(),
+  name: z.string().min(2).max(120),
+  organiser_guest_id: z.string().uuid().optional().nullable(),
+  organiser_name: z.string().max(120).optional().nullable(),
+  organiser_email: z.string().email().max(255).optional().nullable(),
+  organiser_phone: z.string().max(50).optional().nullable(),
+  company: z.string().max(120).optional().nullable(),
+  check_in: isoDate,
+  check_out: isoDate,
+  rooms_requested: z.number().int().min(0).max(500).default(0),
+  rate_plan_id: z.string().uuid().optional().nullable(),
+  channel_id: z.string().uuid().optional().nullable(),
+  billing_mode: z.enum(["individual", "master"]).default("individual"),
+  cutoff_date: isoDate.optional().nullable(),
+  status: z.enum(["tentative", "confirmed"]).default("tentative"),
+  notes: z.string().max(2000).optional().nullable(),
+  /** Rooms to block immediately (optional). */
+  apartment_ids: z.array(z.string().uuid()).max(200).optional(),
+  adults: z.number().int().min(1).max(20).default(2),
+});
+const groupRules = (v: { check_in?: string; check_out?: string; cutoff_date?: string | null }, ctx: z.RefinementCtx) => {
+  if (v.check_in && v.check_out && v.check_out <= v.check_in) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["check_out"], message: "check_out must be after check_in" });
+  if (v.cutoff_date && v.check_in && v.cutoff_date > v.check_in) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cutoff_date"], message: "cutoff_date must be on or before check_in" });
+};
+export const createGroupSchema = groupBase.superRefine(groupRules);
+export const updateGroupSchema = groupBase.omit({ apartment_ids: true, adults: true, property_id: true }).extend({ status: z.enum(["tentative", "confirmed", "completed"]).optional() }).partial().superRefine(groupRules);
+export const addGroupRoomsSchema = z
+  .object({
+    apartment_ids: z.array(z.string().uuid()).min(1).max(200),
+    guest_ids: z.array(z.string().uuid().nullable()).optional(),
+    adults: z.number().int().min(1).max(20).default(2),
+    rate_plan_id: z.string().uuid().optional().nullable(),
+  })
+  .refine((v) => !v.guest_ids || v.guest_ids.length === v.apartment_ids.length, { message: "guest_ids must match apartment_ids one to one", path: ["guest_ids"] });
+export const groupPaymentSchema = z.object({
+  amount_gbp: z.number().positive().max(1_000_000),
+  method: z.enum(["cash", "card", "bank_transfer", "stripe", "other"]),
+  reference: z.string().max(100).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+export const cancelGroupSchema = z.object({ reason: z.string().min(3).max(500) });

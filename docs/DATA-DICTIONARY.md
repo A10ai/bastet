@@ -2,7 +2,7 @@
 
 Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dictionary.py`; do not edit by hand. Schema source of truth: `supabase/migrations/`.
 
-59 tables, 31 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
+60 tables, 36 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
 
 ## Tables
 
@@ -18,7 +18,8 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [beach_partnerships](#beach_partnerships) | Beach club arrangements. | 16 | on |
 | [booking_addons](#booking_addons) | Extras attached to a booking. | 8 | on |
 | [booking_channels](#booking_channels) | Distribution channels (direct, OTA ...) with commission as a percentage. | 8 | on |
-| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 28 | on |
+| [booking_groups](#booking_groups) |  | 21 | on |
+| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 29 | on |
 | [brain_config](#brain_config) | Configuration of the AI brain (mode, thresholds). | 9 | on |
 | [brain_decisions](#brain_decisions) | Decisions proposed or executed by the AI brain per cycle. | 16 | on |
 | [buildings](#buildings) | Physical buildings or wings of a property. | 11 | on |
@@ -348,6 +349,52 @@ Row-level security policies:
 | --- | --- | --- | --- |
 | staff_read_channels | SELECT | `true` | `` |
 
+### booking_groups
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| property_id | uuid |  |  | properties.id |
+| reference | character varying(20) |  |  |  |
+| name | character varying(120) |  |  |  |
+| organiser_guest_id | uuid | yes |  | guests.id |
+| organiser_name | character varying(120) | yes |  |  |
+| organiser_email | character varying(255) | yes |  |  |
+| organiser_phone | character varying(50) | yes |  |  |
+| company | character varying(120) | yes |  |  |
+| check_in | date |  |  |  |
+| check_out | date |  |  |  |
+| rooms_requested | integer |  | 0 |  |
+| rate_plan_id | uuid | yes |  | rate_plans.id |
+| channel_id | uuid | yes |  | booking_channels.id |
+| billing_mode | character varying(20) |  | 'individual'::character varying |  |
+| cutoff_date | date | yes |  |  |
+| status | character varying(20) |  | 'tentative'::character varying |  |
+| notes | text | yes |  |  |
+| created_by | uuid | yes |  | staff.id |
+| created_at | timestamp with time zone |  | now() |  |
+| updated_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- check `booking_groups_billing_mode_check`: `CHECK (((billing_mode)::text = ANY ((ARRAY['individual'::character varying, 'master'::character varying])::text[])))`
+- check `booking_groups_check`: `CHECK ((check_out > check_in))`
+- check `booking_groups_check1`: `CHECK (((cutoff_date IS NULL) OR (cutoff_date <= check_in)))`
+- unique `booking_groups_property_id_reference_key`: `UNIQUE (property_id, reference)`
+- check `booking_groups_rooms_requested_check`: `CHECK ((rooms_requested >= 0))`
+- check `booking_groups_status_check`: `CHECK (((status)::text = ANY ((ARRAY['tentative'::character varying, 'confirmed'::character varying, 'cancelled'::character varying, 'completed'::character varying])::text[])))`
+
+Triggers:
+
+- `booking_groups_updated_at`: EXECUTE FUNCTION update_updated_at_column()
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| booking_groups_select | SELECT | `can_access_property(property_id)` | `` |
+| booking_groups_write | ALL | `(role_at_least(50) AND can_access_property(property_id))` | `(role_at_least(50) AND can_access_property(property_id))` |
+
 ### bookings
 
 A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column.
@@ -382,6 +429,7 @@ A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one u
 | updated_at | timestamp with time zone |  | now() |  |
 | rate_plan_id | uuid | yes |  | rate_plans.id |
 | rate_plan_snapshot | jsonb | yes |  |  |
+| group_id | uuid | yes |  | booking_groups.id |
 
 Constraints:
 
@@ -2034,8 +2082,10 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 
 | Function | Arguments | Returns | Language | Security definer |
 | --- | --- | --- | --- | --- |
+| add_group_rooms | `p_group_id uuid, p_apartment_ids uuid[], p_guest_ids uuid[], p_adults integer, p_rate_plan_id uuid` | jsonb | plpgsql |  |
 | bump_workflow_version | `` | trigger | plpgsql |  |
 | can_access_property | `p_property_id uuid` | boolean | sql | yes |
+| cancel_group | `p_group_id uuid, p_reason text` | jsonb | plpgsql |  |
 | checkin_booking | `p_booking_id uuid, p_notes text` | jsonb | plpgsql |  |
 | checkout_booking | `p_booking_id uuid, p_notes text, p_allow_outstanding_balance boolean, p_points_per_gbp numeric` | jsonb | plpgsql |  |
 | folio_balance | `p_folio_id uuid` | numeric | sql |  |
@@ -2043,10 +2093,12 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | get_staff_id | `` | uuid | sql | yes |
 | get_staff_property_id | `` | uuid | sql | yes |
 | get_staff_role | `` | text | sql | yes |
+| group_statement | `p_group_id uuid` | jsonb | plpgsql |  |
 | invoices_frozen_once_issued | `` | trigger | plpgsql |  |
 | is_guest | `` | boolean | sql | yes |
 | issue_folio_invoice | `p_folio_id uuid, p_due_date date, p_actor text` | jsonb | plpgsql |  |
 | next_booking_reference | `` | character varying | plpgsql | yes |
+| next_group_reference | `` | character varying | plpgsql |  |
 | next_invoice_number | `` | character varying | plpgsql | yes |
 | open_folio | `p_booking_id uuid` | uuid | plpgsql |  |
 | post_booking_room_charges | `p_booking_id uuid` | integer | plpgsql |  |
@@ -2056,6 +2108,7 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | quote_stay | `p_apartment_type_id uuid, p_check_in date, p_check_out date, p_rate_plan_id uuid, p_channel_code text` | jsonb | plpgsql |  |
 | rate_plans_single_default | `` | trigger | plpgsql |  |
 | record_folio_payment | `p_folio_id uuid, p_amount_gbp numeric, p_method text, p_amount_original numeric, p_currency text, p_fx_rate numeric, p_reference text, p_received_by uuid, p_notes text, p_actor text` | jsonb | plpgsql |  |
+| record_group_payment | `p_group_id uuid, p_amount_gbp numeric, p_method text, p_reference text, p_received_by uuid, p_notes text` | jsonb | plpgsql |  |
 | record_invoice_payment | `p_invoice_id uuid, p_amount_gbp numeric, p_method text, p_amount_original numeric, p_currency text, p_fx_rate numeric, p_reference text, p_received_by uuid, p_notes text` | jsonb | plpgsql |  |
 | refund_payment | `p_payment_id uuid, p_amount_gbp numeric, p_reason text, p_refunded_by uuid, p_reference text, p_actor text` | jsonb | plpgsql |  |
 | revenue_by_stay_date | `p_property_id uuid, p_from date, p_to date` | TABLE(stay_date date, room_nights integer, room_revenue_gbp numeric, rooms_available integer) | sql |  |

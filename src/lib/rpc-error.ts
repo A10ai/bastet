@@ -42,6 +42,14 @@ const STATUS_BY_CODE: Record<string, number> = {
   MAX_NIGHTS: 400,
   NO_RATE: 400,
   INVALID_DATES: 400,
+  // group bookings (00028)
+  GROUP_NOT_FOUND: 404,
+  GROUP_CLOSED: 409,
+  APARTMENT_NOT_FOUND: 404,
+  ROOM_UNAVAILABLE: 409,
+  DUPLICATE_ROOM: 409,
+  DOUBLE_BOOKING: 409,
+  INVALID_INPUT: 400,
 };
 
 export function rpcErrorResponse(

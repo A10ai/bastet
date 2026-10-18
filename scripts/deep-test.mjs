@@ -286,6 +286,60 @@ async function ratePlanTests(owner, mgr, reception, hk) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Group bookings (00028): atomic room blocks, statement, shared payment, cancel
+// ---------------------------------------------------------------------------
+async function groupTests(owner, reception, hk) {
+  const ctx = reception?.ok ? reception : owner;
+  const apts = ((await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=50")))?.data || []).filter((a) => a.status === "available");
+  if (apts.length < 3) { rec("txn", "group tests need 3 available apartments", "WARN", apts.length); return; }
+  const plans = (await j(await owner.ctx.get("/api/v1/rate-plans")))?.data || [];
+  const nrf = plans.find((p) => p.code === "NRF");
+  if (hk?.ok) {
+    const r = await hk.ctx.post("/api/v1/groups", { headers: H(hk.csrf), data: { name: "Nope", check_in: plus(80), check_out: plus(82) } });
+    rec("txn", "housekeeping cannot create groups -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
+  }
+  const bad = await ctx.ctx.post("/api/v1/groups", { headers: H(ctx.csrf), data: { name: "Bad dates", check_in: plus(82), check_out: plus(80) } });
+  rec("txn", "group with check_out before check_in -> 400", bad.status() === 400 ? "PASS" : "FAIL", bad.status());
+
+  const create = await ctx.ctx.post("/api/v1/groups", { headers: H(ctx.csrf), data: { name: "Deep test tour group", organiser_name: "Tour Co", check_in: plus(80), check_out: plus(82), rooms_requested: 2, rate_plan_id: nrf?.id ?? null, status: "confirmed", apartment_ids: [apts[0].id, apts[1].id], adults: 2 } });
+  const group = (await j(create))?.data;
+  rec("txn", "create a confirmed group with 2 rooms -> 201", create.status() === 201 && group?.reference?.startsWith("GRP-") && group?.rooms?.rooms_added === 2 ? "PASS" : "FAIL", `${create.status()} ${JSON.stringify(await j(create))?.slice(0, 100)}`);
+  if (!group?.id) return;
+
+  const st = (await j(await ctx.ctx.get(`/api/v1/groups/${group.id}`)))?.data;
+  const sumRooms = (st?.rooms || []).reduce((s, r) => s + Number(r.contract_total_gbp), 0);
+  rec("txn", "group statement lists 2 confirmed rooms priced by the group plan", st?.room_count === 2 && st.rooms.every((r) => r.status === "confirmed") && Math.abs(st.contract_total_gbp - sumRooms) < 0.01 && st.contract_total_gbp > 0 ? "PASS" : "FAIL", JSON.stringify({ rooms: st?.room_count, total: st?.contract_total_gbp, statuses: st?.rooms?.map((r) => r.status) }));
+  const snapshotOk = nrf ? (await j(await owner.ctx.get(`/api/v1/bookings/${st.rooms[0].booking_id}`)))?.data?.rate_plan_snapshot?.code === "NRF" : true;
+  rec("txn", "group rooms carry the group's rate plan snapshot", snapshotOk ? "PASS" : "FAIL");
+
+  // Atomic add: one room already blocked by this group, one new -> nothing is added
+  const atomic = await ctx.ctx.post(`/api/v1/groups/${group.id}/rooms`, { headers: H(ctx.csrf), data: { apartment_ids: [apts[2].id, apts[0].id] } });
+  const after = (await j(await ctx.ctx.get(`/api/v1/groups/${group.id}`)))?.data;
+  rec("txn", "adding a room set with a conflict -> 409 and no room is added", atomic.status() === 409 && after?.room_count === 2 ? "PASS" : "FAIL", `${atomic.status()} rooms=${after?.room_count}`);
+  const add = await ctx.ctx.post(`/api/v1/groups/${group.id}/rooms`, { headers: H(ctx.csrf), data: { apartment_ids: [apts[2].id] } });
+  rec("txn", "adding a free room -> 201", add.status() === 201 ? "PASS" : "FAIL", add.status());
+
+  // One organiser payment allocated across rooms (deposit before arrival)
+  const pay = await ctx.ctx.post(`/api/v1/groups/${group.id}/payments`, { headers: H(ctx.csrf), data: { amount_gbp: 40, method: "bank_transfer", reference: "DT-GROUP" } });
+  const payBody = await j(pay);
+  const paid = (await j(await ctx.ctx.get(`/api/v1/groups/${group.id}`)))?.data;
+  rec("txn", "group payment of 40 is allocated to room folios and shows on the statement", pay.status() === 201 && (payBody?.data?.allocations || []).reduce((s, a) => s + Number(a.amount_gbp), 0) === 40 && Math.abs((paid?.paid_gbp || 0) - 40) < 0.01 ? "PASS" : "FAIL", `${pay.status()} paid=${paid?.paid_gbp} alloc=${JSON.stringify(payBody?.data?.allocations)?.slice(0, 80)}`);
+  const over = await ctx.ctx.post(`/api/v1/groups/${group.id}/payments`, { headers: H(ctx.csrf), data: { amount_gbp: 999999, method: "cash" } });
+  rec("txn", "payment above what the rooms owe -> 400 OVERPAYMENT", over.status() === 400 ? "PASS" : "FAIL", over.status());
+
+  // Dates are locked while rooms are blocked
+  const move = await ctx.ctx.patch(`/api/v1/groups/${group.id}`, { headers: H(ctx.csrf), data: { check_in: plus(81) } });
+  rec("txn", "changing group dates with rooms blocked -> 409", move.status() === 409 ? "PASS" : "FAIL", move.status());
+
+  // Cancel the group: all rooms released
+  const cancel = await ctx.ctx.delete(`/api/v1/groups/${group.id}`, { headers: H(ctx.csrf), data: { reason: "deep test cleanup" } });
+  const gone = (await j(await ctx.ctx.get(`/api/v1/groups/${group.id}`)))?.data;
+  rec("txn", "cancelling the group cancels its rooms", cancel.status() === 200 && gone?.group?.status === "cancelled" && gone?.room_count === 0 ? "PASS" : "FAIL", `${cancel.status()} status=${gone?.group?.status} rooms=${gone?.room_count}`);
+  const firstRoom = (await j(await owner.ctx.get(`/api/v1/bookings/${st.rooms[0].booking_id}`)))?.data;
+  rec("txn", "cancelled group rooms are released (booking cancelled)", firstRoom?.status === "cancelled" ? "PASS" : "FAIL", firstRoom?.status);
+}
+
 async function transactionTests(owner, reception) {
   const ctx = owner.ctx, csrf = owner.csrf;
   const apts = (await j(await ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || (await j(await ctx.get("/api/v1/apartments")))?.data || [];
@@ -654,6 +708,7 @@ async function main() {
   await roleTests(hk, mgr, owner);
   if (MODE === "full") await notificationTests(owner, rec_);
   if (MODE === "full") await ratePlanTests(owner, mgr, rec_, hk);
+  if (MODE === "full") await groupTests(owner, rec_, hk);
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);

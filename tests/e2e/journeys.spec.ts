@@ -53,7 +53,8 @@ test("bookings list opens a booking with its folio panel", async ({ browser }) =
   const ctx = await signedInContext(browser);
   const page = await ctx.newPage();
   await page.goto("/dashboard/bookings", { waitUntil: "networkidle" });
-  const firstLink = page.locator('a[href^="/dashboard/bookings/"]').filter({ hasNotText: /new booking|calendar/i }).first();
+  // A booking row link ends in the booking id; the header buttons (groups, calendar, new) do not.
+  const firstLink = page.locator('a[href^="/dashboard/bookings/"]:not([href$="/groups"]):not([href$="/calendar"]):not([href$="/new"])').first();
   await expect(firstLink).toBeVisible({ timeout: 15_000 });
   await firstLink.click();
   await page.waitForURL(/\/dashboard\/bookings\/[0-9a-f-]{36}/, { timeout: 20_000 });
@@ -148,5 +149,45 @@ test("new booking form prices the stay through the quote endpoint and offers rat
   const csrf = (await (await ctx.request.get("/api/v1/csrf")).json()).data.token;
   const cancel = await ctx.request.post(`/api/v1/bookings/${bookingId}/cancel`, { headers: { "X-CSRF-Token": csrf }, data: { reason: "journey cleanup" } });
   expect(cancel.status()).toBe(200);
+  await ctx.close();
+});
+
+test("group booking: create, block a room, take an organiser payment, cancel", async ({ browser }) => {
+  const ctx = await signedInContext(browser);
+  const page = await ctx.newPage();
+  const plus = (d: number) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+  await page.goto("/dashboard/bookings/groups", { waitUntil: "networkidle" });
+  await page.getByTestId("group-new").click();
+  const form = page.getByTestId("group-form");
+  await form.locator("input").first().fill(`Journey group ${Date.now()}`);
+  await form.locator('input[type="date"]').nth(0).fill(plus(90));
+  await form.locator('input[type="date"]').nth(1).fill(plus(92));
+  await page.getByTestId("group-save").click();
+  // Creating a group lands on its page
+  await page.waitForURL(/\/dashboard\/bookings\/groups\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  const groupId = page.url().match(/groups\/([0-9a-f-]{36})/)![1];
+
+  // Block the first free room
+  const firstFree = page.locator('[data-testid="free-rooms"] input[type="checkbox"]').first();
+  await expect(firstFree).toBeVisible({ timeout: 15_000 });
+  await firstFree.check();
+  await page.getByTestId("group-add-rooms").click();
+  await expect(page.getByTestId("group-message")).toHaveText(/1 room\(s\) blocked/, { timeout: 15_000 });
+  await expect.poll(async () => page.getByTestId("group-rooms").locator("tbody tr").count(), { timeout: 15_000 }).toBe(1);
+
+  // Organiser deposit
+  await page.getByTestId("group-payment-amount").fill("25");
+  await page.getByTestId("group-pay").click();
+  await expect(page.getByTestId("group-message")).toHaveText(/Payment of/, { timeout: 15_000 });
+  await expect.poll(async () => page.getByTestId("group-paid").textContent(), { timeout: 15_000 }).toMatch(/25/);
+
+  // Cancel with a reason (inline, no browser dialog)
+  await page.getByTestId("group-cancel").click();
+  await page.getByTestId("group-cancel-reason").fill("journey cleanup");
+  await page.getByTestId("group-cancel-confirm").click();
+  await expect(page.getByTestId("group-message")).toHaveText(/cancelled/i, { timeout: 15_000 });
+  const statement = await (await ctx.request.get(`/api/v1/groups/${groupId}`)).json();
+  expect(statement.data.group.status).toBe("cancelled");
+  expect(statement.data.room_count).toBe(0);
   await ctx.close();
 });
