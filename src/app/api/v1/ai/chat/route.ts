@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
     const { message } = validation.data;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const response = await processChat(message, supabase);
 
     return NextResponse.json({ data: response });

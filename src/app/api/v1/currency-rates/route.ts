@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     // Get latest rate for each currency pair
     const { data, error } = await supabase
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(currencyRateSchema, body);

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const config = await getBrainConfig();
     const history = await getBrainHistory(supabase, 10);
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(aiBrainActionSchema, body);

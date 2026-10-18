@@ -9,7 +9,7 @@ import { validateBody, formatZodErrors } from "@/lib/validation";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logger } from "@/lib/logger";
 
-type IdRouteContext = { params: { id: string } };
+type IdRouteContext = { params: Promise<{ id: string }> };
 
 export interface GetByIdConfig {
   table: string;
@@ -26,11 +26,12 @@ export interface GetByIdConfig {
  * route. Row Level Security still scopes the row to the caller's property.
  */
 export function getByIdHandler(config: GetByIdConfig) {
-  return async function GET(request: NextRequest, { params }: IdRouteContext) {
+  return async function GET(request: NextRequest, ctx: IdRouteContext) {
+    const params = await ctx.params;
     try {
       const auth = await requireRole(request, config.roles);
       if (!auth.authenticated) return auth.error!;
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
 
       const { data, error } = await supabase
         .from(config.table)
@@ -66,11 +67,12 @@ export interface UpdateByIdConfig<T extends Record<string, unknown>> {
  * PUT/PATCH /<resource>/:id — validate, whitelist, update, audit.
  */
 export function updateByIdHandler<T extends Record<string, unknown>>(config: UpdateByIdConfig<T>) {
-  return async function UPDATE(request: NextRequest, { params }: IdRouteContext) {
+  return async function UPDATE(request: NextRequest, ctx: IdRouteContext) {
+    const params = await ctx.params;
     try {
       const auth = await requireRole(request, config.roles);
       if (!auth.authenticated) return auth.error!;
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
       const body = await request.json().catch(() => ({}));
 
       const validation = validateBody(config.schema, body);

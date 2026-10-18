@@ -5,14 +5,12 @@ import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, updateBookingSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase
       .from("bookings")
@@ -34,14 +32,12 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(updateBookingSchema, body);

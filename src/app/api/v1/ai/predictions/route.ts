@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const type = request.nextUrl.searchParams.get("type") || "forecast";
 
     switch (type) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(predictionSchema, body);

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (!auth.authenticated) return auth.error!;
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const [{ data: factors, error: fErr }, { data: aal, error: aErr }] = await Promise.all([
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const input = validation.data;
 
     if (input.action === "enroll") {

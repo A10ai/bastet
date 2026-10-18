@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const apartmentTypeId = searchParams.get("apartment_type_id");
     const date = searchParams.get("date");

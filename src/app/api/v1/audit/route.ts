@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type") || "log";
 

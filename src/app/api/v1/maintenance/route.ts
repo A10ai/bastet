@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const status = searchParams.get("status");
     const category = searchParams.get("category");
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.OPERATIONS);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createMaintenanceRequestSchema, body);

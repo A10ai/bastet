@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     // Resolve active property name
     const propertyId = await getActivePropertyId(request);

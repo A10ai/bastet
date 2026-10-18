@@ -29,12 +29,13 @@ export interface AssignHandlerConfig {
 export function createAssignHandler(config: AssignHandlerConfig) {
   return async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    ctx: { params: Promise<{ id: string }> }
   ) {
+    const params = await ctx.params;
     try {
       const auth = await requireRole(request, ROLES.MANAGEMENT);
       if (!auth.authenticated) return auth.error!;
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
       const body = await request.json().catch(() => ({}));
 
       const validation = validateBody(assignSchema, body);

@@ -24,12 +24,13 @@ export interface GuestSubresourceConfig {
 export function createGuestSubresourceHandler(config: GuestSubresourceConfig) {
   return async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    ctx: { params: Promise<{ id: string }> }
   ) {
+    const params = await ctx.params;
     try {
       const auth = await requireRole(request, ROLES.FRONT_DESK);
       if (!auth.authenticated) return auth.error!;
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
 
       const { searchParams } = request.nextUrl;
       const queryParams: Record<string, string> = {};

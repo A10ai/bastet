@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     // Get current month boundaries
     const now = new Date();

@@ -19,21 +19,19 @@ const getGuest = getByIdHandler({
 });
 
 /** Front desk and above see the decrypted document; the row is stored encrypted. */
-export async function GET(request: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const res = await getGuest(request, ctx);
   if (res.status !== 200) return res;
   const json = await res.json();
   return NextResponse.json({ ...json, data: revealGuestDocument(json.data, true) });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createGuestSchema.partial(), body);

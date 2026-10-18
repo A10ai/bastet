@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const search = searchParams.get("search");
     const tier = searchParams.get("tier");
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createGuestSchema, body);

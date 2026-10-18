@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
  */
 async function executeScheduledCycle() {
   const startTime = Date.now();
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const results: {
     brain: unknown;
     automations: unknown;

@@ -24,14 +24,16 @@ export const metadata: Metadata = {
     "AI-powered property management for aparthotels and extended-stay properties.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function RootLayout(
+  {
+    children,
+  }: Readonly<{
+    children: React.ReactNode;
+  }>
+) {
   // Per-request CSP nonce from src/middleware.ts. Reading headers() also opts
   // every page out of static prerendering, which the nonce CSP requires.
-  const nonce = headers().get("x-nonce") ?? undefined;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

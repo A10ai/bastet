@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const status = searchParams.get("status");
     const guestId = searchParams.get("guest_id");
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createInvoiceSchema, body);

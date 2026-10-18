@@ -15,14 +15,12 @@ import { logger } from "@/lib/logger";
  * booking, requires status=confirmed, a guest on file, arrival date reached
  * in the property's business date, and an available (clean) apartment.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json().catch(() => ({}));
 
     const validation = validateBody(checkinSchema, body);

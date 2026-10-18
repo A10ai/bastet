@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const data = await getAllRevenueData(supabase);
     return NextResponse.json({ data });
   } catch (err) {

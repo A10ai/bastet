@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("properties")
       .select("*")
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createPropertySchema, body);
@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createPropertySchema.partial(), body);

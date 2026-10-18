@@ -5,14 +5,12 @@ import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, verifySchema } from "@/lib/validation";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(verifySchema, body);

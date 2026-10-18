@@ -2,13 +2,11 @@
 const nextConfig = {
   // Self-hosted / Docker builds copy .next/standalone (see Dockerfile).
   output: "standalone",
-  experimental: {
-    // Runs src/instrumentation.ts at server start: env validation + Sentry.
-    instrumentationHook: true,
-    // Sentry's OpenTelemetry hooks use dynamic require; keep them out of the
-    // webpack bundle so the build stays warning-free.
-    serverComponentsExternalPackages: ["@sentry/nextjs", "require-in-the-middle", "import-in-the-middle"],
-  },
+  // A stray lockfile in the home directory otherwise makes Next guess the workspace root.
+  outputFileTracingRoot: import.meta.dirname,
+  // src/instrumentation.ts runs at server start (stable in Next 15): env validation + Sentry.
+  // Sentry's OpenTelemetry hooks use dynamic require; keep them out of the bundle.
+  serverExternalPackages: ["@sentry/nextjs", "require-in-the-middle", "import-in-the-middle"],
   async headers() {
     return [
       {

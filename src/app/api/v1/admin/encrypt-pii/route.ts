@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       if (!upErr) updated++;
     }
 
-    await logAudit(createServerSupabaseClient(), {
+    await logAudit(await createServerSupabaseClient(), {
       user_id: auth.userId,
       user_email: auth.email,
       action: "admin.encrypt_pii",
