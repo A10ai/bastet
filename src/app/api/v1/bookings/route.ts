@@ -4,14 +4,13 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { parsePagination, paginationMeta } from "@/lib/pagination";
 import {
-  calculateRate,
-  calculateBookingTotal,
   calculateNights,
   getNextBookingReference,
   checkAvailability,
   convertCurrency,
 } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
+import { quoteStay } from "@/lib/rate-plans";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createBookingSchema } from "@/lib/validation";
 
@@ -79,6 +78,7 @@ export async function POST(request: NextRequest) {
       apartment_id,
       guest_id,
       channel_id,
+      rate_plan_id,
       check_in,
       check_out,
       adults = 1,
@@ -109,39 +109,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Apartment not found" }, { status: 404 });
     }
 
-    // Calculate rate
     const nights = calculateNights(check_in, check_out);
     if (nights <= 0) {
       return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 400 });
     }
 
-    const rateInfo = await calculateRate(apartment.apartment_type_id, check_in, check_out, supabase);
-    if (!rateInfo) {
-      return NextResponse.json({ error: "No rate found for this apartment type" }, { status: 400 });
+    // Channel is NOT NULL in the schema: default to the direct channel
+    let resolvedChannelId = channel_id || null;
+    let channelCode: string | null = null;
+    if (resolvedChannelId) {
+      const { data: ch } = await supabase.from("booking_channels").select("code").eq("id", resolvedChannelId).maybeSingle();
+      channelCode = ch?.code ?? null;
+    } else {
+      const { data: direct } = await supabase
+        .from("booking_channels")
+        .select("id, code")
+        .eq("code", "direct")
+        .maybeSingle();
+      resolvedChannelId = direct?.id ?? null;
+      channelCode = direct?.code ?? null;
+      if (!resolvedChannelId) {
+        return NextResponse.json({ error: "channel_id is required (no direct channel configured)" }, { status: 400 });
+      }
     }
 
-    const pricing = calculateBookingTotal(rateInfo.nightly_rate_gbp, nights);
+    // Price the stay night by night through the chosen (or default) rate plan
+    const { quote, error: quoteError } = await quoteStay(supabase, {
+      apartmentTypeId: apartment.apartment_type_id,
+      checkIn: check_in,
+      checkOut: check_out,
+      ratePlanId: rate_plan_id,
+      channelCode,
+    });
+    if (quoteError || !quote) return rpcErrorResponse(quoteError!, "quote_stay");
 
     // Convert to guest currency
     let totalGuestCurrency: number | null = null;
     if (guest_currency !== "GBP") {
-      const converted = await convertCurrency(pricing.total, guest_currency, supabase);
+      const converted = await convertCurrency(quote.total_gbp, guest_currency, supabase);
       if (converted) {
         totalGuestCurrency = converted.amount;
-      }
-    }
-
-    // Channel is NOT NULL in the schema: default to the direct channel
-    let resolvedChannelId = channel_id || null;
-    if (!resolvedChannelId) {
-      const { data: direct } = await supabase
-        .from("booking_channels")
-        .select("id")
-        .eq("code", "direct")
-        .maybeSingle();
-      resolvedChannelId = direct?.id ?? null;
-      if (!resolvedChannelId) {
-        return NextResponse.json({ error: "channel_id is required (no direct channel configured)" }, { status: 400 });
       }
     }
 
@@ -163,9 +170,11 @@ export async function POST(request: NextRequest) {
       adults,
       children,
       infants,
-      rate_per_night_gbp: Math.round(rateInfo.nightly_rate_gbp * 100) / 100,
-      discount_percentage: pricing.discount_percentage,
-      total_amount_gbp: pricing.total,
+      rate_per_night_gbp: quote.rate_per_night_gbp,
+      discount_percentage: quote.discount_percentage,
+      total_amount_gbp: quote.total_gbp,
+      rate_plan_id: quote.rate_plan?.id ?? null,
+      rate_plan_snapshot: quote.rate_plan,
       total_amount_guest_currency: totalGuestCurrency,
       guest_currency,
       special_requests: special_requests || null,

@@ -238,6 +238,54 @@ async function notificationTests(owner, reception) {
   rec("txn", "owner receives their own copy of the broadcast", ownSeen ? "PASS" : "FAIL");
 }
 
+// ---------------------------------------------------------------------------
+// Rate plans (00027): plans price stays; sold bookings keep their snapshot
+// ---------------------------------------------------------------------------
+async function ratePlanTests(owner, mgr, reception, hk) {
+  const code = "DT" + Date.now().toString().slice(-6);
+  if (hk?.ok) {
+    const r = await hk.ctx.post("/api/v1/rate-plans", { headers: H(hk.csrf), data: { code, name: "Nope" } });
+    rec("txn", "housekeeping cannot create rate plans -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
+  }
+  const list = await j(await owner.ctx.get("/api/v1/rate-plans"));
+  rec("txn", "rate plans list has a default plan", (list?.data || []).some((p) => p.is_default) ? "PASS" : "FAIL", (list?.data || []).map((p) => p.code).join(","));
+  const create = await (mgr?.ok ? mgr : owner).ctx.post("/api/v1/rate-plans", { headers: H((mgr?.ok ? mgr : owner).csrf), data: { code, name: "Deep test non-refundable", pricing_mode: "percent_off", adjustment: 10, cancellation_policy: "non_refundable", free_cancellation_days: 0, min_nights: 2 } });
+  const plan = (await j(create))?.data;
+  rec("txn", "manager creates a 10% off plan with min 2 nights -> 201", create.status() === 201 && plan?.code === code ? "PASS" : "FAIL", `${create.status()} ${JSON.stringify(await j(create))?.slice(0, 80)}`);
+  if (!plan) return;
+  const bad = await (mgr?.ok ? mgr : owner).ctx.post("/api/v1/rate-plans", { headers: H((mgr?.ok ? mgr : owner).csrf), data: { code: "BAD1", name: "Too generous", pricing_mode: "percent_off", adjustment: 150 } });
+  rec("txn", "150% discount rejected -> 400", bad.status() === 400 ? "PASS" : "FAIL", bad.status());
+
+  const apts = (await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || [];
+  const apt = apts.find((a) => a.status === "available");
+  if (!apt) { rec("txn", "rate plan quote needs an available apartment", "WARN", "none"); return; }
+  const ctx = reception?.ok ? reception : owner;
+  const bar = await j(await ctx.ctx.get("/api/v1/bookings/quote?" + new URLSearchParams(Object.fromEntries(Object.entries({ apartment_id: apt.id, check_in: plus(40), check_out: plus(42) }).filter(([, v]) => v != null))).toString()));
+  const q = await j(await ctx.ctx.get("/api/v1/bookings/quote?" + new URLSearchParams(Object.fromEntries(Object.entries({ apartment_id: apt.id, check_in: plus(40), check_out: plus(42), rate_plan_id: plan.id }).filter(([, v]) => v != null))).toString()));
+  const expected = Math.round((bar?.data?.total_gbp || 0) * 0.9 * 100) / 100;
+  rec("txn", "quote with the plan is 10% below the default quote", q?.data && Math.abs(q.data.total_gbp - expected) <= 0.02 && q.data.nights === 2 ? "PASS" : "FAIL", `default ${bar?.data?.total_gbp} plan ${q?.data?.total_gbp} expected ${expected}`);
+  rec("txn", "quote lists one priced night per date", q?.data?.nightly?.length === 2 && q.data.nightly.every((n) => n.rate_gbp > 0) ? "PASS" : "FAIL", JSON.stringify(q?.data?.nightly)?.slice(0, 100));
+  const short = await ctx.ctx.get("/api/v1/bookings/quote?" + new URLSearchParams(Object.fromEntries(Object.entries({ apartment_id: apt.id, check_in: plus(40), check_out: plus(41), rate_plan_id: plan.id }).filter(([, v]) => v != null))).toString());
+  const shortBody = await j(short);
+  rec("txn", "one-night quote on a 2-night-minimum plan -> 400 MIN_NIGHTS", short.status() === 400 && JSON.stringify(shortBody).includes("MIN_NIGHTS") ? "PASS" : "FAIL", `${short.status()} ${JSON.stringify(shortBody)?.slice(0, 80)}`);
+
+  const guests = (await j(await owner.ctx.get("/api/v1/guests?limit=1")))?.data || [];
+  if (!guests[0]) return;
+  const bk = await ctx.ctx.post("/api/v1/bookings", { headers: H(ctx.csrf), data: { apartment_id: apt.id, guest_id: guests[0].id, check_in: plus(40), check_out: plus(42), adults: 1, rate_plan_id: plan.id } });
+  const booking = (await j(bk))?.data;
+  rec("txn", "booking priced by the plan matches the quote and stores the snapshot", bk.status() === 201 && booking && Math.abs(booking.total_amount_gbp - q.data.total_gbp) <= 0.01 && booking.rate_plan_snapshot?.code === code ? "PASS" : "FAIL", `${bk.status()} total ${booking?.total_amount_gbp} snapshot ${booking?.rate_plan_snapshot?.code}`);
+  if (booking?.id) {
+    // Retiring or editing the plan must not change the sold booking
+    const retire = await (mgr?.ok ? mgr : owner).ctx.delete(`/api/v1/rate-plans/${plan.id}`, { headers: H((mgr?.ok ? mgr : owner).csrf) });
+    rec("txn", "plan retired after sale -> 200", retire.status() === 200 ? "PASS" : "FAIL", retire.status());
+    const again = await j(await owner.ctx.get(`/api/v1/bookings/${booking.id}`));
+    rec("txn", "sold booking keeps its price and snapshot after the plan is retired", again?.data?.total_amount_gbp === booking.total_amount_gbp && again?.data?.rate_plan_snapshot?.code === code ? "PASS" : "FAIL");
+    const retiredQuote = await ctx.ctx.get("/api/v1/bookings/quote?" + new URLSearchParams(Object.fromEntries(Object.entries({ apartment_id: apt.id, check_in: plus(50), check_out: plus(52), rate_plan_id: plan.id }).filter(([, v]) => v != null))).toString());
+    rec("txn", "retired plan can no longer price a stay -> 409", retiredQuote.status() === 409 ? "PASS" : "FAIL", retiredQuote.status());
+    await ctx.ctx.post(`/api/v1/bookings/${booking.id}/cancel`, { headers: H(ctx.csrf), data: { reason: "deep test cleanup" } });
+  }
+}
+
 async function transactionTests(owner, reception) {
   const ctx = owner.ctx, csrf = owner.csrf;
   const apts = (await j(await ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || (await j(await ctx.get("/api/v1/apartments")))?.data || [];
@@ -605,6 +653,7 @@ async function main() {
   await apiTests(owner.ctx, "owner");
   await roleTests(hk, mgr, owner);
   if (MODE === "full") await notificationTests(owner, rec_);
+  if (MODE === "full") await ratePlanTests(owner, mgr, rec_, hk);
 
   let ids = {};
   if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);

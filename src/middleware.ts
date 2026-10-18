@@ -113,11 +113,17 @@ export async function middleware(request: NextRequest) {
   try {
     const { data, error } = await supabase.auth.getUser();
     userId = !error && data.user ? data.user.id : null;
+    if (error && error.status !== 401 && error.status !== 403) {
+      // A reachability problem, not an invalid session: say so in the logs,
+      // otherwise an auth-server outage looks like everyone being signed out.
+      console.error("[middleware] auth server error", error.status, error.message);
+    }
     if (userId) {
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       needsMfa = aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2";
     }
-  } catch {
+  } catch (err) {
+    console.error("[middleware] session check threw", err instanceof Error ? err.message : String(err));
     userId = null;
   }
 

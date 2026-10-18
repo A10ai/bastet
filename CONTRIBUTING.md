@@ -20,7 +20,9 @@ password in the script). Never reuse them anywhere else.
 npm run check                  # tsc, lint at zero warnings, unit tests
 npm run test:coverage          # thresholds 70/50/70/70 on src/lib
 node scripts/deep-test.mjs     # against your local server, MODE=full
-npx playwright test            # E2E_EMAIL / E2E_PASSWORD for the journeys
+PLAYWRIGHT_BASE_URL=http://localhost:3000 E2E_EMAIL=e2e@bastet.com E2E_PASSWORD=... npx playwright test --workers=1 --retries=0
+                               # always point at a running server; without PLAYWRIGHT_BASE_URL Playwright builds and starts its own,
+                               # never do that while another server is serving the same .next directory
 ```
 
 CI runs the same plus the `integration` job that builds a fresh local

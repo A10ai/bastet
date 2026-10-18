@@ -27,7 +27,13 @@ test.beforeAll(async ({ browser }) => {
   await page.fill("#email", email!);
   await page.fill("#password", password!);
   await page.click("button[type=submit]");
-  await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+  // Fail fast with a useful message when the account is locked by the login limiter
+  // (5 attempts per 15 minutes): retrying would only deepen the lockout.
+  const lockout = page.getByText(/too many login attempts/i);
+  await Promise.race([
+    page.waitForURL(/\/dashboard/, { timeout: 20_000 }),
+    lockout.waitFor({ timeout: 20_000 }).then(() => { throw new Error(`E2E account ${email} is locked out by the login rate limit; restart the server or wait 15 minutes`); }),
+  ]);
   storageState = await ctx.storageState();
   await ctx.close();
 });
@@ -103,5 +109,44 @@ test("list pages on SWR render their data without page errors", async ({ browser
     await search.fill("");
   }
   expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+test("new booking form prices the stay through the quote endpoint and offers rate plans", async ({ browser }) => {
+  const ctx = await signedInContext(browser);
+  const page = await ctx.newPage();
+  await page.goto("/dashboard/bookings/new", { waitUntil: "networkidle" });
+  const plus = (d: number) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+  await page.fill("#checkIn", plus(60));
+  await page.fill("#checkOut", plus(62));
+  const apartmentSelect = page.locator("select").first();
+  const options = await apartmentSelect.locator("option").allTextContents();
+  expect(options.length).toBeGreaterThan(1);
+  await apartmentSelect.selectOption({ index: 1 });
+  await expect(page.getByTestId("quote-total")).toBeVisible({ timeout: 15_000 });
+  const defaultTotal = await page.getByTestId("quote-total").textContent();
+  const planSelect = page.getByTestId("rate-plan-select");
+  await expect(planSelect).toBeVisible();
+  const planOptions = await planSelect.locator("option").count();
+  if (planOptions > 1) {
+    await planSelect.selectOption({ index: 1 });
+    await expect(page.getByTestId("quote-total")).toBeVisible({ timeout: 15_000 });
+    await expect.poll(async () => page.getByTestId("quote-total").textContent(), { timeout: 15_000 }).not.toBe(defaultTotal);
+  }
+  const quotedTotal = (await page.getByTestId("quote-total").textContent()) || "";
+
+  // Submit the form: this is a real browser mutation, so it proves the CSRF
+  // header is attached by the client and the booking is priced by the quote.
+  await page.click("button[type=submit]");
+  await page.waitForURL(/\/dashboard\/bookings\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  const bookingId = page.url().match(/bookings\/([0-9a-f-]{36})/)![1];
+  const detail = await (await ctx.request.get(`/api/v1/bookings/${bookingId}`)).json();
+  expect(detail.data.rate_plan_snapshot).toBeTruthy();
+  expect(quotedTotal.replace(/[^0-9.]/g, "")).toBe(Number(detail.data.total_amount_gbp).toFixed(2));
+
+  // Clean up through the API with the session's CSRF token
+  const csrf = (await (await ctx.request.get("/api/v1/csrf")).json()).data.token;
+  const cancel = await ctx.request.post(`/api/v1/bookings/${bookingId}/cancel`, { headers: { "X-CSRF-Token": csrf }, data: { reason: "journey cleanup" } });
+  expect(cancel.status()).toBe(200);
   await ctx.close();
 });

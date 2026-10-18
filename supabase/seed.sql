@@ -20,6 +20,7 @@ DECLARE
   v_reception_auth_id UUID := '00000000-0000-0000-0000-000000000003';
   v_housekeeping_auth_id UUID := '00000000-0000-0000-0000-000000000004';
   v_maintenance_auth_id UUID := '00000000-0000-0000-0000-000000000005';
+  v_e2e_auth_id UUID := '00000000-0000-0000-0000-000000000006';
 
   -- Auto-generated IDs
   v_property_id UUID;
@@ -242,6 +243,10 @@ RETURNING id INTO v_staff_hk;
 INSERT INTO staff (auth_user_id, property_id, first_name, last_name, email, phone, role, department, language, hire_date)
 VALUES (v_maintenance_auth_id, v_property_id, 'Hassan', 'Mohamed', 'maintenance@bastet.com', '+201001234503', 'maintenance', 'maintenance', 'ar', '2025-10-01')
 RETURNING id INTO v_staff_maint;
+-- Dedicated account for the Playwright journeys: nothing else logs in as it, so the per-account login lockout never hits CI
+INSERT INTO staff (auth_user_id, property_id, first_name, last_name, email, phone, role, department, language, hire_date)
+VALUES (v_e2e_auth_id, v_property_id, 'End-to-end', 'Tester', 'e2e@bastet.com', '+200000000006', 'manager', 'management', 'en', '2026-01-01')
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 9. Rates (3 seasons)
@@ -266,6 +271,14 @@ INSERT INTO rates (property_id, apartment_type_id, season_name, start_date, end_
   (v_property_id, v_type_1bed, 'High Season', '2026-06-01', '2026-08-31', 560.00, 85.00, 1),
   (v_property_id, v_type_2bed, 'High Season', '2026-06-01', '2026-08-31', 800.00, 125.00, 1),
   (v_property_id, v_type_penthouse, 'High Season', '2026-06-01', '2026-08-31', 1500.00, 230.00, 3);
+
+-- Rate plans (00027): the seasonal rate is BAR; plans adjust it and carry the cancellation terms
+INSERT INTO rate_plans (property_id, code, name, description, pricing_mode, adjustment, cancellation_policy, free_cancellation_days, min_nights, includes_breakfast, is_default) VALUES
+  (v_property_id, 'BAR', 'Best Available Rate', 'Seasonal rate. Free cancellation until the day before arrival.', 'bar', 0, 'flexible', 1, 1, false, true),
+  (v_property_id, 'NRF', 'Non-refundable', '10% off BAR, paid in full at booking, no refund.', 'percent_off', 10, 'non_refundable', 0, 1, false, false),
+  (v_property_id, 'LONGSTAY', 'Long stay (7+ nights)', '15% off BAR for a week or more.', 'percent_off', 15, 'moderate', 3, 7, false, false),
+  (v_property_id, 'BB', 'Bed and breakfast', 'BAR plus breakfast for every guest.', 'percent_markup', 12, 'flexible', 1, 1, true, false)
+ON CONFLICT (property_id, code) DO NOTHING;
 
 -- ============================================================
 -- 10. Sample Bookings (15) — using apartment numbers to find IDs

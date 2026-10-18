@@ -28,7 +28,7 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00026` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00027` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -37,6 +37,7 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00024_pii_and_property_membership.sql`: encrypted passport column, `staff_properties`
 - `00025_night_audit_and_idempotency.sql`: `daily_closes`, `run_night_audit()`, event idempotency, workflow versions
 - `00026_folio_ledger.sql`: `folios`, append-only `folio_lines`, `refunds`, `department_budgets`, room charges per night, invoices issued from the folio and frozen, `revenue_by_stay_date()`
+- `00027_rate_plans.sql`: `rate_plans` with a single-default trigger, `bookings.rate_plan_id` and `rate_plan_snapshot`, `quote_stay()` per-night pricing; seeds a BAR plan per property
 
 ## Authorisation model
 
@@ -89,7 +90,7 @@ docker run -p 3000:3000 --env-file .env.production hospitai
 
 ## Money flow
 
-Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`.
+Prices come from `quote_stay`: the seasonal rate per night (`rates`, Best Available Rate) adjusted by the booking's rate plan (`rate_plans`: percent off, markup, fixed nightly, with cancellation terms, minimum nights, validity and channel restrictions). The booking stores the plan id and a snapshot, so editing a plan never changes a sold stay. Every stay has a folio (`folios`, opened at check-in or by a deposit). The night audit posts the room charge, VAT and tourism levy for each night; the front desk posts extras and payments through `POST /api/v1/bookings/:id/folio`. Ledger lines are append-only: a mistake is voided with a reversing line, a payment is reversed with a refund, both need a manager and a reason. Check-out requires a zero balance unless a manager overrides. An invoice is issued from the folio and frozen by a database trigger once issued. Revenue reports (`/api/v1/finance/revenue`, finance summary) recognise room revenue by stay date; budgets come from `department_budgets`.
 
 ## Operations
 

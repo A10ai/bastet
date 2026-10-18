@@ -4,18 +4,19 @@ import { AdminLoading, AccessDenied, isAdminRole } from "@/components/admin/admi
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
-import { Settings, Building2, DollarSign, Globe, Percent } from "lucide-react";
+import { Settings, Building2, DollarSign, Globe, Percent, Tag } from "lucide-react";
 import { PropertyTab } from "@/components/admin/config/property-tab";
 import { RatesTab } from "@/components/admin/config/rates-tab";
 import { ChannelsTab } from "@/components/admin/config/channels-tab";
 import { CurrencyTab } from "@/components/admin/config/currency-tab";
+import { RatePlansTab } from "@/components/admin/config/rate-plans-tab";
 import type { Toast } from "@/components/admin/config/types";
 
 export default function SystemConfigPage() {
   const { staff, loading: authLoading } = useAuth();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "property" | "rates" | "channels" | "currency"
+    "property" | "rates" | "rate_plans" | "channels" | "currency"
   >("property");
 
   const showToast = useCallback((message: string, type: Toast["type"] = "success") => {
@@ -35,7 +36,8 @@ export default function SystemConfigPage() {
 
   const tabs = [
     { key: "property" as const, label: "Property", icon: Building2 },
-    { key: "rates" as const, label: "Rates", icon: DollarSign },
+    { key: "rates" as const, label: "Seasonal rates", icon: DollarSign },
+    { key: "rate_plans" as const, label: "Rate plans", icon: Tag },
     { key: "channels" as const, label: "Channels", icon: Percent },
     { key: "currency" as const, label: "Currency", icon: Globe },
   ];
@@ -100,6 +102,7 @@ export default function SystemConfigPage() {
       {activeTab === "property" && <PropertyTab showToast={showToast} inputClass={inputClass} />}
       {/* Rates Tab */}
       {activeTab === "rates" && <RatesTab showToast={showToast} />}
+      {activeTab === "rate_plans" && <RatePlansTab showToast={showToast} inputClass={inputClass} />}
       {/* Channels Tab */}
       {activeTab === "channels" && <ChannelsTab showToast={showToast} />}
       {/* Currency Rates Tab */}

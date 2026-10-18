@@ -39,6 +39,8 @@ export const createBookingSchema = z.object({
   apartment_id: z.string().uuid("Invalid apartment ID"),
   guest_id: z.string().uuid().optional().nullable(),
   channel_id: z.string().uuid().optional().nullable(),
+  /** Rate plan used to price the stay; the property's default plan when omitted. */
+  rate_plan_id: z.string().uuid().optional().nullable(),
   check_in: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   check_out: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   adults: z.number().int().min(1).max(20).default(1),
@@ -520,3 +522,49 @@ export function formatZodErrors(error: z.ZodError): string {
     .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
     .join("; ");
 }
+
+// ---------------------------------------------------------------------------
+// Rate plans (migration 00027)
+// ---------------------------------------------------------------------------
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
+export const RATE_PLAN_PRICING_MODES = ["bar", "percent_off", "percent_markup", "fixed_nightly"] as const;
+export const CANCELLATION_POLICIES = ["flexible", "moderate", "strict", "non_refundable"] as const;
+
+const ratePlanBase = z.object({
+  property_id: z.string().uuid().optional(),
+  code: z.string().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/, "Code may contain letters, digits, - and _"),
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional().nullable(),
+  pricing_mode: z.enum(RATE_PLAN_PRICING_MODES).default("bar"),
+  adjustment: z.number().min(0).max(100000).default(0),
+  cancellation_policy: z.enum(CANCELLATION_POLICIES).default("flexible"),
+  free_cancellation_days: z.number().int().min(0).max(365).default(1),
+  min_nights: z.number().int().min(1).max(365).default(1),
+  max_nights: z.number().int().min(1).max(365).optional().nullable(),
+  includes_breakfast: z.boolean().default(false),
+  valid_from: isoDate.optional().nullable(),
+  valid_to: isoDate.optional().nullable(),
+  channel_codes: z.array(z.string().min(1).max(30)).max(20).optional().nullable(),
+  is_default: z.boolean().default(false),
+  is_active: z.boolean().default(true),
+});
+const ratePlanRules = (v: Partial<z.infer<typeof ratePlanBase>>, ctx: z.RefinementCtx) => {
+  if (v.pricing_mode === "percent_off" && (v.adjustment ?? 0) > 100) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["adjustment"], message: "A discount cannot exceed 100%" });
+  if (v.pricing_mode === "fixed_nightly" && (v.adjustment ?? 0) <= 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["adjustment"], message: "A fixed nightly rate must be above zero" });
+  if (v.max_nights != null && v.min_nights != null && v.max_nights < v.min_nights) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["max_nights"], message: "max_nights must be at least min_nights" });
+  if (v.valid_from && v.valid_to && v.valid_to < v.valid_from) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["valid_to"], message: "valid_to must be on or after valid_from" });
+};
+export const ratePlanSchema = ratePlanBase.superRefine(ratePlanRules);
+export const updateRatePlanSchema = ratePlanBase.partial().superRefine(ratePlanRules);
+
+export const quoteStaySchema = z
+  .object({
+    apartment_id: z.string().uuid().optional(),
+    apartment_type_id: z.string().uuid().optional(),
+    check_in: isoDate,
+    check_out: isoDate,
+    rate_plan_id: z.string().uuid().optional().nullable(),
+    channel_code: z.string().max(30).optional().nullable(),
+  })
+  .refine((v) => v.apartment_id || v.apartment_type_id, { message: "apartment_id or apartment_type_id is required", path: ["apartment_id"] })
+  .refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });

@@ -46,6 +46,7 @@ export default function NewBookingPage() {
   const [apartmentId, setApartmentId] = useState("");
   const [guestId, setGuestId] = useState("");
   const [channelId, setChannelId] = useState("");
+  const [ratePlanId, setRatePlanId] = useState<string | null>(null);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -84,6 +85,7 @@ export default function NewBookingPage() {
           apartment_id: apartmentId,
           guest_id: guestId || null,
           channel_id: channelId || null,
+          rate_plan_id: ratePlanId,
           check_in: checkIn,
           check_out: checkOut,
           adults,
@@ -353,6 +355,8 @@ export default function NewBookingPage() {
               checkIn={checkIn}
               checkOut={checkOut}
               guestCurrency={guestCurrency}
+              ratePlanId={ratePlanId}
+              onRatePlanChange={setRatePlanId}
             />
           </div>
         </div>

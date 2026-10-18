@@ -62,7 +62,8 @@ SB_URL=https://<staging-ref>.supabase.co SB_SERVICE=<staging service key> \
 ACCOUNTS='{"owner":{"email":"owner@staging.hospitai.uk","password":"..."}, ...}' \
 node scripts/deep-test.mjs
 
-E2E_EMAIL=... E2E_PASSWORD=... PLAYWRIGHT_BASE_URL=https://staging.hospitai.uk npx playwright test
+E2E_EMAIL=e2e@staging.hospitai.uk E2E_PASSWORD=... PLAYWRIGHT_BASE_URL=https://staging.hospitai.uk npx playwright test --workers=1 --retries=0
+# one dedicated account for the journeys: the login limiter allows 5 attempts per account per 15 minutes
 
 BASE_URL=https://staging.hospitai.uk EMAIL=... PASSWORD=... USERS=50 DURATION=60 node scripts/load-test.mjs
 ```

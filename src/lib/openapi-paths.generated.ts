@@ -1311,6 +1311,25 @@ export const generatedPaths = {
       ]
     }
   },
+  "/bookings/quote": {
+    "get": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "GET /bookings/quote",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/bookings": {
     "get": {
       "tags": [
@@ -2814,6 +2833,137 @@ export const generatedPaths = {
         "Core"
       ],
       "summary": "PUT /properties",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/rate-plans/{id}": {
+    "delete": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "One rate plan. (DELETE)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "One rate plan. (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "patch": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "One rate plan. (PATCH)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/rate-plans": {
+    "get": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "Rate plans (migration 00027). (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "Rate plans (migration 00027). (POST)",
       "responses": {
         "200": {
           "description": "OK"

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { CSRF_HEADER_NAME } from "@/lib/csrf-constants";
+import { installCsrfFetch, setCsrfToken } from "@/lib/csrf-fetch";
 
 interface CSRFContextType {
   /** The current CSRF token, or null while loading / if not yet fetched. */
@@ -39,6 +40,8 @@ export function CSRFTokenProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Every same-origin mutation from any screen gets the header automatically.
+    installCsrfFetch();
 
     async function fetchToken() {
       try {
@@ -54,6 +57,7 @@ export function CSRFTokenProvider({ children }: { children: ReactNode }) {
         const t = json?.data?.token ?? null;
         if (!cancelled) {
           setToken(t);
+          setCsrfToken(t);
           setLoading(false);
         }
       } catch {

@@ -36,7 +36,7 @@ PROPERTY_ID="$(docker exec -i "$(docker ps --format '{{.Names}}' | grep supabase
 
 echo "--- seed logins"
 i=1
-for email in owner@bastet.com manager@bastet.com reception@bastet.com housekeeping@bastet.com maintenance@bastet.com; do
+for email in owner@bastet.com manager@bastet.com reception@bastet.com housekeeping@bastet.com maintenance@bastet.com e2e@bastet.com; do
   curl -sf -o /dev/null -X POST "$API_URL/auth/v1/admin/users" \
     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: application/json" \
     -d "{\"id\":\"00000000-0000-0000-0000-00000000000$i\",\"email\":\"$email\",\"password\":\"$PASSWORD\",\"email_confirm\":true}"
@@ -59,4 +59,4 @@ node -e 'const r=require("./deep-test-results.json"); if (r.fail>0) { console.er
 
 echo "--- playwright journeys"
 # The deep test locked the owner account on purpose; journeys use the manager.
-PLAYWRIGHT_BASE_URL="http://localhost:$PORT" E2E_EMAIL=manager@bastet.com E2E_PASSWORD="$PASSWORD" CI=1 npx playwright test --reporter=line
+PLAYWRIGHT_BASE_URL="http://localhost:$PORT" E2E_EMAIL=e2e@bastet.com E2E_PASSWORD="$PASSWORD" CI=1 npx playwright test --reporter=line

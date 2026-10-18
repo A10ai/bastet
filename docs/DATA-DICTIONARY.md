@@ -2,7 +2,7 @@
 
 Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dictionary.py`; do not edit by hand. Schema source of truth: `supabase/migrations/`.
 
-58 tables, 29 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
+59 tables, 31 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
 
 ## Tables
 
@@ -18,7 +18,7 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [beach_partnerships](#beach_partnerships) | Beach club arrangements. | 16 | on |
 | [booking_addons](#booking_addons) | Extras attached to a booking. | 8 | on |
 | [booking_channels](#booking_channels) | Distribution channels (direct, OTA ...) with commission as a percentage. | 8 | on |
-| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 26 | on |
+| [bookings](#bookings) | A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one unit are rejected by an exclusion constraint. `nights` is a generated column. | 28 | on |
 | [brain_config](#brain_config) | Configuration of the AI brain (mode, thresholds). | 9 | on |
 | [brain_decisions](#brain_decisions) | Decisions proposed or executed by the AI brain per cycle. | 16 | on |
 | [buildings](#buildings) | Physical buildings or wings of a property. | 11 | on |
@@ -55,6 +55,7 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [pricing_decisions](#pricing_decisions) | Rate changes proposed or applied by the pricing automation (gated by AUTO_PRICING_ENABLED). | 12 | on |
 | [promotions](#promotions) | Promotional offers. | 15 | on |
 | [properties](#properties) | A hotel or aparthotel operated on the platform. Carries VAT rate, currencies and the current business date. | 23 | on |
+| [rate_plans](#rate_plans) |  | 19 | on |
 | [rates](#rates) | Seasonal rate rows per apartment type (start/end date, weekly rate, minimum nights). | 12 | on |
 | [refunds](#refunds) | Money returned, always linked to the original payment and a reason. | 9 | on |
 | [reviews](#reviews) | Guest reviews and responses. | 16 | on |
@@ -379,6 +380,8 @@ A stay: unit, guest, dates, status, totals. Overlapping confirmed stays on one u
 | cancellation_reason | text | yes |  |  |
 | created_at | timestamp with time zone |  | now() |  |
 | updated_at | timestamp with time zone |  | now() |  |
+| rate_plan_id | uuid | yes |  | rate_plans.id |
+| rate_plan_snapshot | jsonb | yes |  |  |
 
 Constraints:
 
@@ -1640,6 +1643,54 @@ Row-level security policies:
 | --- | --- | --- | --- |
 | staff_read_property | SELECT | `(id = get_staff_property_id())` | `` |
 
+### rate_plans
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| property_id | uuid |  |  | properties.id |
+| code | character varying(30) |  |  |  |
+| name | character varying(100) |  |  |  |
+| description | text | yes |  |  |
+| pricing_mode | character varying(20) |  | 'bar'::character varying |  |
+| adjustment | numeric(10,2) |  | 0 |  |
+| cancellation_policy | character varying(20) |  | 'flexible'::character varying |  |
+| free_cancellation_days | integer |  | 1 |  |
+| min_nights | integer |  | 1 |  |
+| max_nights | integer | yes |  |  |
+| includes_breakfast | boolean |  | false |  |
+| valid_from | date | yes |  |  |
+| valid_to | date | yes |  |  |
+| channel_codes | _text[] | yes |  |  |
+| is_default | boolean |  | false |  |
+| is_active | boolean |  | true |  |
+| created_at | timestamp with time zone |  | now() |  |
+| updated_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- check `rate_plans_adjustment_check`: `CHECK ((adjustment >= (0)::numeric))`
+- check `rate_plans_cancellation_policy_check`: `CHECK (((cancellation_policy)::text = ANY ((ARRAY['flexible'::character varying, 'moderate'::character varying, 'strict'::character varying, 'non_refundable'::character varying])::text[])))`
+- check `rate_plans_check`: `CHECK (((max_nights IS NULL) OR (max_nights >= min_nights)))`
+- check `rate_plans_check1`: `CHECK (((valid_to IS NULL) OR (valid_from IS NULL) OR (valid_to >= valid_from)))`
+- check `rate_plans_check2`: `CHECK ((((pricing_mode)::text <> 'percent_off'::text) OR (adjustment <= (100)::numeric)))`
+- check `rate_plans_free_cancellation_days_check`: `CHECK ((free_cancellation_days >= 0))`
+- check `rate_plans_min_nights_check`: `CHECK ((min_nights >= 1))`
+- check `rate_plans_pricing_mode_check`: `CHECK (((pricing_mode)::text = ANY ((ARRAY['bar'::character varying, 'percent_off'::character varying, 'percent_markup'::character varying, 'fixed_nightly'::character varying])::text[])))`
+- unique `rate_plans_property_id_code_key`: `UNIQUE (property_id, code)`
+
+Triggers:
+
+- `rate_plans_single_default`: EXECUTE FUNCTION rate_plans_single_default()
+- `rate_plans_updated_at`: EXECUTE FUNCTION update_updated_at_column()
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| rate_plans_manage | ALL | `(role_at_least(70) AND can_access_property(property_id))` | `(role_at_least(70) AND can_access_property(property_id))` |
+| rate_plans_select | SELECT | `can_access_property(property_id)` | `` |
+
 ### rates
 
 Seasonal rate rows per apartment type (start/end date, weekly rate, minimum nights).
@@ -2002,6 +2053,8 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | post_folio_charge | `p_folio_id uuid, p_type text, p_description text, p_quantity numeric, p_unit_amount_gbp numeric, p_tax_rate_percent numeric, p_actor text` | jsonb | plpgsql |  |
 | post_room_charges | `p_property_id uuid, p_business_date date, p_actor text` | integer | plpgsql |  |
 | property_business_date | `p_property_id uuid` | date | sql |  |
+| quote_stay | `p_apartment_type_id uuid, p_check_in date, p_check_out date, p_rate_plan_id uuid, p_channel_code text` | jsonb | plpgsql |  |
+| rate_plans_single_default | `` | trigger | plpgsql |  |
 | record_folio_payment | `p_folio_id uuid, p_amount_gbp numeric, p_method text, p_amount_original numeric, p_currency text, p_fx_rate numeric, p_reference text, p_received_by uuid, p_notes text, p_actor text` | jsonb | plpgsql |  |
 | record_invoice_payment | `p_invoice_id uuid, p_amount_gbp numeric, p_method text, p_amount_original numeric, p_currency text, p_fx_rate numeric, p_reference text, p_received_by uuid, p_notes text` | jsonb | plpgsql |  |
 | refund_payment | `p_payment_id uuid, p_amount_gbp numeric, p_reason text, p_refunded_by uuid, p_reference text, p_actor text` | jsonb | plpgsql |  |
