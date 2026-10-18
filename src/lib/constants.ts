@@ -52,6 +52,7 @@ export const SIDEBAR_NAV: NavGroup[] = [
   {
     label: "Business",
     items: [
+      { label: "Point of Sale", href: "/dashboard/pos", icon: "Receipt" },
       { label: "F&B", href: "/dashboard/fnb", icon: "UtensilsCrossed" },
       { label: "Tour Operators", href: "/dashboard/tour-operators", icon: "Handshake" },
       { label: "Channel Manager", href: "/dashboard/channels", icon: "Globe" },

@@ -229,3 +229,36 @@ test("guest portal: staff creates a link, the guest opens it without logging in 
   await cleanup.request.post(`/api/v1/bookings/${booking.id}/cancel`, { headers: { "X-CSRF-Token": csrf2 }, data: { reason: "journey cleanup" } });
   await cleanup.close();
 });
+
+test("point of sale: a ticket is charged to an in-house room from the till", async ({ browser }) => {
+  const ctx = await signedInContext(browser);
+  const csrf = (await (await ctx.request.get("/api/v1/csrf")).json()).data.token as string;
+  const today = new Date().toISOString().slice(0, 10);
+  const plus = (d: number) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
+  const apts = await (await ctx.request.get("/api/v1/apartments?status=available&limit=50")).json();
+  const guests = await (await ctx.request.get("/api/v1/guests?limit=1")).json();
+  const apt = (apts.data as Array<{ id: string; number: string; status: string }>).find((a) => a.status === "available")!;
+  const made = await ctx.request.post("/api/v1/bookings", { headers: { "X-CSRF-Token": csrf }, data: { apartment_id: apt.id, guest_id: guests.data[0].id, check_in: today, check_out: plus(1), adults: 1 } });
+  expect(made.status()).toBe(201);
+  const booking = (await made.json()).data as { id: string };
+  await ctx.request.patch(`/api/v1/bookings/${booking.id}`, { headers: { "X-CSRF-Token": csrf }, data: { status: "confirmed" } });
+  const ci = await ctx.request.post(`/api/v1/bookings/${booking.id}/checkin`, { headers: { "X-CSRF-Token": csrf }, data: {} });
+  expect(ci.status()).toBe(200);
+
+  const page = await ctx.newPage();
+  await page.goto("/dashboard/pos", { waitUntil: "networkidle" });
+  await page.getByTestId("pos-room").fill(apt.number);
+  await page.getByTestId("pos-lookup").click();
+  await expect(page.getByTestId("pos-stay")).toContainText(`Room ${apt.number}`, { timeout: 15_000 });
+  await page.getByTestId("pos-item").first().click();
+  await page.getByTestId("pos-item").first().click();
+  await expect(page.getByTestId("pos-lines").locator("li")).toHaveCount(1);
+  await page.getByTestId("pos-post").click();
+  await expect(page.getByTestId("pos-result")).toContainText("Posted", { timeout: 15_000 });
+
+  const folio = await (await ctx.request.get(`/api/v1/bookings/${booking.id}/folio`)).json();
+  expect(Number(folio.data.balance_gbp)).toBeGreaterThan(0);
+  // Cleanup: check out with the balance left open (manager override), so the room is free again
+  await ctx.request.post(`/api/v1/bookings/${booking.id}/checkout`, { headers: { "X-CSRF-Token": csrf }, data: { allow_outstanding_balance: true } });
+  await ctx.close();
+});

@@ -2,7 +2,7 @@
 
 Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dictionary.py`; do not edit by hand. Schema source of truth: `supabase/migrations/`.
 
-61 tables, 36 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
+64 tables, 38 functions. Every table has row-level security enabled unless marked otherwise; policies are summarised per table.
 
 ## Tables
 
@@ -54,6 +54,9 @@ Generated 2026-10-18 from the local Supabase stack by `scripts/generate-data-dic
 | [partner_certifications](#partner_certifications) | Compliance documents of partners. | 11 | on |
 | [partners](#partners) | Local partners (excursions, transfers, beach). | 21 | on |
 | [payments](#payments) | Money received against a folio or invoice. | 15 | on |
+| [pos_items](#pos_items) |  | 10 | on |
+| [pos_outlets](#pos_outlets) |  | 9 | on |
+| [pos_tickets](#pos_tickets) |  | 17 | on |
 | [pricing_decisions](#pricing_decisions) | Rate changes proposed or applied by the pricing automation (gated by AUTO_PRICING_ENABLED). | 12 | on |
 | [promotions](#promotions) | Promotional offers. | 15 | on |
 | [properties](#properties) | A hotel or aparthotel operated on the platform. Carries VAT rate, currencies and the current business date. | 23 | on |
@@ -1609,6 +1612,101 @@ Row-level security policies:
 | payments_front_desk_select | SELECT | `(role_at_least(50) AND ((invoice_id IN ( SELECT invoices.id    FROM invoices   WHERE can_a` | `` |
 | payments_management_update | UPDATE | `(role_at_least(70) AND ((invoice_id IN ( SELECT invoices.id    FROM invoices   WHERE can_a` | `role_at_least(70)` |
 
+### pos_items
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| outlet_id | uuid |  |  | pos_outlets.id |
+| sku | character varying(30) | yes |  |  |
+| name | character varying(120) |  |  |  |
+| category | character varying(60) | yes |  |  |
+| unit_price_gbp | numeric(10,2) |  |  |  |
+| tax_rate_percent | numeric(5,2) | yes |  |  |
+| is_active | boolean |  | true |  |
+| created_at | timestamp with time zone |  | now() |  |
+| updated_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- unique `pos_items_outlet_id_name_key`: `UNIQUE (outlet_id, name)`
+- check `pos_items_unit_price_gbp_check`: `CHECK ((unit_price_gbp >= (0)::numeric))`
+
+Triggers:
+
+- `pos_items_updated_at`: EXECUTE FUNCTION update_updated_at_column()
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| pos_items_manage | ALL | `(role_at_least(70) AND (EXISTS ( SELECT 1    FROM pos_outlets o   WHERE ((o.id = pos_items` | `(role_at_least(70) AND (EXISTS ( SELECT 1    FROM pos_outlets o   WHERE ((o.id = pos_items` |
+| pos_items_select | SELECT | `(EXISTS ( SELECT 1    FROM pos_outlets o   WHERE ((o.id = pos_items.outlet_id) AND can_acc` | `` |
+
+### pos_outlets
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| property_id | uuid |  |  | properties.id |
+| code | character varying(20) |  |  |  |
+| name | character varying(100) |  |  |  |
+| type | character varying(20) |  | 'restaurant'::character varying |  |
+| default_tax_rate_percent | numeric(5,2) | yes |  |  |
+| is_active | boolean |  | true |  |
+| created_at | timestamp with time zone |  | now() |  |
+| updated_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- unique `pos_outlets_property_id_code_key`: `UNIQUE (property_id, code)`
+- check `pos_outlets_type_check`: `CHECK (((type)::text = ANY ((ARRAY['restaurant'::character varying, 'bar'::character varying, 'spa'::character varying, 'shop'::character varying, 'minibar'::character varying, 'other'::character varying])::text[])))`
+
+Triggers:
+
+- `pos_outlets_updated_at`: EXECUTE FUNCTION update_updated_at_column()
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| pos_outlets_manage | ALL | `(role_at_least(70) AND can_access_property(property_id))` | `(role_at_least(70) AND can_access_property(property_id))` |
+| pos_outlets_select | SELECT | `can_access_property(property_id)` | `` |
+
+### pos_tickets
+
+| Column | Type | Null | Default | References |
+| --- | --- | --- | --- | --- |
+| id | uuid |  | gen_random_uuid() |  |
+| property_id | uuid |  |  | properties.id |
+| outlet_id | uuid |  |  | pos_outlets.id |
+| booking_id | uuid |  |  | bookings.id |
+| folio_id | uuid |  |  | folios.id |
+| ticket_reference | character varying(40) | yes |  |  |
+| items | jsonb |  |  |  |
+| folio_line_ids | _uuid[] |  | '{}'::uuid[] |  |
+| subtotal_gbp | numeric(10,2) |  |  |  |
+| tax_gbp | numeric(10,2) |  |  |  |
+| total_gbp | numeric(10,2) |  |  |  |
+| business_date | date |  |  |  |
+| posted_by | uuid | yes |  | staff.id |
+| posted_by_name | text | yes |  |  |
+| status | character varying(20) |  | 'posted'::character varying |  |
+| voided_at | timestamp with time zone | yes |  |  |
+| created_at | timestamp with time zone |  | now() |  |
+
+Constraints:
+
+- check `pos_tickets_status_check`: `CHECK (((status)::text = ANY ((ARRAY['posted'::character varying, 'voided'::character varying])::text[])))`
+
+Row-level security policies:
+
+| Policy | Command | Using | With check |
+| --- | --- | --- | --- |
+| pos_tickets_insert | INSERT | `` | `(role_at_least(30) AND can_access_property(property_id))` |
+| pos_tickets_select | SELECT | `can_access_property(property_id)` | `` |
+| pos_tickets_update | UPDATE | `(role_at_least(70) AND can_access_property(property_id))` | `(role_at_least(70) AND can_access_property(property_id))` |
+
 ### pricing_decisions
 
 Rate changes proposed or applied by the pricing automation (gated by AUTO_PRICING_ENABLED).
@@ -2134,6 +2232,7 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | open_folio | `p_booking_id uuid` | uuid | plpgsql |  |
 | post_booking_room_charges | `p_booking_id uuid` | integer | plpgsql |  |
 | post_folio_charge | `p_folio_id uuid, p_type text, p_description text, p_quantity numeric, p_unit_amount_gbp numeric, p_tax_rate_percent numeric, p_actor text` | jsonb | plpgsql |  |
+| post_pos_ticket | `p_outlet_id uuid, p_booking_id uuid, p_items jsonb, p_ticket_reference text, p_posted_by uuid, p_posted_by_name text` | jsonb | plpgsql |  |
 | post_room_charges | `p_property_id uuid, p_business_date date, p_actor text` | integer | plpgsql |  |
 | property_business_date | `p_property_id uuid` | date | sql |  |
 | quote_stay | `p_apartment_type_id uuid, p_check_in date, p_check_out date, p_rate_plan_id uuid, p_channel_code text` | jsonb | plpgsql |  |
@@ -2149,3 +2248,4 @@ Called by API routes through PostgREST `rpc()`. SECURITY DEFINER functions run w
 | staff_role_level | `` | integer | sql | yes |
 | update_updated_at_column | `` | trigger | plpgsql |  |
 | void_folio_line | `p_line_id uuid, p_reason text, p_actor text` | jsonb | plpgsql |  |
+| void_pos_ticket | `p_ticket_id uuid, p_reason text, p_actor text` | jsonb | plpgsql |  |

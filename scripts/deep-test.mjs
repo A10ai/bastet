@@ -393,6 +393,62 @@ async function portalTests(owner, reception, hk) {
   await ctx.ctx.post(`/api/v1/bookings/${upcoming.id}/cancel`, { headers: H(ctx.csrf), data: { reason: "deep test cleanup" } });
 }
 
+// ---------------------------------------------------------------------------
+// Point of sale (00030): outlet charges land on the in-house folio
+// ---------------------------------------------------------------------------
+async function posTests(owner, mgr, reception, hk) {
+  const ctx = reception?.ok ? reception : owner;
+  const m = mgr?.ok ? mgr : owner;
+  const outlets = (await j(await owner.ctx.get("/api/v1/pos/outlets")))?.data || [];
+  const bar = outlets.find((o) => o.code === "POOL") || outlets[0];
+  rec("txn", "POS outlets are listed with their catalogue", outlets.length >= 1 && (bar?.items || []).length >= 1 ? "PASS" : "FAIL", `${outlets.length} outlets, ${bar?.items?.length} items`);
+  if (!bar) return;
+  if (hk?.ok) {
+    const r = await hk.ctx.post("/api/v1/pos/outlets", { headers: H(hk.csrf), data: { code: "HKX", name: "Nope" } });
+    rec("txn", "housekeeping cannot create outlets -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
+  }
+  // Make an in-house stay for today
+  const apt = ((await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=50")))?.data || []).find((a) => a.status === "available");
+  const guest = ((await j(await owner.ctx.get("/api/v1/guests?limit=1")))?.data || [])[0];
+  if (!apt || !guest) { rec("txn", "POS tests need an available apartment and a guest", "WARN", "none"); return; }
+  const made = await ctx.ctx.post("/api/v1/bookings", { headers: H(ctx.csrf), data: { apartment_id: apt.id, guest_id: guest.id, check_in: today, check_out: plus(2), adults: 1 } });
+  const booking = (await j(made))?.data;
+  if (!booking?.id) { rec("txn", "POS tests could not create a booking", "FAIL", `${made.status()}`); return; }
+  await ctx.ctx.patch(`/api/v1/bookings/${booking.id}`, { headers: H(ctx.csrf), data: { status: "confirmed" } });
+  const notYet = await ctx.ctx.post("/api/v1/pos/tickets", { headers: H(ctx.csrf), data: { outlet_id: bar.id, booking_id: booking.id, items: [{ item_id: bar.items[0].id, quantity: 1 }] } });
+  rec("txn", "charging a guest who is not in house -> 409 NOT_IN_HOUSE", notYet.status() === 409 ? "PASS" : "FAIL", notYet.status());
+  const ci = await ctx.ctx.post(`/api/v1/bookings/${booking.id}/checkin`, { headers: H(ctx.csrf), data: {} });
+  if (ci.status() !== 200) { rec("txn", "POS tests need a check-in", "WARN", `${ci.status()} ${(await ci.text()).slice(0, 80)}`); await ctx.ctx.post(`/api/v1/bookings/${booking.id}/cancel`, { headers: H(ctx.csrf), data: { reason: "deep test cleanup" } }); return; }
+
+  const who = await j(await ctx.ctx.get(`/api/v1/pos/in-house?room=${encodeURIComponent(apt.number)}`));
+  rec("txn", "till finds the in-house guest by room number", who?.data?.booking_id === booking.id ? "PASS" : "FAIL", JSON.stringify(who?.data || who)?.slice(0, 100));
+  const before = (await j(await ctx.ctx.get(`/api/v1/bookings/${booking.id}/folio`)))?.data;
+  const item = bar.items[0];
+  const post = await ctx.ctx.post("/api/v1/pos/tickets", { headers: H(ctx.csrf), data: { outlet_id: bar.id, room_number: apt.number, ticket_reference: "DT-1", items: [{ item_id: item.id, quantity: 2 }, { name: "Service", unit_price_gbp: 1.5, tax_rate_percent: 0 }] } });
+  const ticket = (await j(post))?.data;
+  const expectedNet = Math.round((2 * Number(item.unit_price_gbp) + 1.5) * 100) / 100;
+  rec("txn", "ticket by room number posts to the folio with catalogue prices", post.status() === 201 && Math.abs(Number(ticket?.subtotal_gbp) - expectedNet) < 0.01 && ticket?.items?.length === 2 ? "PASS" : "FAIL", `${post.status()} subtotal=${ticket?.subtotal_gbp} expected=${expectedNet}`);
+  const after = (await j(await ctx.ctx.get(`/api/v1/bookings/${booking.id}/folio`)))?.data;
+  const delta = Number(after?.balance_gbp ?? after?.balance ?? 0) - Number(before?.balance_gbp ?? before?.balance ?? 0);
+  rec("txn", "folio balance rises by the ticket total (net plus VAT)", Math.abs(delta - Number(ticket?.total_gbp)) < 0.01 ? "PASS" : "FAIL", `delta=${delta} total=${ticket?.total_gbp}`);
+  const fake = await ctx.ctx.post("/api/v1/pos/tickets", { headers: H(ctx.csrf), data: { outlet_id: bar.id, booking_id: booking.id, items: [{ item_id: "6f1c2a3e-1b2c-4d5e-8f90-123456789001", quantity: 1 }] } });
+  rec("txn", "unknown catalogue item -> 404", fake.status() === 404 ? "PASS" : "FAIL", fake.status());
+  const noReason = await m.ctx.delete(`/api/v1/pos/tickets/${ticket?.ticket_id}`, { headers: H(m.csrf), data: {} });
+  rec("txn", "void without a reason -> 400", noReason.status() === 400 ? "PASS" : "FAIL", noReason.status());
+  if (reception?.ok) {
+    const recVoid = await reception.ctx.delete(`/api/v1/pos/tickets/${ticket?.ticket_id}`, { headers: H(reception.csrf), data: { reason: "not allowed" } });
+    rec("txn", "reception cannot void a ticket -> 403", recVoid.status() === 403 ? "PASS" : "FAIL", recVoid.status());
+  }
+  const voided = await m.ctx.delete(`/api/v1/pos/tickets/${ticket?.ticket_id}`, { headers: H(m.csrf), data: { reason: "deep test void" } });
+  const afterVoid = (await j(await ctx.ctx.get(`/api/v1/bookings/${booking.id}/folio`)))?.data;
+  const back = Number(afterVoid?.balance_gbp ?? afterVoid?.balance ?? 0) - Number(before?.balance_gbp ?? before?.balance ?? 0);
+  rec("txn", "manager void reverses every line and the balance returns", voided.status() === 200 && Math.abs(back) < 0.01 ? "PASS" : "FAIL", `${voided.status()} residual=${back}`);
+  const tix = (await j(await owner.ctx.get(`/api/v1/pos/tickets?booking_id=${booking.id}`)))?.data || [];
+  rec("txn", "ticket history shows the voided ticket", tix.some((t) => t.id === ticket?.ticket_id && t.status === "voided") ? "PASS" : "FAIL");
+  // Cleanup: settle anything and check out, or cancel
+  await ctx.ctx.post(`/api/v1/bookings/${booking.id}/checkout`, { headers: H(ctx.csrf), data: { allow_outstanding_balance: true } }).catch(() => null);
+}
+
 async function transactionTests(owner, reception) {
   const ctx = owner.ctx, csrf = owner.csrf;
   const apts = (await j(await ctx.get("/api/v1/apartments?status=available&limit=5")))?.data || (await j(await ctx.get("/api/v1/apartments")))?.data || [];
@@ -740,13 +796,18 @@ async function financeTests(ctx, csrf, reception, guest, direct, available) {
 }
 
 // ---------------------------------------------------------------------------
+// A section that throws must not hide the sections after it: record and continue.
+async function safe(section, fn) {
+  try { await fn(); } catch (e) { rec(section, "section crashed", "FAIL", (e && e.message ? e.message : String(e)).split("\n")[0].slice(0, 200)); }
+}
+
 async function main() {
   console.log(`Deep test: ${BASE_URL} mode=${MODE}`);
   await unauthTests();
   const owner = ACCOUNTS.owner ? await login(ACCOUNTS.owner.email, ACCOUNTS.owner.password) : null;
   rec("auth", "owner login", owner?.ok ? "PASS" : "FAIL", owner?.ok ? `role=${owner.staff?.role}` : `${owner?.status} ${owner?.body?.slice(0, 80)}`);
   if (!owner?.ok) { finish(); return; }
-  await forgedCookieTest(owner.ctx);
+  await safe("security", () => forgedCookieTest(owner.ctx));
 
   const hk = ACCOUNTS.housekeeping ? await login(ACCOUNTS.housekeeping.email, ACCOUNTS.housekeeping.password) : null;
   const mgr = ACCOUNTS.manager ? await login(ACCOUNTS.manager.email, ACCOUNTS.manager.password) : null;
@@ -757,15 +818,16 @@ async function main() {
   const bad = ACCOUNTS.owner ? await login(ACCOUNTS.owner.email, "wrong-password") : null;
   rec("auth", "wrong password rejected", bad && !bad.ok && bad.status === 401 ? "PASS" : "FAIL", bad?.status);
 
-  await apiTests(owner.ctx, "owner");
-  await roleTests(hk, mgr, owner);
-  if (MODE === "full") await notificationTests(owner, rec_);
-  if (MODE === "full") await ratePlanTests(owner, mgr, rec_, hk);
-  if (MODE === "full") await groupTests(owner, rec_, hk);
-  if (MODE === "full") await portalTests(owner, rec_, hk);
+  await safe("api:owner", () => apiTests(owner.ctx, "owner"));
+  await safe("roles", () => roleTests(hk, mgr, owner));
+  if (MODE === "full") await safe("txn", () => notificationTests(owner, rec_));
+  if (MODE === "full") await safe("txn", () => ratePlanTests(owner, mgr, rec_, hk));
+  if (MODE === "full") await safe("txn", () => groupTests(owner, rec_, hk));
+  if (MODE === "full") await safe("txn", () => portalTests(owner, rec_, hk));
+  if (MODE === "full") await safe("txn", () => posTests(owner, mgr, rec_, hk));
 
   let ids = {};
-  if (MODE === "full" && rec_?.ok) ids = await transactionTests(owner, rec_);
+  if (MODE === "full" && rec_?.ok) { try { ids = await transactionTests(owner, rec_); } catch (e) { rec("txn", "section crashed", "FAIL", String(e && e.message || e).split("\n")[0].slice(0, 200)); } }
   // ids for [id] pages
   const first = async (p) => ((await j(await owner.ctx.get(p)))?.data || [])[0]?.id;
   ids = {
@@ -778,8 +840,8 @@ async function main() {
     invoices: ids.invoice?.id || (await first("/api/v1/invoices")),
     finance: ids.invoice?.id || (await first("/api/v1/invoices")),
   };
-  await pageTests(owner.ctx, ids);
-  if (MODE === "full") await mfaTests(ACCOUNTS.manager);
+  await safe("pages", () => pageTests(owner.ctx, ids));
+  if (MODE === "full") await safe("mfa", () => mfaTests(ACCOUNTS.manager));
   // Last: brute-force protection is per account (5 per 15 min). The owner has
   // used two attempts so far; three more wrong passwords are allowed, the sixth
   // attempt is refused, and the housekeeping account is unaffected.

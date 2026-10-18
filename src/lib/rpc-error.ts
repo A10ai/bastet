@@ -50,6 +50,12 @@ const STATUS_BY_CODE: Record<string, number> = {
   DUPLICATE_ROOM: 409,
   DOUBLE_BOOKING: 409,
   INVALID_INPUT: 400,
+  // POS (00030)
+  OUTLET_NOT_FOUND: 404,
+  OUTLET_CLOSED: 409,
+  NOT_IN_HOUSE: 409,
+  ITEM_NOT_FOUND: 404,
+  TICKET_NOT_FOUND: 404,
 };
 
 export function rpcErrorResponse(

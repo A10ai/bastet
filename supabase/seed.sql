@@ -280,6 +280,26 @@ INSERT INTO rate_plans (property_id, code, name, description, pricing_mode, adju
   (v_property_id, 'BB', 'Bed and breakfast', 'BAR plus breakfast for every guest.', 'percent_markup', 12, 'flexible', 1, 1, true, false)
 ON CONFLICT (property_id, code) DO NOTHING;
 
+-- Point of sale (00030): outlets and a small catalogue; prices in GBP, VAT from the property unless set
+INSERT INTO pos_outlets (property_id, code, name, type) VALUES
+  (v_property_id, 'REST', 'Main Restaurant', 'restaurant'),
+  (v_property_id, 'POOL', 'Pool Bar', 'bar'),
+  (v_property_id, 'ROOF', 'Rooftop Lounge', 'bar'),
+  (v_property_id, 'SPA', 'Spa', 'spa'),
+  (v_property_id, 'MINI', 'Minibar', 'minibar')
+ON CONFLICT (property_id, code) DO NOTHING;
+INSERT INTO pos_items (outlet_id, name, category, unit_price_gbp)
+SELECT o.id, i.name, i.category, i.price FROM pos_outlets o
+JOIN (VALUES
+  ('REST', 'Breakfast buffet', 'Breakfast', 8.00), ('REST', 'Club sandwich', 'Mains', 7.50), ('REST', 'Grilled sea bass', 'Mains', 14.00), ('REST', 'Soft drink', 'Drinks', 2.00), ('REST', 'House wine (glass)', 'Drinks', 4.50),
+  ('POOL', 'Local beer', 'Drinks', 3.50), ('POOL', 'Cocktail', 'Drinks', 6.00), ('POOL', 'Fresh juice', 'Drinks', 3.00), ('POOL', 'Fries', 'Snacks', 3.00),
+  ('ROOF', 'Shisha', 'Lounge', 9.00), ('ROOF', 'Mocktail', 'Drinks', 4.50), ('ROOF', 'Mezze platter', 'Snacks', 8.50),
+  ('SPA', 'Massage 60 min', 'Treatments', 35.00), ('SPA', 'Facial', 'Treatments', 28.00), ('SPA', 'Day pass', 'Access', 10.00),
+  ('MINI', 'Water 1.5L', 'Minibar', 1.50), ('MINI', 'Soft drink can', 'Minibar', 2.00), ('MINI', 'Beer can', 'Minibar', 3.00), ('MINI', 'Snack bar', 'Minibar', 1.50)
+) AS i(code, name, category, price) ON i.code = o.code
+WHERE o.property_id = v_property_id
+ON CONFLICT (outlet_id, name) DO NOTHING;
+
 -- ============================================================
 -- 10. Sample Bookings (15) — using apartment numbers to find IDs
 -- ============================================================

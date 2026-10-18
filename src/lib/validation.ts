@@ -632,3 +632,46 @@ export const precheckinSchema = z.object({
   marketing_consent: z.boolean().default(false),
   accept_terms: z.literal(true, { message: "You must accept the booking terms" }),
 });
+
+
+// ---------------------------------------------------------------------------
+// Point of sale (migration 00030)
+// ---------------------------------------------------------------------------
+export const POS_OUTLET_TYPES = ["restaurant", "bar", "spa", "shop", "minibar", "other"] as const;
+export const posOutletSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  code: z.string().min(2).max(20).regex(/^[A-Za-z0-9_-]+$/),
+  name: z.string().min(2).max(100),
+  type: z.enum(POS_OUTLET_TYPES).default("restaurant"),
+  default_tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  is_active: z.boolean().default(true),
+});
+export const updatePosOutletSchema = posOutletSchema.omit({ property_id: true }).partial();
+export const posItemSchema = z.object({
+  sku: z.string().max(30).optional().nullable(),
+  name: z.string().min(1).max(120),
+  category: z.string().max(60).optional().nullable(),
+  unit_price_gbp: z.number().min(0).max(100000),
+  tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  is_active: z.boolean().default(true),
+});
+export const updatePosItemSchema = posItemSchema.partial();
+const posTicketItem = z
+  .object({
+    item_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(120).optional(),
+    quantity: z.number().positive().max(999).default(1),
+    unit_price_gbp: z.number().min(0).max(100000).optional(),
+    tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  })
+  .refine((v) => v.item_id || (v.name && v.unit_price_gbp !== undefined), { message: "Give an item_id or a name and a price", path: ["item_id"] });
+export const posTicketSchema = z
+  .object({
+    outlet_id: z.string().uuid(),
+    booking_id: z.string().uuid().optional(),
+    room_number: z.string().min(1).max(20).optional(),
+    ticket_reference: z.string().max(40).optional().nullable(),
+    items: z.array(posTicketItem).min(1).max(100),
+  })
+  .refine((v) => v.booking_id || v.room_number, { message: "booking_id or room_number is required", path: ["room_number"] });
+export const voidPosTicketSchema = z.object({ reason: z.string().min(3).max(500) });
