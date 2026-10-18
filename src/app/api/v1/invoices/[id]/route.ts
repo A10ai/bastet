@@ -2,36 +2,20 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, updateInvoiceSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireRole(request, ROLES.FRONT_DESK);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from("invoices")
-      .select(`
+export const GET = getByIdHandler({
+  table: "invoices",
+  roles: ROLES.FRONT_DESK,
+  select: `
         *,
         guest:guests(id, first_name, last_name, email, phone),
         booking:bookings(id, reference, check_in, check_out, apartment:apartments(id, number))
-      `)
-      .eq("id", params.id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+      `,
+  label: "Invoice",
+});
 
 export async function PATCH(
   request: NextRequest,

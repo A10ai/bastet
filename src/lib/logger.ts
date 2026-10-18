@@ -77,8 +77,10 @@ function createPinoInstance(): PinoLogger {
         const ts = new Date().toISOString();
         const prefix = `[${ts}] [${level.toUpperCase()}] [hospitai]`;
         if (Object.keys(context).length > 0) {
+          // eslint-disable-next-line no-console -- pino unavailable (edge/browser fallback)
           console[level === "fatal" ? "error" : level === "trace" ? "log" : level](prefix, message, context);
         } else {
+          // eslint-disable-next-line no-console -- pino unavailable (edge/browser fallback)
           console[level === "fatal" ? "error" : level === "trace" ? "log" : level](prefix, message);
         }
       };

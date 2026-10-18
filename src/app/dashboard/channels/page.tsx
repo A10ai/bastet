@@ -30,7 +30,7 @@ import {
   Legend,
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------

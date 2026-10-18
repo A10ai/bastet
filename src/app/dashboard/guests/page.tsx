@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Guest, LoyaltyTier } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
@@ -73,7 +73,7 @@ export default function GuestsPage() {
     }
   };
 
-  const fetchIntelligence = async (guestList: Guest[]) => {
+  const fetchIntelligence = async (_guestList: Guest[]) => {
     try {
       const res = await fetch("/api/v1/ai/guests");
       const json = await res.json();
@@ -120,11 +120,13 @@ export default function GuestsPage() {
 
   useEffect(() => {
     fetchGuests();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [tierFilter, vipOnly]);
 
   useEffect(() => {
     const timer = setTimeout(fetchGuests, 300);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [search]);
 
   const tiers: LoyaltyTier[] = ["bronze", "silver", "gold", "platinum"];
@@ -149,6 +151,7 @@ export default function GuestsPage() {
     return tiers
       .map((t) => ({ name: t.charAt(0).toUpperCase() + t.slice(1), value: counts[t] || 0 }))
       .filter((d) => d.value > 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [guests]);
 
   const nationalityChartData = useMemo(() => {

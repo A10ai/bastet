@@ -11,10 +11,8 @@ import {
   Brain,
   Workflow,
   Sparkles,
-  Clock,
   CheckCircle,
-  AlertTriangle,
-} from "lucide-react";
+  AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   AreaChart,

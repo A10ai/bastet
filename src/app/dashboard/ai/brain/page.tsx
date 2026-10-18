@@ -58,14 +58,14 @@ interface BrainDecision {
   executed: boolean;
   approved: boolean | null;
   created_at: string;
-  event_to_emit?: { type: string; payload: Record<string, unknown> };
+  event_to_emit?: { type: string; payload: Record<string, any> };
 }
 
 interface BrainCycleResult {
   cycle_id: string;
   mode: "supervised" | "autonomous";
   timestamp: string;
-  data_snapshot: Record<string, unknown>;
+  data_snapshot: Record<string, any>;
   decisions: BrainDecision[];
   summary: string;
 }
@@ -831,7 +831,7 @@ function DecisionCard({
 // Snapshot Preview
 // ---------------------------------------------------------------------------
 
-function SnapshotPreview({ snapshot }: { snapshot: Record<string, unknown> }) {
+function SnapshotPreview({ snapshot }: { snapshot: Record<string, any> }) {
   const s = snapshot as Record<string, any>;
   if (!s.occupancy) {
     return (

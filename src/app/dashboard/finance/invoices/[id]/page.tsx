@@ -52,6 +52,7 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     fetchInvoice();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   const handleSend = async () => {

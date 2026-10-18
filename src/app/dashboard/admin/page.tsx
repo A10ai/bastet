@@ -17,10 +17,7 @@ import {
   Zap,
   Trash2,
   Loader2,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-} from "lucide-react";
+  CheckCircle } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -33,7 +30,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 interface Toast {
   id: number;
@@ -63,6 +60,7 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, []);
 
   const fetchData = async () => {

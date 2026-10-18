@@ -48,11 +48,11 @@ interface WorkflowStep {
   step_number: number;
   title: string;
   action_type: string;
-  action_params: Record<string, unknown>;
+  action_params: Record<string, any>;
   requires_approval: boolean;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   executed_at: string | null;
-  result: Record<string, unknown> | null;
+  result: Record<string, any> | null;
 }
 
 interface Workflow {
@@ -70,7 +70,7 @@ interface Workflow {
   approved_by: string | null;
   approved_at: string | null;
   completed_at: string | null;
-  outcome: Record<string, unknown> | null;
+  outcome: Record<string, any> | null;
   outcome_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -390,7 +390,7 @@ function CreateWorkflowModal({
     title: string;
     description: string;
     priority: string;
-    steps: Array<{ title: string; action_type: string; action_params: Record<string, unknown>; requires_approval: boolean }>;
+    steps: Array<{ title: string; action_type: string; action_params: Record<string, any>; requires_approval: boolean }>;
   }) => void;
 }) {
   const [title, setTitle] = useState("");
@@ -622,7 +622,7 @@ export default function WorkflowsPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleAction = async (action: string, id: string, extra?: Record<string, unknown>) => {
+  const handleAction = async (action: string, id: string, extra?: Record<string, any>) => {
     setActionLoading(id);
     try {
       const res = await fetch("/api/v1/ai/workflows", {
@@ -652,7 +652,7 @@ export default function WorkflowsPage() {
     title: string;
     description: string;
     priority: string;
-    steps: Array<{ title: string; action_type: string; action_params: Record<string, unknown>; requires_approval: boolean }>;
+    steps: Array<{ title: string; action_type: string; action_params: Record<string, any>; requires_approval: boolean }>;
   }) => {
     try {
       const res = await fetch("/api/v1/ai/workflows", {

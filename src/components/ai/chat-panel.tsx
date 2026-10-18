@@ -5,9 +5,7 @@ import {
   Brain,
   X,
   Send,
-  Loader2,
-  MessageSquare,
-} from "lucide-react";
+  Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Message {

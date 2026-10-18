@@ -713,12 +713,7 @@ export async function getRevenueForecasting(
     .in("status", ["checked_in", "checked_out"])
     .gte("check_in", ninetyDaysAgo.toISOString().slice(0, 10));
 
-  const { data: apartments } = await supabase
-    .from("apartments")
-    .select("id")
-    .neq("status", "out_of_service");
 
-  const totalApartments = (apartments || []).length || 1;
 
   // Calculate historical average daily revenue
   const histRows = historicalBookings || [];

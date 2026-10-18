@@ -86,7 +86,10 @@ export async function POST(
       new_data: body,
     });
 
-    return NextResponse.json({ data: payment }, { status: 201 });
+    return NextResponse.json(
+      { data: payment, meta: { invoice_status: newStatus, outstanding_gbp } },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

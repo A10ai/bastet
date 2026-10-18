@@ -21,13 +21,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type {
   GuestScore,
-  ChurnRiskGuest,
   UpsellOpportunity,
-  SegmentAnalysis,
   GuestPrediction,
-  GuestInsight,
-  GuestIntelligenceData,
-} from "@/lib/guest-intelligence";
+  GuestIntelligenceData } from "@/lib/guest-intelligence";
 import {
   BarChart,
   Bar,

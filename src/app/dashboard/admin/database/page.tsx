@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Database,
@@ -20,7 +20,7 @@ import {
   X,
   ArrowUpDown,
 } from "lucide-react";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 interface Toast {
   id: number;

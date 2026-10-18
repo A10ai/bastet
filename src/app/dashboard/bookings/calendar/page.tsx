@@ -277,21 +277,8 @@ export default function AvailabilityCalendarPage() {
           const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
           const gJson = await gRes.json();
           const vipGuests = gJson.data || [];
-          const vipIds = new Set(vipGuests.map((g: Record<string, any>) => g.id));
-
-          if (data) {
-            const todayStr = format(new Date(), "yyyy-MM-dd");
-            let count = 0;
-            for (const apt of data.apartments) {
-              for (const b of apt.bookings) {
-                if (b.check_in === todayStr && b.status !== "cancelled") {
-                  // Simplified — if any arriving guest is VIP
-                  count++;
-                }
-              }
-            }
-            // This is approximate without guest IDs in calendar data
-          }
+          // VIP arrivals cannot be derived without guest ids in the calendar payload.
+          void vipGuests;
         } catch { /* — */ }
       }
     };
@@ -646,7 +633,7 @@ export default function AvailabilityCalendarPage() {
                     >
                       {/* Background cells (date columns) */}
                       <div className="absolute inset-0 flex">
-                        {dates.map((date, idx) => {
+                        {dates.map((date) => {
                           const weekend = isWeekend(date);
                           const todayCol = isToday(date);
                           const dateStr = format(date, "yyyy-MM-dd");
@@ -781,7 +768,6 @@ function SummaryCard({
   icon,
   label,
   value,
-  accent,
 }: {
   icon: React.ReactNode;
   label: string;

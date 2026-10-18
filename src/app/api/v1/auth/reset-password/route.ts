@@ -1,5 +1,4 @@
 import type { NextRequest} from "next/server";
-import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api-error";
 import { validateBody, formatZodErrors, passwordResetRequestSchema } from "@/lib/validation";

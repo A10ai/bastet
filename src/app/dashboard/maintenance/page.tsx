@@ -10,7 +10,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { MAINTENANCE_STATUSES } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import type { MaintenanceRequest } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -77,7 +77,7 @@ export default function MaintenancePage() {
       const bkRes = await fetch("/api/v1/bookings?status=checked_in&limit=500");
       const bkJson = await bkRes.json();
       const bookings = bkJson.data || [];
-      const occupiedApts = new Set(bookings.map((b: Record<string, any>) => b.apartment_id).filter(Boolean));
+      const occupiedApts = new Set(bookings.map((b: Record<string, unknown>) => b.apartment_id).filter(Boolean));
 
       for (const req of mxRequests) {
         cd[req.id] = {

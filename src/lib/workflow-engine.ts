@@ -29,11 +29,11 @@ export interface WorkflowStep {
     | "emit_event"
     | "update_booking"
     | "custom";
-  action_params: Record<string, unknown>;
+  action_params: Record<string, any>;
   requires_approval: boolean;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   executed_at: string | null;
-  result: Record<string, unknown> | null;
+  result: Record<string, any> | null;
 }
 
 export interface Workflow {
@@ -52,7 +52,7 @@ export interface Workflow {
   approved_by: string | null;
   approved_at: string | null;
   completed_at: string | null;
-  outcome: Record<string, unknown> | null;
+  outcome: Record<string, any> | null;
   outcome_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -68,7 +68,7 @@ export interface CreateWorkflowInput {
   steps: Array<{
     title: string;
     action_type: WorkflowStep["action_type"];
-    action_params: Record<string, unknown>;
+    action_params: Record<string, any>;
     requires_approval?: boolean;
   }>;
   created_by?: string;
@@ -318,7 +318,7 @@ export async function executeNextStep(
     .eq("id", workflowId);
 
   // Execute the step action
-  let result: Record<string, unknown> = {};
+  let result: Record<string, any> = {};
   let success = false;
 
   try {
@@ -354,7 +354,7 @@ export async function executeNextStep(
     nextStatus = "awaiting_approval";
   }
 
-  const updatePayload: Record<string, unknown> = {
+  const updatePayload: Record<string, any> = {
     steps,
     current_step: nextStep,
     status: nextStatus,
@@ -431,7 +431,7 @@ export async function executeNextStep(
 async function executeStepAction(
   supabase: SupabaseClient,
   step: WorkflowStep
-): Promise<Record<string, unknown>> {
+): Promise<Record<string, any>> {
   const params = step.action_params;
 
   switch (step.action_type) {
@@ -608,7 +608,7 @@ async function executeStepAction(
       const { event_type, source_system, payload } = params as {
         event_type?: string;
         source_system?: string;
-        payload?: Record<string, unknown>;
+        payload?: Record<string, any>;
       };
 
       if (!event_type) throw new Error("emit_event requires event_type");
@@ -723,7 +723,7 @@ export async function cancelWorkflow(
 export async function recordOutcome(
   supabase: SupabaseClient,
   id: string,
-  outcome: Record<string, unknown>,
+  outcome: Record<string, any>,
   notes: string
 ): Promise<Workflow | null> {
   const workflow = await getWorkflow(supabase, id);

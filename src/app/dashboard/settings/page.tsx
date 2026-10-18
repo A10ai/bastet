@@ -5,7 +5,6 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Settings,
   Building2,
   CalendarClock,
   DollarSign,
@@ -13,8 +12,7 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
-  Loader2,
-} from "lucide-react";
+  Loader2 } from "lucide-react";
 
 /* ---------- types ---------- */
 

@@ -9,7 +9,7 @@ import { Eye, Filter, Loader2, Search, Plus, Users, UserCheck, UserX } from "luc
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
@@ -52,7 +52,7 @@ export default function StaffPage() {
     fetchStaff();
   }, [activeFilter, search]);
 
-  const fetchTaskCounts = async (staffList: Staff[]) => {
+  const fetchTaskCounts = async (_staffList: Staff[]) => {
     const counts: StaffTaskCounts = {};
 
     try {

@@ -36,14 +36,14 @@ export interface BrainDecision {
   approved: boolean | null;
   created_at: string;
   event_type?: EventType;
-  event_payload?: Record<string, unknown>;
+  event_payload?: Record<string, any>;
 }
 
 export interface BrainCycleResult {
   cycle_id: string;
   mode: "supervised" | "autonomous";
   timestamp: string;
-  data_snapshot: Record<string, unknown>;
+  data_snapshot: Record<string, any>;
   decisions: BrainDecision[];
   summary: string;
 }
@@ -333,7 +333,7 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
       return guests?.loyalty_tier === "platinum" || guests?.loyalty_tier === "gold";
     })
     .map((b: Record<string, any>) => {
-      const guests = b.guests as unknown as Record<string, unknown>;
+      const guests = b.guests as unknown as Record<string, any>;
       const apt = b.apartments as Record<string, any> | null;
       return {
         guest_name: `${guests.first_name} ${guests.last_name}`,
@@ -364,12 +364,12 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
 
   // Revenue sums
   const sumField = (rows: Record<string, any>[] | null) =>
-    (rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + ((r.total_amount_gbp as number) || 0), 0);
+    (rows || []).reduce((sum: number, r: Record<string, any>) => sum + ((r.total_amount_gbp as number) || 0), 0);
 
   // Rates
   const currentRates = (ratesResult.data || []).map((r: Record<string, any>) => ({
-    type_name: r.name,
-    rate: r.base_weekly_rate_gbp,
+    type_name: String(r.name ?? ""),
+    rate: Number(r.base_weekly_rate_gbp ?? 0),
   }));
 
   // Estimated energy waste: ~£8/unit/day for HVAC in vacant units
@@ -424,7 +424,7 @@ interface ClaudeDecisionRaw {
   impact_estimate: string;
   auto_executable: boolean;
   event_type?: string;
-  event_payload?: Record<string, unknown>;
+  event_payload?: Record<string, any>;
 }
 
 interface ClaudeResponse {
@@ -457,7 +457,7 @@ Respond ONLY with valid JSON in this exact format:
   "summary": "One paragraph executive summary of the property state and key recommendations."
 }`;
 
-  const userMessage = `Property Data Snapshot (${new Date().toISOString()}):\n\n${JSON.stringify(anonymizeSnapshot(snapshot as unknown as Record<string, unknown>), null, 2)}`;
+  const userMessage = `Property Data Snapshot (${new Date().toISOString()}):\n\n${JSON.stringify(anonymizeSnapshot(snapshot as unknown as Record<string, any>), null, 2)}`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -711,7 +711,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
       mode,
       event_type: raw.event_type || null,
       event_payload: raw.event_payload || {},
-      data_snapshot: snapshot as unknown as Record<string, unknown>,
+      data_snapshot: snapshot as unknown as Record<string, any>,
       summary: analysisResult!.summary,
     };
   });
@@ -830,7 +830,7 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     cycle_id: cycleId,
     mode,
     timestamp: cycleTimestamp,
-    data_snapshot: snapshot as unknown as Record<string, unknown>,
+    data_snapshot: snapshot as unknown as Record<string, any>,
     decisions: storedDecisions,
     summary: analysisResult.summary,
   };
@@ -872,7 +872,7 @@ export async function getBrainHistory(
       cycle_id: cycleId,
       mode: (first.mode as "supervised" | "autonomous") || "supervised",
       timestamp: first.created_at,
-      data_snapshot: (first.data_snapshot as unknown as Record<string, unknown>) || {},
+      data_snapshot: (first.data_snapshot as unknown as Record<string, any>) || {},
       decisions: cycleRows.map((r: Record<string, any>) => ({
         id: r.id as string,
         category: r.category as BrainDecision["category"],
@@ -885,7 +885,7 @@ export async function getBrainHistory(
         approved: r.approved as boolean | null,
         created_at: r.created_at as string,
         event_type: r.event_type as EventType | undefined,
-        event_payload: r.event_payload as unknown as Record<string, unknown> | undefined,
+        event_payload: r.event_payload as unknown as Record<string, any> | undefined,
       })),
       summary: (first.summary as string) || "",
     });

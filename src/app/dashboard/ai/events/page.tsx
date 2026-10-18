@@ -34,7 +34,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types

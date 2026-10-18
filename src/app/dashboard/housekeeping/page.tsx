@@ -10,7 +10,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { HOUSEKEEPING_STATUSES, HOUSEKEEPING_TYPES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { HousekeepingTask } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 const HK_STATUS_COLORS: Record<string, string> = {
@@ -101,7 +101,7 @@ export default function HousekeepingPage() {
         const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
         const gJson = await gRes.json();
         const vipGuests = gJson.data || [];
-        const vipGuestIds = new Set(vipGuests.map((g: Record<string, any>) => g.id));
+        const vipGuestIds = new Set(vipGuests.map((g: Record<string, unknown>) => g.id));
 
         for (const b of bookings) {
           if (b.apartment_id && b.guest_id && vipGuestIds.has(b.guest_id)) {

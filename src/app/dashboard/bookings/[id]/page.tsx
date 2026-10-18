@@ -39,6 +39,7 @@ export default function BookingDetailPage() {
 
   useEffect(() => {
     fetchBooking();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   if (loading) {

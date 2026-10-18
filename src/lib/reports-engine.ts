@@ -445,16 +445,6 @@ export async function getGuestReport(
 
   // New vs returning: check if guest has bookings before dateFrom
   const guestIds = Array.from(guestMap.keys());
-  let returningCount = 0;
-  if (guestIds.length > 0) {
-    const { count } = await supabase
-      .from("bookings")
-      .select("guest_id", { count: "exact", head: true })
-      .in("guest_id", guestIds)
-      .lt("check_in", dateFrom)
-      .in("status", ["confirmed", "checked_in", "checked_out"]);
-    returningCount = count || 0;
-  }
   // Approximate: this counts guests who had any prior booking
   // For accuracy we'd need distinct, but this gives a reasonable estimate
   const { data: returningGuestRows } = guestIds.length > 0

@@ -26,6 +26,7 @@ export function useRealtimeSubscription(
     }, debounceMs);
   }, [onUpdate, debounceMs]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   const stableTables = useMemo(() => tables, [tables.join(",")]);
 
   useEffect(() => {

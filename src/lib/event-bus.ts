@@ -87,7 +87,7 @@ async function getOccupancyPercent(supabase: SupabaseClient): Promise<number> {
 
 registerHandler("booking.checked_out", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, booking_id, guest_id } = event.payload as {
+  const { apartment_id } = event.payload as {
     apartment_id?: string;
     booking_id?: string;
     guest_id?: string;
@@ -147,7 +147,7 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
 registerHandler("booking.checked_in", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, booking_id, guest_id } = event.payload as {
+  const { apartment_id, guest_id } = event.payload as {
     apartment_id?: string;
     booking_id?: string;
     guest_id?: string;
@@ -358,7 +358,7 @@ registerHandler("booking.confirmed", async (event, supabase) => {
 
 registerHandler("housekeeping.completed", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, task_id } = event.payload as {
+  const { apartment_id } = event.payload as {
     apartment_id?: string;
     task_id?: string;
   };
@@ -525,7 +525,7 @@ registerHandler("maintenance.created", async (event, supabase) => {
 // Handler: occupancy.threshold_crossed
 // ---------------------------------------------------------------------------
 
-registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
+registerHandler("occupancy.threshold_crossed", async (event, _supabase) => {
   const results: HandlerResult[] = [];
   const { occupancy_percent, direction, threshold } = event.payload as {
     occupancy_percent?: number;
@@ -572,7 +572,7 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
 // Handler: energy.waste_detected
 // ---------------------------------------------------------------------------
 
-registerHandler("energy.waste_detected", async (event, supabase) => {
+registerHandler("energy.waste_detected", async (event, _supabase) => {
   const results: HandlerResult[] = [];
   const { vacant_units_with_hvac, estimated_daily_cost } = event.payload as {
     vacant_units_with_hvac?: number;

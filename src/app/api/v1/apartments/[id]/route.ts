@@ -2,36 +2,20 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, updateApartmentSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireRole(request, ROLES.ALL_STAFF);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from("apartments")
-      .select(`
+export const GET = getByIdHandler({
+  table: "apartments",
+  roles: ROLES.ALL_STAFF,
+  select: `
         *,
         building:buildings(id, name, code),
         apartment_type:apartment_types(*)
-      `)
-      .eq("id", params.id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-    return NextResponse.json({ data });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+      `,
+  label: "Apartment",
+});
 
 export async function PATCH(
   request: NextRequest,

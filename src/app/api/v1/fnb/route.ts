@@ -1,6 +1,5 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 
 /** Audit Oct 2026: this route serves hardcoded sample data. */
@@ -105,7 +104,6 @@ export async function GET(request: NextRequest) {
     const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
     // supabase client available for future F&B table queries
-    const _supabase = createServerSupabaseClient();
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "overview";

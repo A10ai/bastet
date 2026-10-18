@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { toCSV, formatReportData } from "@/lib/export-utils";
 import type {
   OccupancyReport,
@@ -20,7 +20,6 @@ import {
   Printer,
   Loader2,
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
   CheckCircle2,
   Building2,
@@ -31,13 +30,12 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Zap,
-  Brain,
-} from "lucide-react";
+  Brain } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, AreaChart, Area, CartesianGrid,
 } from "recharts";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 // Energy and AI-decisions report shapes are dynamic (optional fields),

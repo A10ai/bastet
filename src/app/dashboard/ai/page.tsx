@@ -2,24 +2,19 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useAIInsights } from "@/hooks/use-api";
-import { Badge } from "@/components/ui/badge";
 import {
   BrainCircuit,
   Zap,
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
-  CheckCircle,
   Info,
   Sparkles,
   Wrench,
   Wallet,
   Users,
   Building2,
-  Loader2,
   ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+  ArrowDownRight } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import type {
   AIInsight,

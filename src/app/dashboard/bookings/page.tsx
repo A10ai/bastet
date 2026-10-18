@@ -24,7 +24,7 @@ import {
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipProps } from "@/lib/chart-styles";
 
 const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
@@ -96,7 +96,7 @@ export default function BookingsPage() {
       const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
       const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
       const directCount = monthBookings.filter(
-        (b) => (b as unknown as Record<string, any>).channel === "direct" || (b as unknown as Record<string, any>).source === "direct"
+        (b) => (b as unknown as Record<string, unknown>).channel === "direct" || (b as unknown as Record<string, unknown>).source === "direct"
       ).length;
       const directPct = monthBookings.length > 0
         ? Math.round((directCount / monthBookings.length) * 100)
@@ -112,7 +112,7 @@ export default function BookingsPage() {
     }
   };
 
-  const fetchGuestMeta = async (bks: Booking[]) => {
+  const fetchGuestMeta = async (_bks: Booking[]) => {
     try {
       const res = await fetch("/api/v1/guests?limit=1000");
       const json = await res.json();
@@ -130,6 +130,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     fetchBookings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
@@ -137,6 +138,7 @@ export default function BookingsPage() {
       fetchBookings();
     }, 300);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [search]);
 
   const statusCounts = BOOKING_STATUSES.reduce(

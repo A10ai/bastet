@@ -2,36 +2,20 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createMaintenanceRequestSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireRole(request, ROLES.ALL_STAFF);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from("maintenance_requests")
-      .select(`
+export const GET = getByIdHandler({
+  table: "maintenance_requests",
+  roles: ROLES.ALL_STAFF,
+  select: `
         *,
         apartment:apartments(id, number, floor, status, building:buildings(id, name, code)),
         assigned_staff:staff!maintenance_requests_assigned_to_fkey(id, first_name, last_name, role, email, phone)
-      `)
-      .eq("id", params.id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: "Request not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+      `,
+  label: "Maintenance request",
+});
 
 export async function PATCH(
   request: NextRequest,

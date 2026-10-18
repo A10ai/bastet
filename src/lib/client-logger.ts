@@ -40,12 +40,15 @@ function consoleForLevel(level: LogLevel): (...args: unknown[]) => void {
     case "error":
       return console.error.bind(console);
     case "warn":
+      // eslint-disable-next-line no-console -- browser logger by design
       return console.warn.bind(console);
     case "info":
+      // eslint-disable-next-line no-console -- browser logger by design
       return console.info.bind(console);
     case "debug":
     case "trace":
     default:
+      // eslint-disable-next-line no-console -- browser logger by design
       return console.log.bind(console);
   }
 }

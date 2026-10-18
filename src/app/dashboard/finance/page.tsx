@@ -37,15 +37,13 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   AreaChart,
   Area,
   XAxis,
   YAxis,
   CartesianGrid,
   BarChart,
-  Bar,
-} from "recharts";
+  Bar } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
 import type { RechartsValue, RechartsName } from "@/types/recharts";

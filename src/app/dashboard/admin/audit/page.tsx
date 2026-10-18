@@ -8,7 +8,6 @@ import {
   Loader2,
   Brain,
   Workflow,
-  Activity,
   CalendarDays,
   Users,
   Sparkles,
@@ -17,8 +16,7 @@ import {
   Zap,
   Settings,
   Lock,
-  Server,
-} from "lucide-react";
+  Server } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
 
 interface AuditEntry {

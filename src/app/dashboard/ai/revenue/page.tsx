@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Loader2,
   TrendingUp,
-  TrendingDown,
   DollarSign,
   BarChart3,
   Percent,
@@ -16,19 +15,15 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
-} from "lucide-react";
+  Minus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type {
   RevenueData,
-  RevenueOverview,
   ChannelMixResult,
-  ChannelOptimization,
   RatePerformanceItem,
   LOSAnalysis,
   RevenueForecast,
-  WhatIfResult,
-} from "@/lib/revenue-engine";
+  WhatIfResult } from "@/lib/revenue-engine";
 import {
   PieChart,
   Pie,
@@ -719,7 +714,7 @@ export default function RevenueCopilotPage() {
     );
   }
 
-  const { overview, channel_mix, channel_optimization, rate_performance, los_analysis, revenue_forecast } = data;
+  const { overview, channel_mix, rate_performance, los_analysis, revenue_forecast } = data;
 
   return (
     <div className="space-y-6">

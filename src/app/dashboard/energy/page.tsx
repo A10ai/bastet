@@ -35,7 +35,7 @@ import type {
   TimelinePoint,
   EnergyRecommendation,
 } from "@/lib/energy-engine";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 import { darkTooltipStyle } from "@/lib/chart-styles";
 
 const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;

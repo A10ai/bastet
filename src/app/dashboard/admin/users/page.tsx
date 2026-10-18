@@ -108,6 +108,7 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, []);
 
   const handleCreate = async () => {

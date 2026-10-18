@@ -34,7 +34,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";

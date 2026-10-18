@@ -8,7 +8,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays } from "date-fns";
 
 export interface ChatMessage {
   role: "user" | "ai";

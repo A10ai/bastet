@@ -2,60 +2,19 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireRole(request, ROLES.FRONT_DESK);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data: guest, error } = await supabase
-      .from("guests")
-      .select(`
+export const GET = getByIdHandler({
+  table: "guests",
+  roles: ROLES.FRONT_DESK,
+  select: `
         *,
         segment:guest_segments(id, name, code, description)
-      `)
-      .eq("id", params.id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
-    }
-
-    // Fetch preferences
-    const { data: preferences } = await supabase
-      .from("guest_preferences")
-      .select("*")
-      .eq("guest_id", params.id)
-      .single();
-
-    // Fetch recent bookings
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select(`
-        id, reference, status, check_in, check_out, nights, total_amount_gbp,
-        apartment:apartments(id, number, building:buildings(name))
-      `)
-      .eq("guest_id", params.id)
-      .order("check_in", { ascending: false })
-      .limit(10);
-
-    return NextResponse.json({
-      data: {
-        ...guest,
-        preferences: preferences || null,
-        bookings: bookings || [],
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+      `,
+  label: "Guest",
+});
 
 export async function PATCH(
   request: NextRequest,

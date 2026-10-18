@@ -623,7 +623,6 @@ export async function getGuestInsights(
 
   // 3. Nationality revenue insight
   if (segments.top_nationalities.length >= 2) {
-    const totalAvgRevenue = segments.top_nationalities.reduce((s, n) => s + n.total_revenue, 0) / segments.top_nationalities.length;
     const topNat = segments.top_nationalities[0];
     const topAvg = topNat.count > 0 ? topNat.total_revenue / topNat.count : 0;
     const overallAvg = scores.length > 0 ? scores.reduce((s, g) => s + g.total_spend_gbp, 0) / scores.length : 0;

@@ -29,7 +29,7 @@ export function anonymizeName(name: string): string {
  */
 export function anonymizeEmail(email: string): string {
   if (!email || !email.includes("@")) return "[redacted]";
-  const [_, domain] = email.split("@");
+  const [, domain] = email.split("@");
   return `guest_***@${domain || "[redacted]"}`;
 }
 
@@ -85,7 +85,7 @@ export function anonymizeSnapshot(rawData: Record<string, unknown>): Record<stri
     } else if (key === "bookings" && Array.isArray(value)) {
       // Strip guest names and special requests from bookings
       safe[key] = value.map((b: { special_requests?: string; [key: string]: unknown }) => {
-        const { guest_name, special_requests, ...rest } = b as Record<string, unknown>;
+        const { guest_name: _guest_name, special_requests: _special_requests, ...rest } = b as Record<string, unknown>;
         return rest;
       });
     } else {
