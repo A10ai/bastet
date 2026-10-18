@@ -1,6 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+
+/** Audit Oct 2026: this route serves hardcoded sample data. */
+const DEMO_META = { demo: true, note: "Sample data: no F&B system is connected" } as const;
 
 // ─── Hardcoded F&B data for Bastet Hurghada aparthotel ───
 // Will be replaced with Supabase queries once F&B tables are created
@@ -130,15 +134,15 @@ export async function GET(request: NextRequest) {
       }
 
       case "menu": {
-        return NextResponse.json({ data: MENU_CATEGORIES });
+        return NextResponse.json({ data: MENU_CATEGORIES, meta: DEMO_META });
       }
 
       case "daily_trend": {
-        return NextResponse.json({ data: DAILY_TREND });
+        return NextResponse.json({ data: DAILY_TREND, meta: DEMO_META });
       }
 
       case "performance": {
-        return NextResponse.json({ data: PERFORMANCE });
+        return NextResponse.json({ data: PERFORMANCE, meta: DEMO_META });
       }
 
       default: {

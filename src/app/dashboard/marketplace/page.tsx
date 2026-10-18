@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,6 +110,11 @@ export default function MarketplacePage() {
           Guest services, excursions, and add-ons
         </p>
       </div>
+
+      <DemoDataBanner>
+        This catalogue is a static sample. Partners, prices and availability are not loaded from the
+        database and nothing here can be booked yet.
+      </DemoDataBanner>
 
       {/* Summary strip */}
       <Card>

@@ -38,6 +38,7 @@ import {
   PieChart, Pie, AreaChart, Area, CartesianGrid,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 // Energy and AI-decisions report shapes are dynamic (optional fields),
 // so use interfaces with optional/indexed fields to allow flexible access.
@@ -144,10 +145,6 @@ type ReportData =
 
 const RECHARTS_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -465,7 +462,7 @@ function OccupancyView({ data }: { data: OccupancyReport }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                 <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-                <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [`${value}%`, "Occupancy"]} />
+                <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [`${value}%`, "Occupancy"]} />
                 <Area type="monotone" dataKey="occupancy" stroke="#22D3EE" strokeWidth={2} fill="url(#occGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -567,7 +564,7 @@ function RevenueView({ data }: { data: RevenueReport }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                 <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} />
+                <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} />
                 <Area type="monotone" dataKey="revenue" stroke="#34D399" strokeWidth={2} fill="url(#revGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -652,7 +649,7 @@ function GuestView({ data }: { data: GuestReport }) {
                     <Cell fill="#22D3EE" />
                     <Cell fill="#34D399" />
                   </Pie>
-                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Guests"]} />
+                  <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Guests"]} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-3">
@@ -680,7 +677,7 @@ function GuestView({ data }: { data: GuestReport }) {
                 <BarChart data={(data.by_nationality || []).map((n) => ({ name: n.nationality, count: n.count }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Guests"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                  <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Guests"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
                     {(data.by_nationality || []).map((_, i: number) => (
                       <Cell key={i} fill={RECHARTS_COLORS[i % RECHARTS_COLORS.length]} />
@@ -799,7 +796,7 @@ function OperationsView({ data }: { data: OperationsReport }) {
                   <BarChart data={(hk.by_type || []).map((t) => ({ name: t.type.replace(/_/g, " "), count: t.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                     <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                    <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#22D3EE" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -846,7 +843,7 @@ function OperationsView({ data }: { data: OperationsReport }) {
                   <BarChart data={(mx.by_category || []).map((c) => ({ name: c.category.replace(/_/g, " "), count: c.count }))} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
                     <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(251,191,36,0.08)" }} />
+                    <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(251,191,36,0.08)" }} />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14} fill="#FBBF24" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -943,7 +940,7 @@ function FinancialView({ data }: { data: FinancialReport }) {
                 <BarChart data={(data.revenue_breakdown || []).map((r) => ({ name: r.source, amount: r.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} cursor={{ fill: "rgba(52,211,153,0.08)" }} />
+                  <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Revenue"]} cursor={{ fill: "rgba(52,211,153,0.08)" }} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#34D399" />
                 </BarChart>
               </ResponsiveContainer>
@@ -962,7 +959,7 @@ function FinancialView({ data }: { data: FinancialReport }) {
                 <BarChart data={(data.expense_breakdown || []).map((e) => ({ name: e.category.replace(/_/g, " "), amount: e.amount }))} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                   <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Expense"]} cursor={{ fill: "rgba(239,68,68,0.08)" }} />
+                  <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [formatCurrency(Number(value)), "Expense"]} cursor={{ fill: "rgba(239,68,68,0.08)" }} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16} fill="#EF4444" />
                 </BarChart>
               </ResponsiveContainer>

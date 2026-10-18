@@ -21,15 +21,12 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Guest, LoyaltyTier } from "@/types";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
 const TIER_PIE_COLORS = ["#F97316", "#94A3B8", "#FBBF24", "#A78BFA"];
 const NAT_BAR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 const TIER_COLORS: Record<LoyaltyTier, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
@@ -240,7 +237,7 @@ export default function GuestsPage() {
                   <BarChart data={nationalityChartData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
                       {nationalityChartData.map((_, i) => (
                         <Cell key={i} fill={NAT_BAR_COLORS[i % NAT_BAR_COLORS.length]} />
@@ -264,7 +261,7 @@ export default function GuestsPage() {
                         <Cell key={i} fill={TIER_PIE_COLORS[i % TIER_PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">

@@ -12,6 +12,8 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       include: ["src/lib/**/*.ts"],
       exclude: ["src/lib/supabase/**", "src/**/*.d.ts"],
+      // Ratchet: raise these as tests are added; never lower them.
+      thresholds: { statements: 4.5, branches: 3.5, functions: 5, lines: 4.5 },
     },
     server: {
       deps: {

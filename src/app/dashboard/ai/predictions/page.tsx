@@ -32,6 +32,7 @@ import {
   Bar,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Types matching prediction-model.ts
@@ -112,13 +113,6 @@ interface ComparisonResult {
 
 const DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const darkTooltipStyle = {
-  backgroundColor: "#0F1729",
-  border: "1px solid #1E2D44",
-  borderRadius: "8px",
-  color: "#E2E8F0",
-  fontSize: "12px",
-};
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr);

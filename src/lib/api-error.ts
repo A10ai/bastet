@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { captureException } from "@/lib/sentry";
 
 /**
  * Centralized API error handler.
@@ -89,6 +90,7 @@ export function withErrorHandler<T extends unknown[]>(
       return await handler(...args);
     } catch (error) {
       logger.error({ err: error }, "[Unhandled API Error]");
+      captureException(error, { tags: { layer: "api" } });
       return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
     }
   };

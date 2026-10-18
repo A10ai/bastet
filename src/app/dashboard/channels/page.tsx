@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import {
   Globe,
   Loader2,
@@ -30,17 +31,12 @@ import {
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Dark tooltip style (matches finance page)
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#111827",
-  border: "1px solid #1F2937",
-  borderRadius: "8px",
-  color: "#F9FAFB",
-};
 
 // ---------------------------------------------------------------------------
 // Channel colors
@@ -380,6 +376,10 @@ export default function ChannelsPage() {
       {/* ===== Channel Connections ===== */}
       <div>
         <h2 className="text-lg font-semibold text-text-primary mb-4">Channel Connections</h2>
+        <DemoDataBanner className="mb-4">
+          No channel manager or OTA API is integrated. Connection status, last-sync times and listing
+          counts below are placeholders; the booking counts and revenue per channel are real.
+        </DemoDataBanner>
         {connections.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {connections.map((ch) => (

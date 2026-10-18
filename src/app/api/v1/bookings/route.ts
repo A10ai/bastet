@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import {
@@ -10,6 +11,7 @@ import {
   convertCurrency,
 } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createBookingSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -164,9 +166,7 @@ export async function POST(request: NextRequest) {
       `)
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) return rpcErrorResponse(error, "bookings.insert");
 
     await logAudit(supabase, {
       action: "booking.create",

@@ -6,7 +6,7 @@ import "server-only";
  * Falls back to rule-based intent matching if no API key.
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { format, addDays, subDays } from "date-fns";
 

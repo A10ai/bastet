@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import {
   Zap,
   AlertTriangle,
@@ -35,6 +36,7 @@ import type {
   EnergyRecommendation,
 } from "@/lib/energy-engine";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 const floorLabel = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
 
@@ -351,11 +353,6 @@ function EnergyHeatmap({ cells }: { cells: HeatmapCell[] }) {
 // Recharts tooltip style
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: '#111827',
-  border: '1px solid #1F2937',
-  borderRadius: '8px',
-};
 
 // ---------------------------------------------------------------------------
 // Hourly Consumption Bar Chart (Recharts)
@@ -752,7 +749,7 @@ export default function EnergyDashboard() {
             </h1>
           </div>
           <p className="text-sm text-text-secondary mt-1">
-            Real-time energy consumption, waste detection, and savings
+            Modelled energy consumption, waste detection, and savings
             opportunities
           </p>
         </div>
@@ -765,6 +762,12 @@ export default function EnergyDashboard() {
           </div>
         </div>
       </div>
+
+      <DemoDataBanner kind="modelled">
+        No meters or building-management system are connected. Consumption is estimated from unit
+        status using serviced-apartment benchmarks, and &ldquo;wasteful&rdquo; units are a modelled
+        share of vacant units, not sensor readings. Treat savings as indicative only.
+      </DemoDataBanner>
 
       {/* Action message toast */}
       {actionMessage && (

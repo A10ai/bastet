@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateBookingRef, getLengthOfStayDiscount } from "./utils";
 import { differenceInDays } from "date-fns";
 

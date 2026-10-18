@@ -5,7 +5,7 @@
  * Every action is traceable — who, what, when, why.
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
 export interface AuditEntry {

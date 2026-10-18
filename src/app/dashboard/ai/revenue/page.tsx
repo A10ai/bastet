@@ -44,6 +44,7 @@ import {
   Bar,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Channel colors
@@ -135,13 +136,6 @@ function StatCard({
 // Dark tooltip style
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#0F1729",
-  border: "1px solid #1E2D44",
-  borderRadius: "8px",
-  color: "#E2E8F0",
-  fontSize: "12px",
-};
 
 // ---------------------------------------------------------------------------
 // Channel Mix Donut

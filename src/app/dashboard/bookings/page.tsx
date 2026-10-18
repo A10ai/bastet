@@ -25,13 +25,10 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 const TIER_BADGE_COLORS: Record<string, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
@@ -257,7 +254,7 @@ export default function BookingsPage() {
                             <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
+                        <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="space-y-1.5">
@@ -305,7 +302,7 @@ export default function BookingsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                       <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
+                      <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       <Area type="monotone" dataKey="bookings" stroke="#22D3EE" strokeWidth={2} fill="url(#bookingGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>

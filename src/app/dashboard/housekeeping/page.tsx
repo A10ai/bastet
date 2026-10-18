@@ -11,6 +11,7 @@ import { HOUSEKEEPING_STATUSES, HOUSEKEEPING_TYPES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import type { HousekeepingTask } from "@/types";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const HK_STATUS_COLORS: Record<string, string> = {
   pending: "#22D3EE",
@@ -24,10 +25,6 @@ const HK_STATUS_COLORS: Record<string, string> = {
 
 const FLOOR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 interface NextGuestInfo {
   [apartmentId: string]: {
@@ -208,7 +205,7 @@ export default function HousekeepingPage() {
                         <Cell key={s} fill={HK_STATUS_COLORS[s] || "#6B7280"} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tasks"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">
@@ -242,7 +239,7 @@ export default function HousekeepingPage() {
                     <BarChart data={floorData} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                       <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tasks"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
                         {floorData.map((_, i) => (
                           <Cell key={i} fill={FLOOR_COLORS[i % FLOOR_COLORS.length]} />

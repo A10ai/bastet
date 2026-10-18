@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard/widgets/stat-card";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2,
@@ -463,6 +464,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-text-primary">Weekly Revenue</h3>
+            <DemoDataBanner kind="modelled" className="mt-3">
+              Only today&rsquo;s bar is measured. Earlier days are illustrative values derived from
+              today&rsquo;s revenue until daily revenue history is recorded.
+            </DemoDataBanner>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>

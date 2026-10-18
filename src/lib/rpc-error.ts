@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { captureException } from "@/lib/sentry";
 
 /**
  * Map a Postgres function error raised with our `CODE: detail` convention
@@ -41,6 +42,7 @@ export function rpcErrorResponse(
     );
   }
   logger.error({ context, err: message, code: error?.code }, "[RPC] Unexpected database error");
+  captureException(new Error(`[RPC ${context}] ${message}`), { tags: { layer: "rpc", context } });
   return NextResponse.json(
     { error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
     { status: 500 }

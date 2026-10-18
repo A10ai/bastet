@@ -10,15 +10,12 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
 const ROLE_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6"];
 const DEPT_COLORS = ["#818CF8", "#6EE7B7", "#FB923C", "#E879F9", "#38BDF8", "#FCD34D"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 interface StaffTaskCounts {
   [staffId: string]: number;
@@ -186,7 +183,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
@@ -213,7 +210,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">

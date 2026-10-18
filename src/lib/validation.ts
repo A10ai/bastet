@@ -260,6 +260,10 @@ export const cancelBookingSchema = z.object({
   cancellation_reason: z.string().max(500).optional(),
 }).strict();
 
+export const assignSchema = z.object({
+  staff_id: z.string().uuid("staff_id must be a UUID"),
+}).strict();
+
 export const checkinSchema = z.object({
   notes: z.string().max(2000).optional(),
 }).strict();

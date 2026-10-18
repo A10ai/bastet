@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 import { commissionFraction } from "@/lib/utils";
 
 
-// Hardcoded OTA connection definitions
+// Hardcoded OTA connection definitions — status/last_sync/listings are PLACEHOLDERS
+// (no channel manager integration exists). Flagged to clients via `placeholder_status`.
 const OTA_CONNECTIONS = [
   { id: "booking_com", name: "Booking.com", logo: "B", status: "connected", commission: 15, last_sync: "2026-03-24T10:00:00Z", listings: 0 },
   { id: "airbnb", name: "Airbnb", logo: "A", status: "connected", commission: 14, last_sync: "2026-03-24T09:30:00Z", listings: 100 },
@@ -166,6 +168,7 @@ export async function GET(request: NextRequest) {
       }
 
       const connections = OTA_CONNECTIONS.map((conn) => ({
+        placeholder_status: true,
         ...conn,
         active_bookings: activeByOta[conn.id] || 0,
       }));

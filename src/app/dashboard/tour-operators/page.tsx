@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import {
   Handshake,
   Loader2,
@@ -24,6 +25,7 @@ import {
   Legend,
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,12 +81,6 @@ interface Performance {
 
 const CYAN = "#22D3EE";
 
-const darkTooltipStyle = {
-  backgroundColor: "#111827",
-  border: "1px solid #1F2937",
-  borderRadius: "8px",
-  color: "#F9FAFB",
-};
 
 const MARKET_COLORS: Record<string, string> = {
   "UK/Germany": "#22D3EE",
@@ -305,6 +301,11 @@ export default function TourOperatorsPage() {
           </p>
         </div>
       </div>
+
+      <DemoDataBanner>
+        These contracts, allotments and revenue figures are sample data. No tour operator
+        agreement has been loaded into the system; the contracts table does not exist yet.
+      </DemoDataBanner>
 
       {/* Stat Cards */}
       {summary && (

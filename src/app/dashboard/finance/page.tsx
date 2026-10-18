@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import { RevenueChart } from "@/components/finance/revenue-chart";
 import { CurrencyRatesCard } from "@/components/finance/currency-rates-card";
 import {
@@ -48,13 +49,8 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/api";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
-const darkTooltipStyle = {
-  backgroundColor: "#111827",
-  border: "1px solid #1F2937",
-  borderRadius: "8px",
-  color: "#F9FAFB",
-};
 
 const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
   utilities: "#F59E0B",
@@ -854,6 +850,10 @@ export default function FinancePage() {
               <h3 className="text-lg font-semibold text-text-primary">Department Costs</h3>
             </div>
             <p className="text-xs text-text-muted mt-1">Budget vs actual spend by department</p>
+            <DemoDataBanner kind="modelled" className="mt-3">
+              No department budgets have been set. The &ldquo;budget&rdquo; bars are fixed
+              percentages of actual spend, so the variance shown is not a real budget comparison.
+            </DemoDataBanner>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

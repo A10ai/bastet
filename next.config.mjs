@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-hosted / Docker builds copy .next/standalone (see Dockerfile).
+  output: "standalone",
+  experimental: {
+    // Runs src/instrumentation.ts at server start: env validation + Sentry.
+    instrumentationHook: true,
+  },
   async headers() {
     return [
       {

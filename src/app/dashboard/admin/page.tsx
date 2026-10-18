@@ -1,5 +1,7 @@
 "use client";
 
+import { AdminLoading, AccessDenied, isAdminRole } from "@/components/admin/admin-gate";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
@@ -97,30 +99,8 @@ export default function AdminOverviewPage() {
   };
 
   // Access control
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (!staff || !["owner", "admin"].includes(staff.role)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Shield className="w-16 h-16 text-status-error mb-4" />
-        <h1 className="text-2xl font-display font-bold text-text-primary mb-2">
-          Access Denied
-        </h1>
-        <p className="text-text-secondary">
-          You need owner or admin privileges to access this page.
-        </p>
-        <Link href="/dashboard" className="mt-4">
-          <Button variant="secondary">Back to Dashboard</Button>
-        </Link>
-      </div>
-    );
-  }
+  if (authLoading) return <AdminLoading />;
+  if (!staff || !isAdminRole(staff.role)) return <AccessDenied showBackLink />;
 
   const totalRecords = Object.values(tableCounts).reduce((a, b) => a + b, 0);
 

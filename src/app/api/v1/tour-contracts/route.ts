@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+
+/** Audit Oct 2026: this route serves hardcoded sample data. */
+const DEMO_META = { demo: true, note: "Sample data: tour operator contracts table does not exist yet" } as const;
 
 // ---------------------------------------------------------------------------
 // Hardcoded realistic data for Hurghada hotel (no DB table yet)
@@ -75,11 +79,11 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case "list":
-        return NextResponse.json({ data: contracts });
+        return NextResponse.json({ data: contracts, meta: DEMO_META });
       case "summary":
-        return NextResponse.json({ data: buildSummary() });
+        return NextResponse.json({ data: buildSummary(), meta: DEMO_META });
       case "performance":
-        return NextResponse.json({ data: buildPerformance() });
+        return NextResponse.json({ data: buildPerformance(), meta: DEMO_META });
       default:
         return NextResponse.json(
           { error: `Unknown type: ${type}` },

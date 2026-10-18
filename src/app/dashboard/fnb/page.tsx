@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import { Badge } from "@/components/ui/badge";
 import {
   UtensilsCrossed,
@@ -32,17 +33,12 @@ import {
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#111827",
-  border: "1px solid #1F2937",
-  borderRadius: "8px",
-  color: "#F9FAFB",
-};
 
 const OUTLET_COLORS: Record<string, string> = {
   restaurant: "#22D3EE",
@@ -319,6 +315,11 @@ export default function FnBDashboard() {
           </div>
         </div>
       </div>
+
+      <DemoDataBanner>
+        Every figure on this page is sample data for demonstration. No F&amp;B outlet, point of sale
+        or menu is connected yet; covers, revenue and trends are not from Bastet operations.
+      </DemoDataBanner>
 
       {/* ----------------------------------------------------------------- */}
       {/* Overview Cards                                                    */}

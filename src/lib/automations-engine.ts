@@ -9,7 +9,7 @@
  * - Energy standby recommendations for empty units
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, subDays } from "date-fns";
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,6 @@
 "use client";
+
+import { AdminLoading, AccessDenied, isAdminRole } from "@/components/admin/admin-gate";
 import { commissionPercent } from "@/lib/utils";
 
 import { useEffect, useState, useCallback } from "react";
@@ -7,7 +9,6 @@ import { useAuth } from "@/providers/auth-provider";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield,
   Settings,
   Loader2,
   Save,
@@ -302,27 +303,8 @@ export default function SystemConfigPage() {
   };
 
   // Access control
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (!staff || !["owner", "admin"].includes(staff.role)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Shield className="w-16 h-16 text-status-error mb-4" />
-        <h1 className="text-2xl font-display font-bold text-text-primary mb-2">
-          Access Denied
-        </h1>
-        <p className="text-text-secondary">
-          You need owner or admin privileges to access this page.
-        </p>
-      </div>
-    );
-  }
+  if (authLoading) return <AdminLoading />;
+  if (!staff || !isAdminRole(staff.role)) return <AccessDenied />;
 
   const inputClass =
     "w-full bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary px-3 py-2 placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40";

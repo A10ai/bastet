@@ -11,6 +11,7 @@ import { MAINTENANCE_STATUSES } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import type { MaintenanceRequest } from "@/types";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#22D3EE",
@@ -23,10 +24,6 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CATEGORY_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 interface MaintenanceCrossData {
   [requestId: string]: {
@@ -235,7 +232,7 @@ export default function MaintenancePage() {
                         <Cell key={s} fill={STATUS_COLORS[s] || "#6B7280"} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tickets"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">
@@ -266,7 +263,7 @@ export default function MaintenancePage() {
                     <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                       <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11, textTransform: "capitalize" } as Record<string, unknown>} axisLine={false} tickLine={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                         {catData.map((_, i) => (
                           <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />

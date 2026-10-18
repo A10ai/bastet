@@ -40,6 +40,7 @@ import {
   Pie,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Tier badge colors (matching guests page)
@@ -102,13 +103,6 @@ function severityDot(severity: string): string {
 // Dark tooltip style
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#0F1729",
-  border: "1px solid #1E2D44",
-  borderRadius: "8px",
-  color: "#E2E8F0",
-  fontSize: "12px",
-};
 
 const TIER_CHART_COLORS: Record<string, string> = {
   bronze: "#F97316",
