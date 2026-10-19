@@ -61,7 +61,8 @@ Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`,
 | `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
 | `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
 | `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
-| `CRON_SECRET` | Production | Bearer token Vercel Cron sends to `/api/v1/cron/*` (night audit 03:00 UTC, automations every 15 min, FX rates daily). Admins can also trigger these by hand. |
+| `CRON_SECRET` | Production | Bearer token sent to `/api/v1/cron/*` by Vercel Cron (night audit 03:00 UTC, automations 05:00 UTC, FX rates 06:15 UTC) and by the GitHub Actions scheduler in `.github/workflows/automations-cron.yml`, which calls the automations route every 15 minutes because Vercel's Hobby plan only allows daily crons. Admins can also trigger these by hand. |
+| `SCHEDULER_INTERVAL_MINUTES` | Optional, default `15` | How often the automations route is expected to run; the health check reports `scheduler` degraded after twice this interval (minimum 60 min). Set `1440` on an environment that relies on the daily Vercel cron alone. |
 | `ANTHROPIC_MODEL` | Optional, default `claude-sonnet-5-5` | Claude model for the AI brain and chat (`src/lib/ai-model.ts`). |
 | `OPEN_EXCHANGE_RATES_APP_ID` | Optional | Exchange-rate provider; without it ECB reference rates (frankfurter.app) are used. |
 

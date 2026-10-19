@@ -83,10 +83,15 @@ export async function runHealthChecks(): Promise<{ body: HealthBody; status: num
         return { lastCycle: cycle?.created_at as string | undefined, lastClose: close?.business_date as string | undefined };
       });
       const cycleAgeMin = jobs.result?.lastCycle ? (Date.now() - Date.parse(jobs.result.lastCycle)) / 60000 : null;
+      // How often the automations cron is expected to fire. Vercel Hobby allows
+      // daily crons only, so deployments on that plan either trigger the route
+      // from an external scheduler every 15 min or declare the daily cadence.
+      const intervalMin = Number(process.env.SCHEDULER_INTERVAL_MINUTES) || 15;
+      const staleAfterMin = Math.max(60, intervalMin * 2);
       checks.scheduler = cycleAgeMin === null
         ? { status: "degraded", detail: "no automation cycle recorded yet" }
-        : cycleAgeMin > 60
-          ? { status: "degraded", detail: `last cycle ${Math.round(cycleAgeMin)} min ago (expected every 15)` }
+        : cycleAgeMin > staleAfterMin
+          ? { status: "degraded", detail: `last cycle ${Math.round(cycleAgeMin)} min ago (expected every ${intervalMin})` }
           : { status: "ok", detail: `last cycle ${Math.round(cycleAgeMin)} min ago` };
       const closeAgeDays = jobs.result?.lastClose ? Math.floor((Date.now() - Date.parse(jobs.result.lastClose)) / 86400000) : null;
       checks.night_audit = closeAgeDays === null

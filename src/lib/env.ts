@@ -65,10 +65,17 @@ export function getEnv(): Env {
     );
   }
 
+  // Hosted deployments must carry the security configuration. Production
+  // refuses to start without it; a preview (staging) deployment starts but
+  // says so loudly, and the health endpoint reports the gap as degraded.
   if (process.env.NODE_ENV === "production" && process.env.VERCEL) {
     const missing = ["PII_ENCRYPTION_KEY", "UPSTASH_REDIS_REST_URL"].filter((k) => !result.data[k as keyof Env]);
     if (missing.length) {
-      throw new Error(`Production deployment is missing required security configuration: ${missing.join(", ")}`);
+      const target = process.env.VERCEL_ENV || "production";
+      if (target === "production") {
+        throw new Error(`Production deployment is missing required security configuration: ${missing.join(", ")}`);
+      }
+      console.warn(`[env] ${target} deployment is missing security configuration: ${missing.join(", ")} (allowed outside production)`);
     }
   }
 

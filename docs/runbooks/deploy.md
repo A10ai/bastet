@@ -71,11 +71,21 @@ limiter or Sentry is missing, and `unhealthy` (503) when a Supabase variable is.
 ### Cron jobs
 
 `vercel.json` declares three crons: night audit (03:00 UTC), automations
-(every 15 min), FX rates (06:15 UTC). Vercel sends `Authorization: Bearer
-$CRON_SECRET`. After the first deploy to a new project, confirm in the Vercel
-dashboard (Settings > Cron Jobs) that all three are listed and that the first
+(05:00 UTC), FX rates (06:15 UTC). Vercel sends `Authorization: Bearer
+$CRON_SECRET`. The Vercel **Hobby** plan rejects any cron that runs more than
+once a day (the deploy fails with "Hobby accounts are limited to daily cron
+jobs"), so the 15-minute automations cadence comes from
+`.github/workflows/automations-cron.yml`, a GitHub Actions schedule that calls
+`/api/v1/cron/automations` with the repository secret `CRON_SECRET` and the
+repository variable `APP_URL`. Create both in GitHub (Settings > Secrets and
+variables > Actions) or the workflow skips itself. On the Pro plan you can
+instead set the automations schedule back to `*/15 * * * *` and delete the
+workflow.
+
+After the first deploy to a new project, confirm in the Vercel dashboard
+(Settings > Cron Jobs) that all three are listed and that the first
 automations run succeeded; the health check's `scheduler` entry turns `ok`
-once a cycle has been recorded.
+once a cycle has been recorded within `SCHEDULER_INTERVAL_MINUTES`.
 
 ## Edge Box (Docker)
 
