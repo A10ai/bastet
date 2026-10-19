@@ -348,12 +348,26 @@ async function groupTests(owner, reception, hk) {
 // ---------------------------------------------------------------------------
 // Guest portal (00029): tokenised link, public stay view, pre-check-in, revoke
 // ---------------------------------------------------------------------------
+
+// An available apartment and a guest, with the raw responses described when
+// either is missing so a rate limit, an expired session or an empty seed is
+// told apart from a real availability problem.
+async function preconditions(ctx) {
+  const ar = await ctx.get("/api/v1/apartments?status=available&limit=50");
+  const gr = await ctx.get("/api/v1/guests?limit=1");
+  const aj = await j(ar);
+  const gj = await j(gr);
+  const apt = (aj?.data || []).find((a) => a.status === "available");
+  const guest = (gj?.data || [])[0];
+  const detail = `apartments ${ar.status()} n=${(aj?.data || []).length} ${JSON.stringify(aj?.error || "").slice(0, 120)}; guests ${gr.status()} n=${(gj?.data || []).length} ${JSON.stringify(gj?.error || "").slice(0, 120)}`;
+  return { apt, guest, detail };
+}
 async function portalTests(owner, reception, hk) {
   const ctx = reception?.ok ? reception : owner;
   // Make our own upcoming confirmed stay so the test does not depend on seed dates
-  const apt = ((await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=50")))?.data || []).find((a) => a.status === "available");
-  const guest = ((await j(await owner.ctx.get("/api/v1/guests?limit=1")))?.data || [])[0];
-  if (!apt || !guest) { rec("txn", "portal tests need an available apartment and a guest", "WARN", "none"); return; }
+  const pre = await preconditions(owner.ctx);
+  const { apt, guest } = pre;
+  if (!apt || !guest) { rec("txn", "portal tests need an available apartment and a guest", "FAIL", pre.detail); return; }
   const made = await ctx.ctx.post("/api/v1/bookings", { headers: H(ctx.csrf), data: { apartment_id: apt.id, guest_id: guest.id, check_in: plus(30), check_out: plus(32), adults: 2 } });
   let upcoming = (await j(made))?.data;
   if (!upcoming?.id) { rec("txn", "portal tests could not create a booking", "FAIL", `${made.status()} ${(await made.text()).slice(0, 80)}`); return; }
@@ -408,9 +422,9 @@ async function posTests(owner, mgr, reception, hk) {
     rec("txn", "housekeeping cannot create outlets -> 403", r.status() === 403 ? "PASS" : "FAIL", r.status());
   }
   // Make an in-house stay for today
-  const apt = ((await j(await owner.ctx.get("/api/v1/apartments?status=available&limit=50")))?.data || []).find((a) => a.status === "available");
-  const guest = ((await j(await owner.ctx.get("/api/v1/guests?limit=1")))?.data || [])[0];
-  if (!apt || !guest) { rec("txn", "POS tests need an available apartment and a guest", "WARN", "none"); return; }
+  const pre = await preconditions(owner.ctx);
+  const { apt, guest } = pre;
+  if (!apt || !guest) { rec("txn", "POS tests need an available apartment and a guest", "FAIL", pre.detail); return; }
   const made = await ctx.ctx.post("/api/v1/bookings", { headers: H(ctx.csrf), data: { apartment_id: apt.id, guest_id: guest.id, check_in: today, check_out: plus(2), adults: 1 } });
   const booking = (await j(made))?.data;
   if (!booking?.id) { rec("txn", "POS tests could not create a booking", "FAIL", `${made.status()}`); return; }
