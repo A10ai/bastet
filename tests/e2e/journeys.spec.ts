@@ -34,6 +34,10 @@ test.beforeAll(async ({ browser }) => {
     page.waitForURL(/\/dashboard/, { timeout: 20_000 }),
     lockout.waitFor({ timeout: 20_000 }).then(() => { throw new Error(`E2E account ${email} is locked out by the login rate limit; restart the server or wait 15 minutes`); }),
   ]);
+  // Answer the cookie banner the privacy-preserving way, as a real first-time
+  // user would; the choice lives in localStorage and travels with storageState.
+  const reject = page.getByTestId("cookie-reject");
+  if (await reject.isVisible({ timeout: 3_000 }).catch(() => false)) await reject.click();
   storageState = await ctx.storageState();
   await ctx.close();
 });

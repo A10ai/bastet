@@ -56,6 +56,21 @@ staging ref) and to production only after the staging soak.
 
 ## Running the full test battery against staging
 
+Preview deployments sit behind Vercel Deployment Protection. Run the suites
+through the Vercel CLI, which exports a short-lived `VERCEL_OIDC_TOKEN` that
+both `scripts/deep-test.mjs` and `playwright.config.ts` send as
+`x-vercel-trusted-oidc-idp-token` (and `x-vercel-skip-toolbar: 1`, because the
+feedback toolbar Vercel injects for team members races React hydration):
+
+```bash
+vercel env run -- sh -c 'BASE_URL=https://hospitai-staging.vercel.app MODE=full ... node scripts/deep-test.mjs'
+vercel env run -- sh -c 'PLAYWRIGHT_BASE_URL=https://hospitai-staging.vercel.app CI=1 npx playwright test --workers=1 --retries=0'
+```
+
+The Vercel Hobby plan has no shared rate limiter unless Upstash is configured,
+so the brute-force lockout check reports a warning on staging until
+`UPSTASH_REDIS_REST_URL/TOKEN` are set in the Preview scope.
+
 ```bash
 BASE_URL=https://staging.hospitai.uk MODE=full \
 SB_URL=https://<staging-ref>.supabase.co SB_SERVICE=<staging service key> \

@@ -63,12 +63,22 @@ export function CookieConsent() {
     setShowCustomize(false);
   };
 
+  // The banner is fixed to the bottom of the viewport; reserve that space so
+  // it never covers a form's submit button or a table's last rows.
+  useEffect(() => {
+    if (!show) return;
+    const previous = document.body.style.paddingBottom;
+    document.body.style.paddingBottom = "9rem";
+    return () => { document.body.style.paddingBottom = previous; };
+  }, [show]);
+
   if (!show) return null;
 
   return (
     <div
       role="dialog"
       aria-label="Cookie consent"
+      data-testid="cookie-consent"
       aria-live="polite"
       className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-brand-card border-t border-brand-border shadow-lg"
     >
@@ -83,6 +93,7 @@ export function CookieConsent() {
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={rejectNonEssential}
+                data-testid="cookie-reject"
                 className="px-4 py-2 text-sm rounded-lg border border-brand-border text-text-secondary hover:bg-brand-bg transition-colors"
               >
                 Reject non-essential

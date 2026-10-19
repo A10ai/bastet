@@ -205,18 +205,18 @@ INSERT INTO guest_segments (name, code, description) VALUES
 -- ============================================================
 v_guest_ids := ARRAY[]::UUID[];
 
-INSERT INTO guests (segment_id, first_name, last_name, email, phone, nationality, language, preferred_currency, city, country, postcode, loyalty_tier, loyalty_points, total_stays, total_nights, total_spend_gbp, marketing_consent)
+INSERT INTO guests (property_id, segment_id, first_name, last_name, email, phone, nationality, language, preferred_currency, city, country, postcode, loyalty_tier, loyalty_points, total_stays, total_nights, total_spend_gbp, marketing_consent)
 VALUES
-  (v_segment_tourist, 'James', 'Wilson', 'james.wilson@gmail.com', '+447700900001', 'GB', 'en', 'GBP', 'Manchester', 'GB', 'M1 1AA', 'gold', 5200, 4, 56, 8400.00, true),
-  (v_segment_tourist, 'Sarah', 'Mueller', 'sarah.mueller@web.de', '+49170000002', 'DE', 'de', 'EUR', 'Berlin', 'DE', '10115', 'silver', 2100, 2, 21, 3150.00, true),
-  (v_segment_nomad, 'Alex', 'Thompson', 'alex@remotework.io', '+447700900003', 'GB', 'en', 'GBP', 'London', 'GB', 'EC1A 1BB', 'platinum', 18500, 6, 180, 27000.00, true),
-  (v_segment_tourist, 'Elena', 'Petrova', 'elena.petrova@mail.ru', '+79001234567', 'RU', 'ru', 'USD', 'Moscow', 'RU', '101000', 'bronze', 800, 1, 14, 1200.00, false),
-  (v_segment_domestic, 'Ahmed', 'Hassan', 'ahmed.hassan@gmail.com', '+201001234567', 'EG', 'ar', 'EGP', 'Cairo', 'EG', '11511', 'bronze', 300, 1, 3, 450.00, true),
-  (v_segment_corporate, 'David', 'Chen', 'david.chen@techcorp.com', '+447700900006', 'GB', 'en', 'GBP', 'London', 'GB', 'SW1A 1AA', 'silver', 3800, 3, 30, 5700.00, false),
-  (v_segment_tourist, 'Maria', 'Garcia', 'maria.garcia@outlook.es', '+34600000007', 'ES', 'en', 'EUR', 'Madrid', 'ES', '28001', 'bronze', 400, 1, 7, 650.00, true),
-  (v_segment_nomad, 'Lisa', 'Anderson', 'lisa@freelance.dev', '+46701234568', 'SE', 'en', 'EUR', 'Stockholm', 'SE', '11120', 'gold', 7500, 3, 90, 11250.00, true),
-  (v_segment_domestic, 'Omar', 'Farouk', 'omar.farouk@yahoo.com', '+201112345678', 'EG', 'ar', 'EGP', 'Alexandria', 'EG', '21500', 'bronze', 150, 1, 2, 200.00, false),
-  (v_segment_corporate, 'Sophie', 'Laurent', 'sophie.laurent@bigco.fr', '+33600000010', 'FR', 'en', 'EUR', 'Paris', 'FR', '75001', 'silver', 2800, 2, 28, 4200.00, true);
+  (v_property_id, v_segment_tourist, 'James', 'Wilson', 'james.wilson@gmail.com', '+447700900001', 'GB', 'en', 'GBP', 'Manchester', 'GB', 'M1 1AA', 'gold', 5200, 4, 56, 8400.00, true),
+  (v_property_id, v_segment_tourist, 'Sarah', 'Mueller', 'sarah.mueller@web.de', '+49170000002', 'DE', 'de', 'EUR', 'Berlin', 'DE', '10115', 'silver', 2100, 2, 21, 3150.00, true),
+  (v_property_id, v_segment_nomad, 'Alex', 'Thompson', 'alex@remotework.io', '+447700900003', 'GB', 'en', 'GBP', 'London', 'GB', 'EC1A 1BB', 'platinum', 18500, 6, 180, 27000.00, true),
+  (v_property_id, v_segment_tourist, 'Elena', 'Petrova', 'elena.petrova@mail.ru', '+79001234567', 'RU', 'ru', 'USD', 'Moscow', 'RU', '101000', 'bronze', 800, 1, 14, 1200.00, false),
+  (v_property_id, v_segment_domestic, 'Ahmed', 'Hassan', 'ahmed.hassan@gmail.com', '+201001234567', 'EG', 'ar', 'EGP', 'Cairo', 'EG', '11511', 'bronze', 300, 1, 3, 450.00, true),
+  (v_property_id, v_segment_corporate, 'David', 'Chen', 'david.chen@techcorp.com', '+447700900006', 'GB', 'en', 'GBP', 'London', 'GB', 'SW1A 1AA', 'silver', 3800, 3, 30, 5700.00, false),
+  (v_property_id, v_segment_tourist, 'Maria', 'Garcia', 'maria.garcia@outlook.es', '+34600000007', 'ES', 'en', 'EUR', 'Madrid', 'ES', '28001', 'bronze', 400, 1, 7, 650.00, true),
+  (v_property_id, v_segment_nomad, 'Lisa', 'Anderson', 'lisa@freelance.dev', '+46701234568', 'SE', 'en', 'EUR', 'Stockholm', 'SE', '11120', 'gold', 7500, 3, 90, 11250.00, true),
+  (v_property_id, v_segment_domestic, 'Omar', 'Farouk', 'omar.farouk@yahoo.com', '+201112345678', 'EG', 'ar', 'EGP', 'Alexandria', 'EG', '21500', 'bronze', 150, 1, 2, 200.00, false),
+  (v_property_id, v_segment_corporate, 'Sophie', 'Laurent', 'sophie.laurent@bigco.fr', '+33600000010', 'FR', 'en', 'EUR', 'Paris', 'FR', '75001', 'silver', 2800, 2, 28, 4200.00, true);
 
 -- Store guest IDs for booking references
 SELECT array_agg(id ORDER BY created_at) INTO v_guest_ids FROM guests;
