@@ -12,7 +12,7 @@ export function Badge({ className, status, variant = "default", children, ...pro
     <span
       className={cn(
         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
-        variant === "status" && status ? getStatusBgColor(status) : "bg-bastet-card border border-bastet-border text-text-secondary",
+        variant === "status" && status ? getStatusBgColor(status) : "bg-brand-card border border-brand-border text-text-secondary",
         className
       )}
       {...props}

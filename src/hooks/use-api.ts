@@ -22,8 +22,8 @@ async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
     const error = new Error(`API error: ${res.status} ${res.statusText}`);
-    (error as unknown as Record<string, any> & { status?: number }).status = res.status;
-    (error as unknown as Record<string, any> & { url?: string }).url = url;
+    (error as unknown as Record<string, unknown> & { status?: number }).status = res.status;
+    (error as unknown as Record<string, unknown> & { url?: string }).url = url;
     throw error;
   }
   const json = await res.json();
@@ -38,7 +38,7 @@ const dashboardConfig: SWRConfiguration = {
   errorRetryCount: 3,
   errorRetryInterval: 2_000,
   dedupingInterval: 5_000,
-  shouldRetryOnError: (err: unknown) => { const e = err as unknown as Record<string, any> & { status?: number }; return e?.status !== 401 && e?.status !== 403; },
+  shouldRetryOnError: (err: unknown) => { const e = err as unknown as Record<string, unknown> & { status?: number }; return e?.status !== 401 && e?.status !== 403; },
 };
 
 /** Slow-refresh config for expensive endpoints (AI, reports). */
@@ -108,7 +108,7 @@ export function useAIGuests() {
 
 /** Guests list (30s refresh, realtime on bookings table). */
 export function useGuests(params?: string) {
-  const url = params ? `/api/v1/guests?${params}` : "/api/v1/guests";
+  const url = params ? `/api/v1/guests?${params}` : "/api/v1/guests?limit=1000";
   return useApi<GuestsListData>(url, dashboardConfig, ["guests", "bookings"]);
 }
 
@@ -120,7 +120,7 @@ export function useBookings(params?: string) {
 
 /** Apartments list (5min refresh — rarely changes). */
 export function useApartments() {
-  return useApi<ApartmentsListData>("/api/v1/apartments", staticConfig, ["apartments"]);
+  return useApi<ApartmentsListData>("/api/v1/apartments?limit=1000", staticConfig, ["apartments"]);
 }
 
 /** Staff list (5min refresh). */
@@ -223,40 +223,21 @@ interface AIGuestsData {
   at_risk_guests?: number;
 }
 
-interface GuestsListData {
-  guests: unknown[];
-  total?: number;
-}
+type GuestsListData = unknown[];
 
-interface BookingsListData {
-  bookings: unknown[];
-  total?: number;
-}
+type BookingsListData = unknown[];
 
-interface ApartmentsListData {
-  apartments: unknown[];
-  total?: number;
-}
+type ApartmentsListData = unknown[];
 
-interface StaffListData {
-  staff: unknown[];
-}
+type StaffListData = unknown[];
 
-interface HousekeepingListData {
-  tasks: unknown[];
-}
+type HousekeepingListData = unknown[];
 
-interface MaintenanceListData {
-  requests: unknown[];
-}
+type MaintenanceListData = unknown[];
 
-interface InvoicesListData {
-  invoices: unknown[];
-}
+type InvoicesListData = unknown[];
 
-interface ExpensesListData {
-  expenses: unknown[];
-}
+type ExpensesListData = unknown[];
 
 interface NotificationsData {
   notifications: unknown[];

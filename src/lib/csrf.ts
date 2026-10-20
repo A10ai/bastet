@@ -1,6 +1,6 @@
 import "server-only";
 import type { NextResponse } from "next/server";
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from "@/lib/csrf-constants";
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, CSRF_SECURE } from "@/lib/csrf-constants";
 
 export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME };
 
@@ -24,9 +24,15 @@ export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME };
 export const CSRF_COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: CSRF_SECURE,
   path: "/",
 } as const;
+
+/** Clear the CSRF cookie (logout). */
+export function clearCsrfCookie(response: NextResponse): NextResponse {
+  response.cookies.set(CSRF_COOKIE_NAME, "", { ...CSRF_COOKIE_OPTIONS, maxAge: 0 });
+  return response;
+}
 
 /**
  * Generate a cryptographically random CSRF token.

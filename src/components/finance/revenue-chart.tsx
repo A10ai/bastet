@@ -12,16 +12,12 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 interface RevenueChartProps {
   data: { month: string; revenue: number; expenses: number }[];
 }
 
-const darkTooltipStyle = {
-  backgroundColor: '#111827',
-  border: '1px solid #1F2937',
-  borderRadius: '8px',
-};
 
 export function RevenueChart({ data }: RevenueChartProps) {
   if (!data.length) {

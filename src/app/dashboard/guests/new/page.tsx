@@ -79,7 +79,7 @@ export default function NewGuestPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/dashboard/guests"
-          className="p-2 rounded-lg hover:bg-bastet-card transition-colors"
+          className="p-2 rounded-lg hover:bg-brand-card transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
@@ -154,7 +154,7 @@ export default function NewGuestPage() {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 >
                   <option value="en">English</option>
                   <option value="ar">Arabic</option>
@@ -169,7 +169,7 @@ export default function NewGuestPage() {
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 >
                   <option value="GBP">GBP</option>
                   <option value="EUR">EUR</option>
@@ -228,7 +228,7 @@ export default function NewGuestPage() {
                   type="checkbox"
                   checked={vip}
                   onChange={(e) => setVip(e.target.checked)}
-                  className="w-4 h-4 rounded border-bastet-border text-bastet-gold focus:ring-bastet-gold/50"
+                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent/50"
                 />
                 <span className="text-sm text-text-primary">VIP Status</span>
               </label>
@@ -237,7 +237,7 @@ export default function NewGuestPage() {
                   type="checkbox"
                   checked={marketing}
                   onChange={(e) => setMarketing(e.target.checked)}
-                  className="w-4 h-4 rounded border-bastet-border text-bastet-gold focus:ring-bastet-gold/50"
+                  className="w-4 h-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent/50"
                 />
                 <span className="text-sm text-text-primary">Marketing Consent</span>
               </label>
@@ -249,7 +249,7 @@ export default function NewGuestPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   placeholder="Internal notes about this guest..."
                 />
               </div>

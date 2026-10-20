@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/api-auth";
-import { apiError, handleDbError } from "@/lib/api-error";
+import { handleDbError } from "@/lib/api-error";
 import { validateBody, formatZodErrors, databaseActionSchema } from "@/lib/validation";
 
 const ALLOWED_TABLES = [
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
       perPage,
       totalPages: Math.ceil((totalCount || 0) / perPage),
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,69 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
+import { encryptPii, revealGuestDocument } from "@/lib/pii-crypto";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data: guest, error } = await supabase
-      .from("guests")
-      .select(`
+const getGuest = getByIdHandler({
+  table: "guests",
+  roles: ROLES.FRONT_DESK,
+  select: `
         *,
         segment:guest_segments(id, name, code, description)
-      `)
-      .eq("id", params.id)
-      .single();
+      `,
+  label: "Guest",
+});
 
-    if (error) {
-      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
-    }
-
-    // Fetch preferences
-    const { data: preferences } = await supabase
-      .from("guest_preferences")
-      .select("*")
-      .eq("guest_id", params.id)
-      .single();
-
-    // Fetch recent bookings
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select(`
-        id, reference, status, check_in, check_out, nights, total_amount_gbp,
-        apartment:apartments(id, number, building:buildings(name))
-      `)
-      .eq("guest_id", params.id)
-      .order("check_in", { ascending: false })
-      .limit(10);
-
-    return NextResponse.json({
-      data: {
-        ...guest,
-        preferences: preferences || null,
-        bookings: bookings || [],
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+/** Front desk and above see the decrypted document; the row is stored encrypted. */
+export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const res = await getGuest(request, ctx);
+  if (res.status !== 200) return res;
+  const json = await res.json();
+  return NextResponse.json({ ...json, data: revealGuestDocument(json.data, true) });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createGuestSchema.partial(), body);
@@ -85,6 +53,9 @@ export async function PATCH(
         updates[key] = (validated as Record<string, unknown>)[key];
       }
     }
+    if ("passport_number" in updates) {
+      updates.passport_number = encryptPii(updates.passport_number as string | null);
+    }
 
     const { data, error } = await supabase
       .from("guests")
@@ -93,9 +64,7 @@ export async function PATCH(
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) return rpcErrorResponse(error, "guests.update");
 
     await logAudit(supabase, {
       action: "guest.update",
@@ -106,7 +75,7 @@ export async function PATCH(
       new_data: body,
     });
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: revealGuestDocument(data, true) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

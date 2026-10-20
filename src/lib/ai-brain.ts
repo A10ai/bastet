@@ -1,3 +1,4 @@
+import { CLAUDE_MODEL } from "@/lib/ai-model";
 import "server-only";
 /**
  * HospitAI AI Brain — Daily Operations Intelligence
@@ -58,7 +59,7 @@ export interface BrainConfig {
   total_executed: number;
 }
 
-interface DataSnapshot {
+export interface DataSnapshot {
   occupancy: {
     total: number;
     occupied: number;
@@ -307,17 +308,17 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
   // Process apartments
   const apartments = apartmentsResult.data || [];
   const total = apartments.length;
-  const occupied = apartments.filter((a: Record<string, any>) => a.status === "occupied").length;
-  const available = apartments.filter((a: Record<string, any>) => a.status === "available").length;
-  const cleaning = apartments.filter((a: Record<string, any>) => a.status === "cleaning").length;
-  const maintenanceStatusCount = apartments.filter((a: Record<string, any>) => a.status === "maintenance").length;
+  const occupied = apartments.filter((a: Record<string, unknown>) => a.status === "occupied").length;
+  const available = apartments.filter((a: Record<string, unknown>) => a.status === "available").length;
+  const cleaning = apartments.filter((a: Record<string, unknown>) => a.status === "cleaning").length;
+  const maintenanceStatusCount = apartments.filter((a: Record<string, unknown>) => a.status === "maintenance").length;
   const vacantStatuses = ["available", "blocked", "out_of_service"];
-  const vacantUnits = apartments.filter((a: Record<string, any>) => vacantStatuses.includes(a.status as string)).length;
+  const vacantUnits = apartments.filter((a: Record<string, unknown>) => vacantStatuses.includes(a.status as string)).length;
 
   // Process arrivals
-  const arrivals = (arrivalsResult.data || []).map((b: Record<string, any>) => {
-    const guests = b.guests as Record<string, any> | null;
-    const apt = b.apartments as Record<string, any> | null;
+  const arrivals = (arrivalsResult.data || []).map((b: Record<string, unknown>) => {
+    const guests = b.guests as Record<string, unknown> | null;
+    const apt = b.apartments as Record<string, unknown> | null;
     return {
       id: b.id as string,
       guest_name: guests ? `${guests.first_name} ${guests.last_name}` : "Unknown",
@@ -328,13 +329,13 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
 
   // VIP arrivals
   const vipArrivals = (arrivalsResult.data || [])
-    .filter((b: Record<string, any>) => {
-      const guests = b.guests as Record<string, any> | null;
+    .filter((b: Record<string, unknown>) => {
+      const guests = b.guests as Record<string, unknown> | null;
       return guests?.loyalty_tier === "platinum" || guests?.loyalty_tier === "gold";
     })
-    .map((b: Record<string, any>) => {
+    .map((b: Record<string, unknown>) => {
       const guests = b.guests as unknown as Record<string, unknown>;
-      const apt = b.apartments as Record<string, any> | null;
+      const apt = b.apartments as Record<string, unknown> | null;
       return {
         guest_name: `${guests.first_name} ${guests.last_name}`,
         loyalty_tier: guests.loyalty_tier as string,
@@ -343,9 +344,9 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
     });
 
   // Process departures
-  const departures = (departuresResult.data || []).map((b: Record<string, any>) => {
-    const guests = b.guests as Record<string, any> | null;
-    const apt = b.apartments as Record<string, any> | null;
+  const departures = (departuresResult.data || []).map((b: Record<string, unknown>) => {
+    const guests = b.guests as Record<string, unknown> | null;
+    const apt = b.apartments as Record<string, unknown> | null;
     return {
       id: b.id as string,
       guest_name: guests ? `${guests.first_name} ${guests.last_name}` : "Unknown",
@@ -357,19 +358,19 @@ async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapsho
   // Maintenance categories
   const maintenanceItems = maintenanceResult.data || [];
   const categories: Record<string, number> = {};
-  maintenanceItems.forEach((m: Record<string, any>) => {
+  maintenanceItems.forEach((m: Record<string, unknown>) => {
     const category = m.category as string;
     categories[category] = (categories[category] || 0) + 1;
   });
 
   // Revenue sums
-  const sumField = (rows: Record<string, any>[] | null) =>
+  const sumField = (rows: Record<string, unknown>[] | null) =>
     (rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + ((r.total_amount_gbp as number) || 0), 0);
 
   // Rates
-  const currentRates = (ratesResult.data || []).map((r: Record<string, any>) => ({
-    type_name: r.name,
-    rate: r.base_weekly_rate_gbp,
+  const currentRates = (ratesResult.data || []).map((r: Record<string, unknown>) => ({
+    type_name: String(r.name ?? ""),
+    rate: Number(r.base_weekly_rate_gbp ?? 0),
   }));
 
   // Estimated energy waste: ~£8/unit/day for HVAC in vacant units
@@ -468,7 +469,7 @@ Respond ONLY with valid JSON in this exact format:
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODEL,
         max_tokens: 2048,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],
@@ -482,11 +483,11 @@ Respond ONLY with valid JSON in this exact format:
     }
 
     const data = await res.json();
-    const textBlock = data.content?.find((c: Record<string, any>) => c.type === "text");
+    const textBlock = (data.content as { type?: string; text?: string }[] | undefined)?.find((c) => c.type === "text");
     if (!textBlock?.text) return null;
 
     // Extract JSON from the response (handle markdown code blocks)
-    let jsonStr = textBlock.text.trim();
+    let jsonStr = String(textBlock.text).trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim();
@@ -854,7 +855,7 @@ export async function getBrainHistory(
   if (error || !rows || rows.length === 0) return [];
 
   // Group by cycle_id
-  const cycleMap = new Map<string, Record<string, any>[]>();
+  const cycleMap = new Map<string, Record<string, unknown>[]>();
   for (const row of rows) {
     const key = row.cycle_id as string;
     if (!cycleMap.has(key)) cycleMap.set(key, []);
@@ -871,9 +872,9 @@ export async function getBrainHistory(
     cycles.push({
       cycle_id: cycleId,
       mode: (first.mode as "supervised" | "autonomous") || "supervised",
-      timestamp: first.created_at,
+      timestamp: first.created_at as string,
       data_snapshot: (first.data_snapshot as unknown as Record<string, unknown>) || {},
-      decisions: cycleRows.map((r: Record<string, any>) => ({
+      decisions: cycleRows.map((r: Record<string, unknown>) => ({
         id: r.id as string,
         category: r.category as BrainDecision["category"],
         action: r.action as string,

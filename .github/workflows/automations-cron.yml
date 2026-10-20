@@ -1,0 +1,29 @@
+name: Automations cron
+
+# Vercel's Hobby plan allows daily crons only; this schedule provides the
+# 15-minute automations cadence (docs/runbooks/deploy.md, "Cron jobs").
+# Needs repository variable APP_URL (e.g. https://app.hospitai.uk) and
+# repository secret CRON_SECRET; without them the job skips itself.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  automations:
+    runs-on: ubuntu-latest
+    if: ${{ vars.APP_URL != '' }}
+    steps:
+      - name: Trigger the automations route
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "$CRON_SECRET" ] || { echo "CRON_SECRET not set; skipping"; exit 0; }
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' -X POST "$APP_URL/api/v1/cron/automations" \
+            -H "Authorization: Bearer $CRON_SECRET" --max-time 120)
+          echo "status $code"; head -c 500 /tmp/body; echo
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]

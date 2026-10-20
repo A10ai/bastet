@@ -1,5 +1,6 @@
 # HospitAI Edge Box — Docker Compose
-# Deploys Next.js app + PostgreSQL + Supabase local stack
+# Deploys the Next.js app, a PostgreSQL volume for Edge Box experiments, and MQTT.
+# Auth and the application schema still live in Supabase (hosted or CLI).
 
 services:
   app:
@@ -10,7 +11,9 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      # Must be reachable FROM the container: a hosted Supabase project or
+      # the Supabase CLI stack on the host (http://host.docker.internal:54321).
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - PROPERTY_ID=${PROPERTY_ID}
@@ -32,7 +35,8 @@ services:
       - POSTGRES_DB=hospitai
     volumes:
       - hospitai-db:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d
+      # Migrations reference Supabase auth.* and need the Supabase stack, not
+      # plain Postgres. Apply them with `supabase db push` instead.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hospitai"]
       interval: 10s

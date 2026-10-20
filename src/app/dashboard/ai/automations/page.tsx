@@ -80,8 +80,8 @@ const automationConfig: Record<
   },
   auto_housekeeping: {
     icon: Sparkles,
-    accent: "text-bastet-gold",
-    bg: "bg-bastet-gold/10",
+    accent: "text-brand-accent",
+    bg: "bg-brand-accent/10",
   },
   maintenance_pattern: {
     icon: Wrench,
@@ -103,7 +103,7 @@ const automationConfig: Record<
 function getActionIcon(action: string) {
   if (action.includes("error")) return <AlertTriangle className="w-3.5 h-3.5 text-red-400" />;
   if (action.endsWith("_check")) return <CheckCircle className="w-3.5 h-3.5 text-text-muted" />;
-  return <Zap className="w-3.5 h-3.5 text-bastet-gold" />;
+  return <Zap className="w-3.5 h-3.5 text-brand-accent" />;
 }
 
 function relativeTime(iso: string): string {
@@ -216,7 +216,7 @@ export default function AutomationsPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <Workflow className="w-8 h-8 animate-pulse text-bastet-gold" />
+        <Workflow className="w-8 h-8 animate-pulse text-brand-accent" />
         <p className="text-sm text-text-secondary">
           Loading smart automations...
         </p>
@@ -233,7 +233,7 @@ export default function AutomationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Workflow className="w-6 h-6 text-bastet-gold" />
+            <Workflow className="w-6 h-6 text-brand-accent" />
             <h1 className="text-2xl font-display font-bold text-text-primary">
               Smart Automations
             </h1>
@@ -338,7 +338,7 @@ export default function AutomationsPage() {
                     onClick={() => handleToggle(automation.id)}
                     className={cn(
                       "relative w-10 h-5 rounded-full transition-colors",
-                      automation.enabled ? "bg-emerald-500" : "bg-bastet-border"
+                      automation.enabled ? "bg-emerald-500" : "bg-brand-border"
                     )}
                     aria-label={`Toggle ${automation.name}`}
                     role="switch"
@@ -409,7 +409,7 @@ export default function AutomationsPage() {
                   )}
 
                   {!automation.enabled && (
-                    <Badge className="bg-bastet-border/50 text-text-muted text-[10px]">
+                    <Badge className="bg-brand-border/50 text-text-muted text-[10px]">
                       Disabled
                     </Badge>
                   )}
@@ -424,7 +424,7 @@ export default function AutomationsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-bastet-gold" />
+            <Clock className="w-4 h-4 text-brand-accent" />
             <h3 className="text-lg font-semibold text-text-primary">
               Automation Log
             </h3>
@@ -438,13 +438,13 @@ export default function AutomationsPage() {
         <CardContent className="p-0">
           {log.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <Workflow className="w-8 h-8 text-bastet-border mx-auto mb-3" />
+              <Workflow className="w-8 h-8 text-brand-border mx-auto mb-3" />
               <p className="text-sm text-text-muted">
                 No automation events yet. Run automations to see results here.
               </p>
             </div>
           ) : (
-            <div className="max-h-[520px] overflow-y-auto divide-y divide-bastet-border">
+            <div className="max-h-[520px] overflow-y-auto divide-y divide-brand-border">
               {log.map((entry, i) => {
                 const config =
                   automationConfig[
@@ -454,7 +454,7 @@ export default function AutomationsPage() {
                 return (
                   <div
                     key={`${entry.timestamp}-${i}`}
-                    className="px-6 py-3.5 flex items-start gap-3 hover:bg-bastet-bg/50 transition-colors"
+                    className="px-6 py-3.5 flex items-start gap-3 hover:bg-brand-bg/50 transition-colors"
                   >
                     {/* Timeline dot */}
                     <div className="flex flex-col items-center pt-1">
@@ -472,7 +472,7 @@ export default function AutomationsPage() {
                         >
                           {entry.automation_name}
                         </span>
-                        <ChevronRight className="w-3 h-3 text-bastet-border" />
+                        <ChevronRight className="w-3 h-3 text-brand-border" />
                         <span className="text-[10px] font-mono text-text-muted">
                           {entry.action}
                         </span>

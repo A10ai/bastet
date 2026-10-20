@@ -16,6 +16,14 @@ export default defineConfig({
   timeout: 30_000,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
+    // Vercel preview deployments (staging) are behind Deployment Protection;
+    // `vercel env run -- npx playwright test ...` exports a short-lived token
+    // the platform accepts in this header.
+    // x-vercel-skip-toolbar keeps Vercel's injected feedback toolbar out of the
+    // page; it races React hydration and shows up as React error #418.
+    extraHTTPHeaders: process.env.VERCEL_OIDC_TOKEN
+      ? { "x-vercel-trusted-oidc-idp-token": process.env.VERCEL_OIDC_TOKEN, "x-vercel-skip-toolbar": "1" }
+      : undefined,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -25,7 +33,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
+  // With PLAYWRIGHT_BASE_URL set the tests target a server that is already
+  // running (local :3100, CI integration job, staging). Starting a web server
+  // here would run `next build` into the same .next directory under that
+  // server's feet with the placeholder values below, which silently broke the
+  // middleware's Supabase URL on 18 Oct 2026.
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: "npm run build && npm run start",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,

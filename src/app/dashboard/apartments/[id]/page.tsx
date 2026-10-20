@@ -57,7 +57,7 @@ export default function ApartmentDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-bastet-gold" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function ApartmentDetailPage() {
     return (
       <div className="text-center py-24">
         <p className="text-text-secondary">Apartment not found</p>
-        <Link href="/dashboard/apartments" className="text-bastet-gold hover:underline text-sm mt-2 inline-block">
+        <Link href="/dashboard/apartments" className="text-brand-accent hover:underline text-sm mt-2 inline-block">
           Back to apartments
         </Link>
       </div>
@@ -83,7 +83,7 @@ export default function ApartmentDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/dashboard/apartments"
-          className="p-2 rounded-lg hover:bg-bastet-card transition-colors"
+          className="p-2 rounded-lg hover:bg-brand-card transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
@@ -109,7 +109,7 @@ export default function ApartmentDetailPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <Bed className="w-5 h-5 text-bastet-gold" />
+                <Bed className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-lg font-mono font-bold text-text-primary">
                     {aptType?.bedrooms ?? "—"}
@@ -120,7 +120,7 @@ export default function ApartmentDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <Bath className="w-5 h-5 text-bastet-gold" />
+                <Bath className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-lg font-mono font-bold text-text-primary">
                     {aptType?.bathrooms ?? "—"}
@@ -131,7 +131,7 @@ export default function ApartmentDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <Maximize className="w-5 h-5 text-bastet-gold" />
+                <Maximize className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-lg font-mono font-bold text-text-primary">
                     {aptType?.size_sqm ? `${aptType.size_sqm}m²` : "—"}
@@ -142,7 +142,7 @@ export default function ApartmentDetailPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 py-3">
-                <Users className="w-5 h-5 text-bastet-gold" />
+                <Users className="w-5 h-5 text-brand-accent" />
                 <div>
                   <p className="text-lg font-mono font-bold text-text-primary">
                     {aptType?.max_occupancy ?? "—"}
@@ -166,7 +166,7 @@ export default function ApartmentDetailPage() {
                   {aptType.amenities.map((amenity) => (
                     <span
                       key={amenity}
-                      className="px-3 py-1.5 bg-bastet-bg border border-bastet-border rounded-full text-xs text-text-secondary"
+                      className="px-3 py-1.5 bg-brand-bg border border-brand-border rounded-full text-xs text-text-secondary"
                     >
                       {amenity}
                     </span>
@@ -190,7 +190,7 @@ export default function ApartmentDetailPage() {
                     <p className="text-xs text-text-muted">Reference</p>
                     <Link
                       href={`/dashboard/bookings/${currentBooking.id}`}
-                      className="text-sm font-mono text-bastet-gold hover:underline mt-0.5 inline-block"
+                      className="text-sm font-mono text-brand-accent hover:underline mt-0.5 inline-block"
                     >
                       {currentBooking.reference}
                     </Link>
@@ -273,24 +273,24 @@ export default function ApartmentDetailPage() {
                   {formatCurrency(nightlyRate)}
                 </span>
               </div>
-              <div className="border-t border-bastet-border pt-3">
+              <div className="border-t border-brand-border pt-3">
                 <p className="text-xs text-text-muted">Length-of-stay discounts</p>
                 <div className="mt-2 space-y-1 text-xs text-text-secondary">
                   <div className="flex justify-between">
                     <span>7+ nights</span>
-                    <span className="text-bastet-gold">5% off</span>
+                    <span className="text-brand-accent">5% off</span>
                   </div>
                   <div className="flex justify-between">
                     <span>14+ nights</span>
-                    <span className="text-bastet-gold">10% off</span>
+                    <span className="text-brand-accent">10% off</span>
                   </div>
                   <div className="flex justify-between">
                     <span>21+ nights</span>
-                    <span className="text-bastet-gold">15% off</span>
+                    <span className="text-brand-accent">15% off</span>
                   </div>
                   <div className="flex justify-between">
                     <span>28+ nights</span>
-                    <span className="text-bastet-gold">20% off</span>
+                    <span className="text-brand-accent">20% off</span>
                   </div>
                 </div>
               </div>

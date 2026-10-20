@@ -19,13 +19,19 @@ export function formatCurrency(
 }
 
 // Format date for display (in Cairo timezone)
-export function formatDate(date: string | Date, pattern: string = "dd MMM yyyy"): string {
-  return format(new Date(date), pattern);
+export function formatDate(date: string | Date | null | undefined, pattern: string = "dd MMM yyyy"): string {
+  if (date === null || date === undefined || date === "") return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, pattern);
 }
 
 // Relative time (e.g., "2 hours ago")
-export function timeAgo(date: string | Date): string {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+export function timeAgo(date: string | Date | null | undefined): string {
+  if (date === null || date === undefined || date === "") return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return formatDistanceToNow(d, { addSuffix: true });
 }
 
 // Generate booking reference: BAS-HRG-YYNNNN
@@ -43,6 +49,21 @@ export function generateInvoiceNumber(sequenceNumber: number): string {
 }
 
 // Calculate length-of-stay discount
+/**
+ * Channel commission is stored as a PERCENT in `booking_channels.commission_rate`
+ * (e.g. 15.00). Older code and constants used a fraction (0.15). These helpers
+ * accept either and return one unit, so a 15% commission can never be applied
+ * as 1500%.
+ */
+export function commissionFraction(rate: number | null | undefined): number {
+  const r = Number(rate) || 0;
+  return r > 1 ? r / 100 : r;
+}
+
+export function commissionPercent(rate: number | null | undefined): number {
+  return commissionFraction(rate) * 100;
+}
+
 export function getLengthOfStayDiscount(nights: number): number {
   if (nights >= 28) return 0.2;
   if (nights >= 21) return 0.15;
@@ -55,7 +76,7 @@ export function getLengthOfStayDiscount(nights: number): number {
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     available: "text-status-success",
-    occupied: "text-bastet-gold",
+    occupied: "text-brand-accent",
     maintenance: "text-status-warning",
     cleaning: "text-status-info",
     blocked: "text-status-error",
@@ -68,7 +89,7 @@ export function getStatusColor(status: string): string {
     no_show: "text-status-error",
     open: "text-status-warning",
     assigned: "text-status-info",
-    in_progress: "text-bastet-gold",
+    in_progress: "text-brand-accent",
     completed: "text-status-success",
     verified: "text-status-success",
     on_hold: "text-status-warning",
@@ -76,7 +97,7 @@ export function getStatusColor(status: string): string {
     draft: "text-text-secondary",
     sent: "text-status-info",
     paid: "text-status-success",
-    partially_paid: "text-bastet-gold",
+    partially_paid: "text-brand-accent",
     overdue: "text-status-error",
     refunded: "text-status-warning",
     high: "text-status-warning",
@@ -91,7 +112,7 @@ export function getStatusColor(status: string): string {
 export function getStatusBgColor(status: string): string {
   const colors: Record<string, string> = {
     available: "bg-status-success/10 text-status-success",
-    occupied: "bg-bastet-gold-muted text-bastet-gold",
+    occupied: "bg-brand-accent-muted text-brand-accent",
     maintenance: "bg-status-warning/10 text-status-warning",
     cleaning: "bg-status-info/10 text-status-info",
     blocked: "bg-status-error/10 text-status-error",
@@ -102,7 +123,7 @@ export function getStatusBgColor(status: string): string {
     cancelled: "bg-status-error/10 text-status-error",
     open: "bg-status-warning/10 text-status-warning",
     assigned: "bg-status-info/10 text-status-info",
-    in_progress: "bg-bastet-gold-muted text-bastet-gold",
+    in_progress: "bg-brand-accent-muted text-brand-accent",
     completed: "bg-status-success/10 text-status-success",
     verified: "bg-status-success/10 text-status-success",
     urgent: "bg-status-error/10 text-status-error",
@@ -112,7 +133,7 @@ export function getStatusBgColor(status: string): string {
     draft: "bg-text-secondary/10 text-text-secondary",
     sent: "bg-status-info/10 text-status-info",
     paid: "bg-status-success/10 text-status-success",
-    partially_paid: "bg-bastet-gold-muted text-bastet-gold",
+    partially_paid: "bg-brand-accent-muted text-brand-accent",
     overdue: "bg-status-error/10 text-status-error",
     refunded: "bg-status-warning/10 text-status-warning",
     high: "bg-status-warning/10 text-status-warning",

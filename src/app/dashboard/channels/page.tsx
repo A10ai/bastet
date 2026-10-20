@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { DemoDataBanner } from "@/components/ui/demo-data-banner";
 import {
   Globe,
   Loader2,
@@ -29,18 +30,13 @@ import {
   Legend,
 } from "recharts";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Dark tooltip style (matches finance page)
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#111827",
-  border: "1px solid #1F2937",
-  borderRadius: "8px",
-  color: "#F9FAFB",
-};
 
 // ---------------------------------------------------------------------------
 // Channel colors
@@ -263,10 +259,16 @@ export default function ChannelsPage() {
           perfRes.json(),
           rateRes.json(),
         ]);
+        // Each endpoint wraps its payload differently; never hand a non-array
+        // to list state (this crashed the page with "is not iterable").
+        const asArray = (json: Record<string, unknown>, ...keys: string[]): unknown[] => {
+          const candidates = [json.data, ...keys.map((k) => (json.data as Record<string, unknown> | undefined)?.[k]), ...keys.map((k) => json[k])];
+          return (candidates.find(Array.isArray) as unknown[] | undefined) ?? [];
+        };
         setOverview(ovJson.data || ovJson);
-        setConnections(connJson.data || connJson.channels || []);
-        setPerformance(perfJson.data || perfJson.channels || []);
-        setRates(rateJson.data || rateJson.rates || []);
+        setConnections(asArray(connJson, "connections", "channels") as ChannelConnection[]);
+        setPerformance(asArray(perfJson, "performance", "channels") as PerformanceRow[]);
+        setRates(asArray(rateJson, "rates") as RateRow[]);
       } catch {
         /* silent — cards show empty state */
       } finally {
@@ -380,6 +382,10 @@ export default function ChannelsPage() {
       {/* ===== Channel Connections ===== */}
       <div>
         <h2 className="text-lg font-semibold text-text-primary mb-4">Channel Connections</h2>
+        <DemoDataBanner className="mb-4">
+          No channel manager or OTA API is integrated. Connection status, last-sync times and listing
+          counts below are placeholders; the booking counts and revenue per channel are real.
+        </DemoDataBanner>
         {connections.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {connections.map((ch) => (
@@ -477,8 +483,8 @@ export default function ChannelsPage() {
                   <tr
                     key={row.channel}
                     className={cn(
-                      "border-b border-border/50 hover:bg-bastet-bg/50 transition-colors",
-                      i % 2 === 0 ? "bg-transparent" : "bg-bastet-bg/20"
+                      "border-b border-border/50 hover:bg-brand-bg/50 transition-colors",
+                      i % 2 === 0 ? "bg-transparent" : "bg-brand-bg/20"
                     )}
                   >
                     <td className="py-3 px-3">
@@ -545,8 +551,8 @@ export default function ChannelsPage() {
                     <tr
                       key={row.apartment_type}
                       className={cn(
-                        "border-b border-border/50 hover:bg-bastet-bg/50 transition-colors",
-                        i % 2 === 0 ? "bg-transparent" : "bg-bastet-bg/20"
+                        "border-b border-border/50 hover:bg-brand-bg/50 transition-colors",
+                        i % 2 === 0 ? "bg-transparent" : "bg-brand-bg/20"
                       )}
                     >
                       <td className="py-3 px-3 font-medium text-text-primary">{row.apartment_type}</td>
@@ -555,7 +561,7 @@ export default function ChannelsPage() {
                       <td className="py-3 px-3 font-mono text-text-secondary">{row.total_units}</td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-bastet-bg rounded-full overflow-hidden max-w-[80px]">
+                          <div className="flex-1 h-2 bg-brand-bg rounded-full overflow-hidden max-w-[80px]">
                             <div
                               className="h-full bg-cyan-400 rounded-full transition-all"
                               style={{ width: `${occupancyPct}%` }}

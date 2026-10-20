@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,99 +42,32 @@ interface ApartmentCrossData {
 }
 
 export default function ApartmentsPage() {
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [floorFilter, setFloorFilter] = useState<string>("all");
-  const [crossData, setCrossData] = useState<ApartmentCrossData>({});
 
-  useEffect(() => {
-    const fetchApartments = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/v1/apartments");
-        const json = await res.json();
-        const apts = json.data || [];
-        setApartments(apts);
+  const { data: aptRows, isLoading: loading } = useApi<Apartment[]>("/api/v1/apartments?limit=1000", undefined, ["apartments"]);
+  const apartments = useMemo(() => aptRows ?? [], [aptRows]);
+  const { data: checkedInRows } = useApi<Array<{ apartment_id?: string | null; guest?: { first_name?: string; last_name?: string } | null }>>("/api/v1/bookings?status=checked_in&limit=500", undefined, ["bookings"]);
+  type OpenRow = { apartment_id?: string | null; status: string };
+  const { data: hkRows } = useApi<OpenRow[]>("/api/v1/housekeeping", undefined, ["housekeeping_tasks"]);
+  const { data: mxRows } = useApi<OpenRow[]>("/api/v1/maintenance", undefined, ["maintenance_requests"]);
 
-        // Fetch cross-data for apartments
-        fetchCrossData(apts);
-      } catch {
-        setApartments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApartments();
-  }, []);
-
-  const fetchCrossData = async (apts: Apartment[]) => {
+  const crossData = useMemo<ApartmentCrossData>(() => {
     const data: ApartmentCrossData = {};
-
-    // Fetch current bookings (checked_in)
-    try {
-      const res = await fetch("/api/v1/bookings?status=checked_in&limit=500");
-      const json = await res.json();
-      const bookings = json.data || [];
-      for (const b of bookings) {
-        if (b.apartment_id && b.guest) {
-          data[b.apartment_id] = {
-            ...data[b.apartment_id],
-            guest_name: `${b.guest.first_name} ${b.guest.last_name}`,
-          };
-        }
-      }
-    } catch { /* — */ }
-
-    // Fetch housekeeping + maintenance task counts
-    try {
-      const [hkRes, mxRes] = await Promise.all([
-        fetch("/api/v1/housekeeping").catch(() => null),
-        fetch("/api/v1/maintenance").catch(() => null),
-      ]);
-
-      const taskCount: Record<string, number> = {};
-
-      if (hkRes) {
-        const hkJson = await hkRes.json();
-        const tasks = hkJson.data || [];
-        for (const t of tasks) {
-          if (t.apartment_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
-            taskCount[t.apartment_id] = (taskCount[t.apartment_id] || 0) + 1;
-          }
-        }
-      }
-
-      if (mxRes) {
-        const mxJson = await mxRes.json();
-        const requests = mxJson.data || [];
-        for (const r of requests) {
-          if (r.apartment_id && ["open", "assigned", "in_progress"].includes(r.status)) {
-            taskCount[r.apartment_id] = (taskCount[r.apartment_id] || 0) + 1;
-          }
-        }
-      }
-
-      for (const [aptId, count] of Object.entries(taskCount)) {
-        data[aptId] = { ...data[aptId], open_tasks: count };
-      }
-    } catch { /* — */ }
-
-    // Derive energy status per apartment
-    for (const apt of apts) {
-      const isOccupied = !!data[apt.id]?.guest_name;
-      let energyStatus = "standby";
-      if (isOccupied) {
-        energyStatus = "active";
-      } else {
-        // Vacant — standby mode
-        energyStatus = "standby";
-      }
-      data[apt.id] = { ...data[apt.id], energy_status: energyStatus };
+    for (const b of checkedInRows ?? []) {
+      if (b.apartment_id && b.guest) data[b.apartment_id] = { ...data[b.apartment_id], guest_name: `${b.guest.first_name} ${b.guest.last_name}` };
     }
-
-    setCrossData(data);
-  };
+    const taskCount: Record<string, number> = {};
+    for (const t of hkRows ?? []) {
+      if (t.apartment_id && ["pending", "assigned", "in_progress"].includes(t.status)) taskCount[t.apartment_id] = (taskCount[t.apartment_id] || 0) + 1;
+    }
+    for (const r of mxRows ?? []) {
+      if (r.apartment_id && ["open", "assigned", "in_progress"].includes(r.status)) taskCount[r.apartment_id] = (taskCount[r.apartment_id] || 0) + 1;
+    }
+    for (const [aptId, count] of Object.entries(taskCount)) data[aptId] = { ...data[aptId], open_tasks: count };
+    for (const apt of apartments) data[apt.id] = { ...data[apt.id], energy_status: data[apt.id]?.guest_name ? "active" : "standby" };
+    return data;
+  }, [apartments, checkedInRows, hkRows, mxRows]);
 
   const filtered = apartments.filter((a) => {
     if (statusFilter !== "all" && a.status !== statusFilter) return false;
@@ -188,7 +122,7 @@ export default function ApartmentsPage() {
   const energyBadge = (status?: string) => {
     switch (status) {
       case "active":
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-bastet-gold/15 text-bastet-gold">Active</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-accent/15 text-brand-accent">Active</span>;
       case "waste":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-status-error/15 text-status-error">Waste</span>;
       case "standby":
@@ -222,7 +156,7 @@ export default function ApartmentsPage() {
           <select
             value={floorFilter}
             onChange={(e) => setFloorFilter(e.target.value)}
-            className="bg-bastet-card border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="bg-brand-card border border-brand-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
             aria-label="Filter by floor"
           >
             <option value="all">All Floors</option>
@@ -240,8 +174,8 @@ export default function ApartmentsPage() {
             onClick={() => setStatusFilter("all")}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               statusFilter === "all"
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             All ({apartments.length})
@@ -252,8 +186,8 @@ export default function ApartmentsPage() {
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
                 statusFilter === status
-                  ? "bg-bastet-gold text-bastet-bg"
-                  : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                  ? "bg-brand-accent text-brand-bg"
+                  : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
               }`}
             >
               {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -339,8 +273,8 @@ export default function ApartmentsPage() {
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {statusChartData.map((entry: Record<string, any>) => (
-                        <Cell key={entry.key} fill={STATUS_COLORS[entry.key] || "#6B7280"} />
+                      {statusChartData.map((entry: Record<string, unknown>) => (
+                        <Cell key={String(entry.key)} fill={STATUS_COLORS[entry.key as string] || "#6B7280"} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -357,14 +291,14 @@ export default function ApartmentsPage() {
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-3 justify-center">
-                {statusChartData.map((entry: Record<string, any>) => (
-                  <div key={entry.key} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                {statusChartData.map((entry: Record<string, unknown>) => (
+                  <div key={String(entry.key)} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
-                      style={{ backgroundColor: STATUS_COLORS[entry.key] || "#6B7280" }}
+                      style={{ backgroundColor: STATUS_COLORS[entry.key as string] || "#6B7280" }}
                     />
-                    <span className="capitalize">{entry.name}</span>
-                    <span className="text-text-muted">({entry.value})</span>
+                    <span className="capitalize">{String(entry.name)}</span>
+                    <span className="text-text-muted">({String(entry.value)})</span>
                   </div>
                 ))}
               </div>
@@ -405,13 +339,13 @@ export default function ApartmentsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Number</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Floor</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
@@ -430,10 +364,10 @@ export default function ApartmentsPage() {
                   return (
                     <tr
                       key={apt.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
-                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                        <span className="text-sm font-mono font-semibold text-brand-accent">
                           {apt.number}
                         </span>
                       </td>
@@ -472,7 +406,7 @@ export default function ApartmentsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/apartments/${apt.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

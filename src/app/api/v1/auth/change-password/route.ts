@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { requireAuth } from "@/lib/api-auth";
 import { apiError, apiSuccess } from "@/lib/api-error";
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limit password changes
   const ip = getClientIp(request);
-  const rl = rateLimit(`pwchange:${ip}`, RATE_LIMITS.API_DEFAULT);
+  const rl = await rateLimit(`pwchange:${ip}`, RATE_LIMITS.API_DEFAULT);
   if (!rl.allowed) {
     return apiError("RATE_LIMITED", "Too many requests", 429);
   }

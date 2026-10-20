@@ -11,7 +11,7 @@
  * This is NOT rule-based: every coefficient is learned from data.
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ---------------------------------------------------------------------------
 // Types

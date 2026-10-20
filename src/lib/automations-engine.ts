@@ -9,7 +9,7 @@
  * - Energy standby recommendations for empty units
  */
 
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, subDays } from "date-fns";
 
 // ---------------------------------------------------------------------------
@@ -61,10 +61,32 @@ function first<T>(val: T | T[] | null | undefined): T | null {
 // 1. Auto Pricing
 // ---------------------------------------------------------------------------
 
+/**
+ * Guard rails (audit Oct 2026). The automation used to compound every rack
+ * rate by 0.88 or 1.15 on each run with no memory. Now it:
+ *   - does nothing unless AUTO_PRICING_ENABLED=true,
+ *   - adjusts each apartment type at most once per business day,
+ *   - never drifts more than ±AUTO_PRICING_MAX_DRIFT from the first rate
+ *     recorded in the last 30 days of pricing_decisions.
+ */
+const AUTO_PRICING_ENABLED = process.env.AUTO_PRICING_ENABLED === "true";
+const AUTO_PRICING_MAX_DRIFT = 0.3;
+
 async function runAutoPricing(
   supabase: SupabaseClient
 ): Promise<AutomationResult[]> {
   const results: AutomationResult[] = [];
+
+  if (!AUTO_PRICING_ENABLED) {
+    results.push({
+      action: "pricing_disabled",
+      description:
+        "Automatic rate changes are disabled (AUTO_PRICING_ENABLED is not true). Rates were read but not changed.",
+      impact: "No change",
+      timestamp: now(),
+    });
+    return results;
+  }
 
   // Get current occupancy
   const { data: apartments } = await supabase
@@ -89,18 +111,25 @@ async function runAutoPricing(
     return results;
   }
 
-  // Determine multiplier
-  let multiplier: number;
-  let reason: string;
-  if (occupancy > 85) {
-    multiplier = 1.15;
-    reason = `High occupancy (${occupancy}%) — increasing rates by 15%`;
-  } else {
-    multiplier = 0.88;
-    reason = `Low occupancy (${occupancy}%) — reducing rates by 12% to stimulate bookings`;
-  }
+  const high = occupancy > 85;
+  const multiplier = high ? 1.15 : 0.88;
+  const reason = high
+    ? `High occupancy (${occupancy}%) — increasing rates by up to 15%`
+    : `Low occupancy (${occupancy}%) — reducing rates by up to 12% to stimulate bookings`;
 
-  // Fetch apartment types and update rates
+  const { data: prop } = await supabase
+    .from("properties")
+    .select("id")
+    .limit(1)
+    .single();
+
+  const since = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const { data: recentDecisions } = await supabase
+    .from("pricing_decisions")
+    .select("apartment_type_id, decision_date, base_rate_gbp, created_at")
+    .gte("decision_date", since)
+    .order("created_at", { ascending: true });
+
   const { data: types } = await supabase
     .from("apartment_types")
     .select("id, name, base_weekly_rate_gbp");
@@ -111,8 +140,36 @@ async function runAutoPricing(
     const currentRate = aptType.base_weekly_rate_gbp as number | null;
     if (!currentRate || currentRate <= 0) continue;
 
-    const newRate = Math.round(currentRate * multiplier);
-    if (newRate === currentRate) continue;
+    const history = (recentDecisions || []).filter(
+      (d: { apartment_type_id: string }) => d.apartment_type_id === aptType.id
+    );
+
+    if (history.some((d: { decision_date: string }) => d.decision_date === todayStr())) {
+      results.push({
+        action: "pricing_cooldown",
+        description: `${aptType.name}: rate already adjusted today — 24h cooldown in effect.`,
+        impact: "No change",
+        timestamp: now(),
+      });
+      continue;
+    }
+
+    const reference = history.length
+      ? Number((history[0] as { base_rate_gbp: number }).base_rate_gbp)
+      : currentRate;
+    const floor = Math.round(reference * (1 - AUTO_PRICING_MAX_DRIFT));
+    const ceiling = Math.round(reference * (1 + AUTO_PRICING_MAX_DRIFT));
+    const newRate = Math.min(ceiling, Math.max(floor, Math.round(currentRate * multiplier)));
+
+    if (newRate === currentRate) {
+      results.push({
+        action: "pricing_limit",
+        description: `${aptType.name}: already at the ±${AUTO_PRICING_MAX_DRIFT * 100}% drift limit (reference £${reference}/week). No change.`,
+        impact: "No change",
+        timestamp: now(),
+      });
+      continue;
+    }
 
     const { error } = await supabase
       .from("apartment_types")
@@ -122,17 +179,10 @@ async function runAutoPricing(
     if (!error) {
       results.push({
         action: "rate_adjusted",
-        description: `${aptType.name}: rate changed from £${currentRate} to £${newRate}/night. ${reason}.`,
-        impact: `£${Math.abs(newRate - currentRate)}/night ${newRate > currentRate ? "increase" : "decrease"} per booking`,
+        description: `${aptType.name}: weekly rate changed from £${currentRate} to £${newRate}/week. ${reason}.`,
+        impact: `£${Math.abs(newRate - currentRate)}/week ${newRate > currentRate ? "increase" : "decrease"} (reference £${reference}, limit ±${AUTO_PRICING_MAX_DRIFT * 100}%)`,
         timestamp: now(),
       });
-
-      // Log pricing decision
-      const { data: prop } = await supabase
-        .from("properties")
-        .select("id")
-        .limit(1)
-        .single();
 
       if (prop) {
         await supabase.from("pricing_decisions").insert({
@@ -142,8 +192,8 @@ async function runAutoPricing(
           base_rate_gbp: currentRate,
           recommended_rate_gbp: newRate,
           applied_rate_gbp: newRate,
-          adjustment_reason: reason,
-          demand_score: occupancy,
+          adjustment_reason: high ? "high_demand" : "low_demand",
+          demand_score: Math.round(occupancy) / 100,
           was_accepted: true,
         });
       }

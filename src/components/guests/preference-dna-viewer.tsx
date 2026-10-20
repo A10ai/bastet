@@ -180,7 +180,7 @@ export function PreferenceDnaViewer({
             {val.map((item, i) => (
               <span
                 key={i}
-                className="px-2 py-0.5 bg-bastet-bg border border-bastet-border rounded-full text-xs text-text-secondary"
+                className="px-2 py-0.5 bg-brand-bg border border-brand-border rounded-full text-xs text-text-secondary"
               >
                 {String(item)}
               </span>
@@ -199,7 +199,7 @@ export function PreferenceDnaViewer({
         <button
           type="button"
           onClick={() => setValue(field.key, !val)}
-          className={`px-3 py-1 rounded text-xs font-medium ${val ? "bg-status-success/20 text-status-success" : "bg-bastet-bg text-text-muted"}`}
+          className={`px-3 py-1 rounded text-xs font-medium ${val ? "bg-status-success/20 text-status-success" : "bg-brand-bg text-text-muted"}`}
         >
           {val ? "Yes" : "No"}
         </button>
@@ -210,7 +210,7 @@ export function PreferenceDnaViewer({
         <select
           value={String(val || "")}
           onChange={(e) => setValue(field.key, e.target.value || null)}
-          className="px-2 py-1 bg-bastet-bg border border-bastet-border rounded text-sm text-text-primary"
+          className="px-2 py-1 bg-brand-bg border border-brand-border rounded text-sm text-text-primary"
         >
           <option value="">Not set</option>
           {field.options.map((opt) => (
@@ -234,7 +234,7 @@ export function PreferenceDnaViewer({
             )
           }
           placeholder="Comma-separated"
-          className="w-full px-2 py-1 bg-bastet-bg border border-bastet-border rounded text-sm text-text-primary"
+          className="w-full px-2 py-1 bg-brand-bg border border-brand-border rounded text-sm text-text-primary"
         />
       );
     }
@@ -244,7 +244,7 @@ export function PreferenceDnaViewer({
           type="number"
           value={val !== null && val !== undefined ? String(val) : ""}
           onChange={(e) => setValue(field.key, e.target.value ? parseFloat(e.target.value) : null)}
-          className="w-24 px-2 py-1 bg-bastet-bg border border-bastet-border rounded text-sm text-text-primary font-mono"
+          className="w-24 px-2 py-1 bg-brand-bg border border-brand-border rounded text-sm text-text-primary font-mono"
         />
       );
     }
@@ -253,7 +253,7 @@ export function PreferenceDnaViewer({
         type="text"
         value={String(val || "")}
         onChange={(e) => setValue(field.key, e.target.value || null)}
-        className="w-full px-2 py-1 bg-bastet-bg border border-bastet-border rounded text-sm text-text-primary"
+        className="w-full px-2 py-1 bg-brand-bg border border-brand-border rounded text-sm text-text-primary"
       />
     );
   };
@@ -296,11 +296,11 @@ export function PreferenceDnaViewer({
       </CardHeader>
       <CardContent className="space-y-1 p-0">
         {SECTIONS.map((section) => (
-          <div key={section.title} className="border-b border-bastet-border/50 last:border-0">
+          <div key={section.title} className="border-b border-brand-border/50 last:border-0">
             <button
               type="button"
               onClick={() => toggleSection(section.title)}
-              className="w-full flex items-center justify-between px-6 py-3 hover:bg-bastet-bg/50 transition-colors"
+              className="w-full flex items-center justify-between px-6 py-3 hover:bg-brand-bg/50 transition-colors"
             >
               <span className="text-sm font-medium text-text-primary">{section.title}</span>
               {expandedSections.has(section.title) ? (

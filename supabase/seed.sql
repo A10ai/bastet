@@ -20,6 +20,7 @@ DECLARE
   v_reception_auth_id UUID := '00000000-0000-0000-0000-000000000003';
   v_housekeeping_auth_id UUID := '00000000-0000-0000-0000-000000000004';
   v_maintenance_auth_id UUID := '00000000-0000-0000-0000-000000000005';
+  v_e2e_auth_id UUID := '00000000-0000-0000-0000-000000000006';
 
   -- Auto-generated IDs
   v_property_id UUID;
@@ -61,8 +62,8 @@ BEGIN
 -- ============================================================
 -- 1. Property
 -- ============================================================
-INSERT INTO properties (name, slug, address, city, country, latitude, longitude, timezone, default_currency, reporting_currency, star_rating, total_apartments, status, phone, email, website)
-VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Kawthar District, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 270, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com')
+INSERT INTO properties (name, slug, address, city, country, latitude, longitude, timezone, default_currency, reporting_currency, star_rating, total_apartments, status, phone, email, website, vat_rate_percent)
+VALUES ('Bastet Aparthotels', 'bastet-hrg', 'Kawthar District, Hurghada', 'Hurghada', 'EG', 27.1783880, 33.8612450, 'Africa/Cairo', 'EGP', 'GBP', 4, 270, 'construction', '+20 65 344 0000', 'info@bastetaparthotels.com', 'https://bastetaparthotels.com', 14.00)
 RETURNING id INTO v_property_id;
 
 -- ============================================================
@@ -204,18 +205,18 @@ INSERT INTO guest_segments (name, code, description) VALUES
 -- ============================================================
 v_guest_ids := ARRAY[]::UUID[];
 
-INSERT INTO guests (segment_id, first_name, last_name, email, phone, nationality, language, preferred_currency, city, country, postcode, loyalty_tier, loyalty_points, total_stays, total_nights, total_spend_gbp, marketing_consent)
+INSERT INTO guests (property_id, segment_id, first_name, last_name, email, phone, nationality, language, preferred_currency, city, country, postcode, loyalty_tier, loyalty_points, total_stays, total_nights, total_spend_gbp, marketing_consent)
 VALUES
-  (v_segment_tourist, 'James', 'Wilson', 'james.wilson@gmail.com', '+447700900001', 'GB', 'en', 'GBP', 'Manchester', 'GB', 'M1 1AA', 'gold', 5200, 4, 56, 8400.00, true),
-  (v_segment_tourist, 'Sarah', 'Mueller', 'sarah.mueller@web.de', '+49170000002', 'DE', 'de', 'EUR', 'Berlin', 'DE', '10115', 'silver', 2100, 2, 21, 3150.00, true),
-  (v_segment_nomad, 'Alex', 'Thompson', 'alex@remotework.io', '+447700900003', 'GB', 'en', 'GBP', 'London', 'GB', 'EC1A 1BB', 'platinum', 18500, 6, 180, 27000.00, true),
-  (v_segment_tourist, 'Elena', 'Petrova', 'elena.petrova@mail.ru', '+79001234567', 'RU', 'ru', 'USD', 'Moscow', 'RU', '101000', 'bronze', 800, 1, 14, 1200.00, false),
-  (v_segment_domestic, 'Ahmed', 'Hassan', 'ahmed.hassan@gmail.com', '+201001234567', 'EG', 'ar', 'EGP', 'Cairo', 'EG', '11511', 'bronze', 300, 1, 3, 450.00, true),
-  (v_segment_corporate, 'David', 'Chen', 'david.chen@techcorp.com', '+447700900006', 'GB', 'en', 'GBP', 'London', 'GB', 'SW1A 1AA', 'silver', 3800, 3, 30, 5700.00, false),
-  (v_segment_tourist, 'Maria', 'Garcia', 'maria.garcia@outlook.es', '+34600000007', 'ES', 'en', 'EUR', 'Madrid', 'ES', '28001', 'bronze', 400, 1, 7, 650.00, true),
-  (v_segment_nomad, 'Lisa', 'Anderson', 'lisa@freelance.dev', '+46701234568', 'SE', 'en', 'EUR', 'Stockholm', 'SE', '11120', 'gold', 7500, 3, 90, 11250.00, true),
-  (v_segment_domestic, 'Omar', 'Farouk', 'omar.farouk@yahoo.com', '+201112345678', 'EG', 'ar', 'EGP', 'Alexandria', 'EG', '21500', 'bronze', 150, 1, 2, 200.00, false),
-  (v_segment_corporate, 'Sophie', 'Laurent', 'sophie.laurent@bigco.fr', '+33600000010', 'FR', 'en', 'EUR', 'Paris', 'FR', '75001', 'silver', 2800, 2, 28, 4200.00, true);
+  (v_property_id, v_segment_tourist, 'James', 'Wilson', 'james.wilson@gmail.com', '+447700900001', 'GB', 'en', 'GBP', 'Manchester', 'GB', 'M1 1AA', 'gold', 5200, 4, 56, 8400.00, true),
+  (v_property_id, v_segment_tourist, 'Sarah', 'Mueller', 'sarah.mueller@web.de', '+49170000002', 'DE', 'de', 'EUR', 'Berlin', 'DE', '10115', 'silver', 2100, 2, 21, 3150.00, true),
+  (v_property_id, v_segment_nomad, 'Alex', 'Thompson', 'alex@remotework.io', '+447700900003', 'GB', 'en', 'GBP', 'London', 'GB', 'EC1A 1BB', 'platinum', 18500, 6, 180, 27000.00, true),
+  (v_property_id, v_segment_tourist, 'Elena', 'Petrova', 'elena.petrova@mail.ru', '+79001234567', 'RU', 'ru', 'USD', 'Moscow', 'RU', '101000', 'bronze', 800, 1, 14, 1200.00, false),
+  (v_property_id, v_segment_domestic, 'Ahmed', 'Hassan', 'ahmed.hassan@gmail.com', '+201001234567', 'EG', 'ar', 'EGP', 'Cairo', 'EG', '11511', 'bronze', 300, 1, 3, 450.00, true),
+  (v_property_id, v_segment_corporate, 'David', 'Chen', 'david.chen@techcorp.com', '+447700900006', 'GB', 'en', 'GBP', 'London', 'GB', 'SW1A 1AA', 'silver', 3800, 3, 30, 5700.00, false),
+  (v_property_id, v_segment_tourist, 'Maria', 'Garcia', 'maria.garcia@outlook.es', '+34600000007', 'ES', 'en', 'EUR', 'Madrid', 'ES', '28001', 'bronze', 400, 1, 7, 650.00, true),
+  (v_property_id, v_segment_nomad, 'Lisa', 'Anderson', 'lisa@freelance.dev', '+46701234568', 'SE', 'en', 'EUR', 'Stockholm', 'SE', '11120', 'gold', 7500, 3, 90, 11250.00, true),
+  (v_property_id, v_segment_domestic, 'Omar', 'Farouk', 'omar.farouk@yahoo.com', '+201112345678', 'EG', 'ar', 'EGP', 'Alexandria', 'EG', '21500', 'bronze', 150, 1, 2, 200.00, false),
+  (v_property_id, v_segment_corporate, 'Sophie', 'Laurent', 'sophie.laurent@bigco.fr', '+33600000010', 'FR', 'en', 'EUR', 'Paris', 'FR', '75001', 'silver', 2800, 2, 28, 4200.00, true);
 
 -- Store guest IDs for booking references
 SELECT array_agg(id ORDER BY created_at) INTO v_guest_ids FROM guests;
@@ -242,6 +243,10 @@ RETURNING id INTO v_staff_hk;
 INSERT INTO staff (auth_user_id, property_id, first_name, last_name, email, phone, role, department, language, hire_date)
 VALUES (v_maintenance_auth_id, v_property_id, 'Hassan', 'Mohamed', 'maintenance@bastet.com', '+201001234503', 'maintenance', 'maintenance', 'ar', '2025-10-01')
 RETURNING id INTO v_staff_maint;
+-- Dedicated account for the Playwright journeys: nothing else logs in as it, so the per-account login lockout never hits CI
+INSERT INTO staff (auth_user_id, property_id, first_name, last_name, email, phone, role, department, language, hire_date)
+VALUES (v_e2e_auth_id, v_property_id, 'End-to-end', 'Tester', 'e2e@bastet.com', '+200000000006', 'manager', 'management', 'en', '2026-01-01')
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 9. Rates (3 seasons)
@@ -266,6 +271,37 @@ INSERT INTO rates (property_id, apartment_type_id, season_name, start_date, end_
   (v_property_id, v_type_1bed, 'High Season', '2026-06-01', '2026-08-31', 560.00, 85.00, 1),
   (v_property_id, v_type_2bed, 'High Season', '2026-06-01', '2026-08-31', 800.00, 125.00, 1),
   (v_property_id, v_type_penthouse, 'High Season', '2026-06-01', '2026-08-31', 1500.00, 230.00, 3);
+
+-- Rate plans (00027): the seasonal rate is BAR; plans adjust it and carry the cancellation terms
+INSERT INTO rate_plans (property_id, code, name, description, pricing_mode, adjustment, cancellation_policy, free_cancellation_days, min_nights, includes_breakfast, is_default) VALUES
+  (v_property_id, 'BAR', 'Best Available Rate', 'Seasonal rate. Free cancellation until the day before arrival.', 'bar', 0, 'flexible', 1, 1, false, true),
+  (v_property_id, 'NRF', 'Non-refundable', '10% off BAR, paid in full at booking, no refund.', 'percent_off', 10, 'non_refundable', 0, 1, false, false),
+  (v_property_id, 'LONGSTAY', 'Long stay (7+ nights)', '15% off BAR for a week or more.', 'percent_off', 15, 'moderate', 3, 7, false, false),
+  (v_property_id, 'BB', 'Bed and breakfast', 'BAR plus breakfast for every guest.', 'percent_markup', 12, 'flexible', 1, 1, true, false)
+ON CONFLICT (property_id, code) DO NOTHING;
+
+-- Point of sale (00030): outlets and a small catalogue; prices in GBP, VAT from the property unless set
+INSERT INTO pos_outlets (property_id, code, name, type) VALUES
+  (v_property_id, 'REST', 'Main Restaurant', 'restaurant'),
+  (v_property_id, 'POOL', 'Pool Bar', 'bar'),
+  (v_property_id, 'ROOF', 'Rooftop Lounge', 'bar'),
+  (v_property_id, 'SPA', 'Spa', 'spa'),
+  (v_property_id, 'MINI', 'Minibar', 'minibar')
+ON CONFLICT (property_id, code) DO NOTHING;
+INSERT INTO pos_items (outlet_id, name, category, unit_price_gbp)
+SELECT o.id, i.name, i.category, i.price FROM pos_outlets o
+JOIN (VALUES
+  ('REST', 'Breakfast buffet', 'Breakfast', 8.00), ('REST', 'Club sandwich', 'Mains', 7.50), ('REST', 'Grilled sea bass', 'Mains', 14.00), ('REST', 'Soft drink', 'Drinks', 2.00), ('REST', 'House wine (glass)', 'Drinks', 4.50),
+  ('POOL', 'Local beer', 'Drinks', 3.50), ('POOL', 'Cocktail', 'Drinks', 6.00), ('POOL', 'Fresh juice', 'Drinks', 3.00), ('POOL', 'Fries', 'Snacks', 3.00),
+  ('ROOF', 'Shisha', 'Lounge', 9.00), ('ROOF', 'Mocktail', 'Drinks', 4.50), ('ROOF', 'Mezze platter', 'Snacks', 8.50),
+  ('SPA', 'Massage 60 min', 'Treatments', 35.00), ('SPA', 'Facial', 'Treatments', 28.00), ('SPA', 'Day pass', 'Access', 10.00),
+  ('MINI', 'Water 1.5L', 'Minibar', 1.50), ('MINI', 'Soft drink can', 'Minibar', 2.00), ('MINI', 'Beer can', 'Minibar', 3.00), ('MINI', 'Snack bar', 'Minibar', 1.50)
+) AS i(code, name, category, price) ON i.code = o.code
+WHERE o.property_id = v_property_id
+ON CONFLICT (outlet_id, name) DO NOTHING;
+
+-- Chart of accounts (00031) for the accounting export
+PERFORM ensure_default_gl_accounts(v_property_id);
 
 -- ============================================================
 -- 10. Sample Bookings (15) — using apartment numbers to find IDs

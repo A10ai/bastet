@@ -63,14 +63,24 @@ export function CookieConsent() {
     setShowCustomize(false);
   };
 
+  // The banner is fixed to the bottom of the viewport; reserve that space so
+  // it never covers a form's submit button or a table's last rows.
+  useEffect(() => {
+    if (!show) return;
+    const previous = document.body.style.paddingBottom;
+    document.body.style.paddingBottom = "9rem";
+    return () => { document.body.style.paddingBottom = previous; };
+  }, [show]);
+
   if (!show) return null;
 
   return (
     <div
       role="dialog"
       aria-label="Cookie consent"
+      data-testid="cookie-consent"
       aria-live="polite"
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-bastet-card border-t border-bastet-border shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-brand-card border-t border-brand-border shadow-lg"
     >
       <div className="max-w-4xl mx-auto">
         {!showCustomize ? (
@@ -78,24 +88,25 @@ export function CookieConsent() {
             <div className="flex-1 text-sm text-text-secondary">
               We use cookies for essential functions (authentication, session management) and optional purposes
               (analytics, marketing). By clicking &quot;Accept all&quot;, you consent to all cookies.
-              See our <Link href="/privacy" className="text-bastet-gold underline">Privacy Policy</Link>.
+              See our <Link href="/privacy" className="text-brand-accent underline">Privacy Policy</Link>.
             </div>
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={rejectNonEssential}
-                className="px-4 py-2 text-sm rounded-lg border border-bastet-border text-text-secondary hover:bg-bastet-bg transition-colors"
+                data-testid="cookie-reject"
+                className="px-4 py-2 text-sm rounded-lg border border-brand-border text-text-secondary hover:bg-brand-bg transition-colors"
               >
                 Reject non-essential
               </button>
               <button
                 onClick={() => setShowCustomize(true)}
-                className="px-4 py-2 text-sm rounded-lg border border-bastet-border text-text-secondary hover:bg-bastet-bg transition-colors"
+                className="px-4 py-2 text-sm rounded-lg border border-brand-border text-text-secondary hover:bg-brand-bg transition-colors"
               >
                 Customize
               </button>
               <button
                 onClick={acceptAll}
-                className="px-4 py-2 text-sm rounded-lg bg-bastet-gold text-bastet-bg font-medium hover:opacity-90 transition-opacity"
+                className="px-4 py-2 text-sm rounded-lg bg-brand-accent text-brand-bg font-medium hover:opacity-90 transition-opacity"
               >
                 Accept all
               </button>
@@ -141,13 +152,13 @@ export function CookieConsent() {
             <div className="flex gap-2">
               <button
                 onClick={savePreferences}
-                className="px-4 py-2 text-sm rounded-lg bg-bastet-gold text-bastet-bg font-medium hover:opacity-90 transition-opacity"
+                className="px-4 py-2 text-sm rounded-lg bg-brand-accent text-brand-bg font-medium hover:opacity-90 transition-opacity"
               >
                 Save preferences
               </button>
               <button
                 onClick={() => setShowCustomize(false)}
-                className="px-4 py-2 text-sm rounded-lg border border-bastet-border text-text-secondary hover:bg-bastet-bg transition-colors"
+                className="px-4 py-2 text-sm rounded-lg border border-brand-border text-text-secondary hover:bg-brand-bg transition-colors"
               >
                 Back
               </button>

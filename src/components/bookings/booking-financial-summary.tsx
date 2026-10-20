@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, commissionFraction, commissionPercent } from "@/lib/utils";
 
 interface BookingFinancialSummaryProps {
   ratePerNight: number;
@@ -26,7 +26,7 @@ export function BookingFinancialSummary({
 }: BookingFinancialSummaryProps) {
   const subtotal = ratePerNight * nights;
   const discountAmount = subtotal * (discountPercentage / 100);
-  const commission = channelCommission ? totalAmountGbp * channelCommission : 0;
+  const commission = channelCommission ? totalAmountGbp * commissionFraction(channelCommission) : 0;
   const netRevenue = totalAmountGbp - commission;
 
   return (
@@ -57,7 +57,7 @@ export function BookingFinancialSummary({
           </div>
         )}
 
-        <div className="border-t border-bastet-border pt-3 flex justify-between">
+        <div className="border-t border-brand-border pt-3 flex justify-between">
           <span className="text-sm font-semibold text-text-primary">Total (GBP)</span>
           <span className="font-mono font-bold text-text-primary text-lg">
             {formatCurrency(totalAmountGbp)}
@@ -77,7 +77,7 @@ export function BookingFinancialSummary({
 
         {channelName && (
           <>
-            <div className="border-t border-bastet-border pt-3 flex justify-between text-sm">
+            <div className="border-t border-brand-border pt-3 flex justify-between text-sm">
               <span className="text-text-secondary">Channel</span>
               <span className="text-text-primary">{channelName}</span>
             </div>
@@ -85,7 +85,7 @@ export function BookingFinancialSummary({
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-text-secondary">
-                    Commission ({(channelCommission * 100).toFixed(0)}%)
+                    Commission ({commissionPercent(channelCommission).toFixed(0)}%)
                   </span>
                   <span className="font-mono text-status-error">
                     -{formatCurrency(commission)}
@@ -93,7 +93,7 @@ export function BookingFinancialSummary({
                 </div>
                 <div className="flex justify-between text-sm font-semibold">
                   <span className="text-text-primary">Net Revenue</span>
-                  <span className="font-mono text-bastet-gold">
+                  <span className="font-mono text-brand-accent">
                     {formatCurrency(netRevenue)}
                   </span>
                 </div>

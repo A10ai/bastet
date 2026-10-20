@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { requireAuth } from "@/lib/api-auth";
 import { apiSuccess } from "@/lib/api-error";
+import { clearCsrfCookie } from "@/lib/csrf";
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.auth.signOut();
 
     // Even if signOut fails, clear the cookies
-    const logoutResponse = apiSuccess({ loggedOut: true });
+    const logoutResponse = clearCsrfCookie(apiSuccess({ loggedOut: true }));
 
     // Transfer all Set-Cookie headers (clears session cookies)
     const setCookies = response.cookies.getAll();

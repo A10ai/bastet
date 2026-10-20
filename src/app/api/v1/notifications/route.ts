@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 import {
   createNotification,
@@ -19,9 +20,9 @@ import { validateBody, formatZodErrors, notificationSchema } from "@/lib/validat
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
     const unreadOnly = searchParams.get("unread_only") === "true";
@@ -89,9 +90,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(notificationSchema, body);
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        const notifications = await createNotification(supabase, {
+        const created = await createNotification(supabase, {
           staff_id: validated.staff_id || null,
           title,
           message,
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
           description: `Created notification: ${title}`,
           new_data: validated,
         });
-        return NextResponse.json({ notifications });
+        return NextResponse.json({ data: { created } }, { status: created > 0 ? 201 : 500 });
       }
 
       default:

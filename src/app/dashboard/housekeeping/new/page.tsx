@@ -29,7 +29,7 @@ export default function NewHousekeepingPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/v1/apartments").then((r) => r.json()),
+      fetch("/api/v1/apartments?limit=1000").then((r) => r.json()),
       fetch("/api/v1/staff?is_active=true").then((r) => r.json()),
     ]).then(([aptRes, staffRes]) => {
       setApartments(aptRes.data || []);
@@ -78,7 +78,7 @@ export default function NewHousekeepingPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/housekeeping" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+        <Link href="/dashboard/housekeeping" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </Link>
         <div>
@@ -101,7 +101,7 @@ export default function NewHousekeepingPage() {
                     value={apartmentId}
                     onChange={(e) => setApartmentId(e.target.value)}
                     required
-                    className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                    className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   >
                     <option value="">Select apartment...</option>
                     {apartments.map((apt) => (
@@ -117,7 +117,7 @@ export default function NewHousekeepingPage() {
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     required
-                    className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                    className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   >
                     <option value="">Select type...</option>
                     {HOUSEKEEPING_TYPES.map((t) => (
@@ -130,7 +130,7 @@ export default function NewHousekeepingPage() {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                    className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   >
                     {PRIORITY_LEVELS.map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -159,7 +159,7 @@ export default function NewHousekeepingPage() {
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                 >
                   <option value="">Unassigned</option>
                   {staffList.map((s) => (
@@ -175,7 +175,7 @@ export default function NewHousekeepingPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                  className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                   placeholder="Additional notes..."
                 />
               </div>

@@ -77,8 +77,10 @@ function createPinoInstance(): PinoLogger {
         const ts = new Date().toISOString();
         const prefix = `[${ts}] [${level.toUpperCase()}] [hospitai]`;
         if (Object.keys(context).length > 0) {
+          // eslint-disable-next-line no-console -- pino unavailable (edge/browser fallback)
           console[level === "fatal" ? "error" : level === "trace" ? "log" : level](prefix, message, context);
         } else {
+          // eslint-disable-next-line no-console -- pino unavailable (edge/browser fallback)
           console[level === "fatal" ? "error" : level === "trace" ? "log" : level](prefix, message);
         }
       };
@@ -120,8 +122,8 @@ function getLogger(): PinoLogger {
 export const logger: PinoLogger = new Proxy({} as PinoLogger, {
   get(_target, prop: string) {
     const instance = getLogger();
-    const value = (instance as Record<string, any>)[prop];
-    return typeof value === "function" ? value.bind(instance) : value;
+    const value = (instance as unknown as Record<string, unknown>)[prop];
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(instance) : value;
   },
 });
 

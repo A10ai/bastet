@@ -1,41 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, updateStaffSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const GET = getByIdHandler({
+  table: "staff",
+  roles: ROLES.MANAGEMENT,
+  label: "Staff member",
+});
+
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ADMIN);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from("staff")
-      .select("*")
-      .eq("id", params.id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(updateStaffSchema, body);

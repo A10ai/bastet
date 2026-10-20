@@ -44,6 +44,7 @@ export default function HousekeepingDetailPage() {
 
   useEffect(() => {
     fetchTask();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   const fetchStaff = async () => {
@@ -89,7 +90,7 @@ export default function HousekeepingDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -106,7 +107,7 @@ export default function HousekeepingDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/housekeeping" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+          <Link href="/dashboard/housekeeping" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
           </Link>
           <div>
@@ -194,7 +195,7 @@ export default function HousekeepingDetailPage() {
                     <select
                       value={selectedStaff}
                       onChange={(e) => setSelectedStaff(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">Select staff member...</option>
                       {staffList.map((s) => (
@@ -240,7 +241,7 @@ export default function HousekeepingDetailPage() {
                 </div>
               </div>
               {task.notes && (
-                <div className="mt-4 pt-4 border-t border-bastet-border">
+                <div className="mt-4 pt-4 border-t border-brand-border">
                   <p className="text-xs text-text-muted mb-1">Notes</p>
                   <p className="text-sm text-text-primary whitespace-pre-wrap">{task.notes}</p>
                 </div>
@@ -261,7 +262,7 @@ export default function HousekeepingDetailPage() {
                 </div>
                 {task.started_at && (
                   <div className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-bastet-gold" />
+                    <div className="w-2 h-2 rounded-full bg-brand-accent" />
                     <span className="text-text-secondary">Started {timeAgo(task.started_at)}</span>
                   </div>
                 )}
@@ -293,14 +294,14 @@ export default function HousekeepingDetailPage() {
             <CardContent>
               {task.apartment ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-mono font-semibold text-bastet-gold">{task.apartment.number}</p>
+                  <p className="text-sm font-mono font-semibold text-brand-accent">{task.apartment.number}</p>
                   <p className="text-sm text-text-secondary">Floor {task.apartment.floor}</p>
                   {task.apartment.building && (
                     <p className="text-sm text-text-secondary">{task.apartment.building.name}</p>
                   )}
                   <Link
                     href={`/dashboard/apartments/${task.apartment_id}`}
-                    className="text-xs text-bastet-gold hover:underline"
+                    className="text-xs text-brand-accent hover:underline"
                   >
                     View apartment
                   </Link>
@@ -326,7 +327,7 @@ export default function HousekeepingDetailPage() {
                   </Badge>
                   <Link
                     href={`/dashboard/staff/${task.assigned_to}`}
-                    className="block text-xs text-bastet-gold hover:underline"
+                    className="block text-xs text-brand-accent hover:underline"
                   >
                     View profile
                   </Link>

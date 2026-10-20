@@ -3,5 +3,21 @@
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "outputDirectory": ".next",
-  "regions": ["lhr1"]
+  "regions": [
+    "lhr1"
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/cron/night-audit",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/v1/cron/automations",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/v1/cron/fx",
+      "schedule": "15 6 * * *"
+    }
+  ]
 }

@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-hosted / Docker builds copy .next/standalone (see Dockerfile).
+  output: "standalone",
+  // A stray lockfile in the home directory otherwise makes Next guess the workspace root.
+  outputFileTracingRoot: import.meta.dirname,
+  // src/instrumentation.ts runs at server start (stable in Next 15): env validation + Sentry.
+  // Sentry's OpenTelemetry hooks use dynamic require; keep them out of the bundle.
+  serverExternalPackages: ["@sentry/nextjs", "require-in-the-middle", "import-in-the-middle"],
   async headers() {
     return [
       {
@@ -29,10 +36,7 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com;",
-          },
+          // Content-Security-Policy is set per request (with a nonce) in src/middleware.ts
           // CORS headers — explicit allowed origins, no wildcard in production
           {
             key: "Access-Control-Allow-Origin",

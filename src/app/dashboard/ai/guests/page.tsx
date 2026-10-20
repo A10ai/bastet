@@ -21,13 +21,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type {
   GuestScore,
-  ChurnRiskGuest,
   UpsellOpportunity,
-  SegmentAnalysis,
   GuestPrediction,
-  GuestInsight,
-  GuestIntelligenceData,
-} from "@/lib/guest-intelligence";
+  GuestIntelligenceData } from "@/lib/guest-intelligence";
 import {
   BarChart,
   Bar,
@@ -40,6 +36,7 @@ import {
   Pie,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 // ---------------------------------------------------------------------------
 // Tier badge colors (matching guests page)
@@ -48,7 +45,7 @@ import type { RechartsValue, RechartsName } from "@/types/recharts";
 const TIER_COLORS: Record<string, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
   silver: "bg-gray-400/20 text-gray-300",
-  gold: "bg-bastet-gold-muted text-bastet-gold",
+  gold: "bg-brand-accent-muted text-brand-accent",
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
@@ -67,7 +64,7 @@ function ScoreBar({
 }) {
   return (
     <div className="flex items-center gap-2 w-full">
-      <div className="flex-1 h-1.5 bg-bastet-bg rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-brand-bg rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${Math.min(value, 100)}%` }}
@@ -102,13 +99,6 @@ function severityDot(severity: string): string {
 // Dark tooltip style
 // ---------------------------------------------------------------------------
 
-const darkTooltipStyle = {
-  backgroundColor: "#0F1729",
-  border: "1px solid #1E2D44",
-  borderRadius: "8px",
-  color: "#E2E8F0",
-  fontSize: "12px",
-};
 
 const TIER_CHART_COLORS: Record<string, string> = {
   bronze: "#F97316",
@@ -273,7 +263,7 @@ export default function GuestIntelligencePage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   {([
                     ["first_name", "Name"],
                     ["loyalty_tier", "Tier"],
@@ -349,7 +339,7 @@ export default function GuestIntelligencePage() {
             {churn_risks.map((guest) => (
               <div
                 key={guest.guest_id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-bastet-bg border border-bastet-border"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-brand-bg border border-brand-border"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -583,7 +573,7 @@ export default function GuestIntelligencePage() {
             )}
 
             {/* Avg LOS by tier */}
-            <div className="pt-4 border-t border-bastet-border mt-4">
+            <div className="pt-4 border-t border-brand-border mt-4">
               <h3 className="text-sm font-medium text-text-secondary mb-2">
                 Avg Length of Stay by Tier
               </h3>
@@ -591,7 +581,7 @@ export default function GuestIntelligencePage() {
                 {segments.avg_length_of_stay_by_tier.map((t) => (
                   <div
                     key={t.tier}
-                    className="flex items-center justify-between p-2 rounded-md bg-bastet-bg"
+                    className="flex items-center justify-between p-2 rounded-md bg-brand-bg"
                   >
                     <span className="text-xs capitalize text-text-secondary">
                       {t.tier}
@@ -640,7 +630,7 @@ export default function GuestIntelligencePage() {
                       {insight.recommendation}
                     </p>
                     {insight.metric && (
-                      <span className="inline-block mt-1.5 text-[10px] font-mono text-text-muted bg-bastet-bg px-2 py-0.5 rounded">
+                      <span className="inline-block mt-1.5 text-[10px] font-mono text-text-muted bg-brand-bg px-2 py-0.5 rounded">
                         {insight.metric}
                       </span>
                     )}
@@ -678,14 +668,14 @@ function StatCard({
   };
 
   return (
-    <Card className={`border ${borderColor[accent] || "border-bastet-border"}`}>
+    <Card className={`border ${borderColor[accent] || "border-brand-border"}`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-text-muted">{label}</p>
             <p className="text-xl font-bold text-text-primary mt-1">{value}</p>
           </div>
-          <div className="p-2 rounded-lg bg-bastet-bg">{icon}</div>
+          <div className="p-2 rounded-lg bg-brand-bg">{icon}</div>
         </div>
       </CardContent>
     </Card>
@@ -707,7 +697,7 @@ function GuestScoreRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors cursor-pointer"
+        className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors cursor-pointer"
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
@@ -754,7 +744,7 @@ function GuestScoreRow({
         </td>
       </tr>
       {isExpanded && prediction && (
-        <tr className="border-b border-bastet-border bg-bastet-bg/30">
+        <tr className="border-b border-brand-border bg-brand-bg/30">
           <td colSpan={7} className="px-4 py-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pl-6">
               <div>
@@ -794,7 +784,7 @@ function GuestScoreRow({
         </tr>
       )}
       {isExpanded && !prediction && (
-        <tr className="border-b border-bastet-border bg-bastet-bg/30">
+        <tr className="border-b border-brand-border bg-brand-bg/30">
           <td colSpan={7} className="px-4 py-4">
             <div className="pl-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -855,7 +845,7 @@ function UpsellCard({ opportunity }: { opportunity: UpsellOpportunity }) {
   };
 
   return (
-    <Card className={`border ${typeBorders[opportunity.type] || "border-bastet-border"}`}>
+    <Card className={`border ${typeBorders[opportunity.type] || "border-brand-border"}`}>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           {typeIcons[opportunity.type]}
@@ -864,7 +854,7 @@ function UpsellCard({ opportunity }: { opportunity: UpsellOpportunity }) {
           </h3>
         </div>
         <p className="text-xs text-text-secondary">{opportunity.description}</p>
-        <div className="flex items-center justify-between pt-2 border-t border-bastet-border">
+        <div className="flex items-center justify-between pt-2 border-t border-brand-border">
           <span className="text-xs text-text-muted">
             {opportunity.target_guests.length} guest
             {opportunity.target_guests.length !== 1 ? "s" : ""}
@@ -877,13 +867,13 @@ function UpsellCard({ opportunity }: { opportunity: UpsellOpportunity }) {
           {opportunity.target_guests.slice(0, 5).map((g) => (
             <span
               key={g.guest_id}
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-bastet-bg text-text-secondary"
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-brand-bg text-text-secondary"
             >
               {g.first_name} {g.last_name}
             </span>
           ))}
           {opportunity.target_guests.length > 5 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-bastet-bg text-text-muted">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-brand-bg text-text-muted">
               +{opportunity.target_guests.length - 5} more
             </span>
           )}

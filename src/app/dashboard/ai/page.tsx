@@ -2,24 +2,19 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useAIInsights } from "@/hooks/use-api";
-import { Badge } from "@/components/ui/badge";
 import {
   BrainCircuit,
   Zap,
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
-  CheckCircle,
   Info,
   Sparkles,
   Wrench,
   Wallet,
   Users,
   Building2,
-  Loader2,
   ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+  ArrowDownRight } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import type {
   AIInsight,
@@ -38,6 +33,7 @@ import {
   Pie,
 } from "recharts";
 import type { RechartsValue, RechartsName } from "@/types/recharts";
+import { darkTooltipStyle } from "@/lib/chart-styles";
 
 interface AIData {
   insights: AIInsight[];
@@ -87,7 +83,7 @@ function HealthRing({ score }: { score: number }) {
           fill="none"
           stroke="currentColor"
           strokeWidth="8"
-          className="text-bastet-border"
+          className="text-brand-border"
         />
         <circle
           cx="60"
@@ -120,13 +116,6 @@ function getOccColor(pct: number): string {
   return "#F87171";
 }
 
-const darkTooltipStyle = {
-  backgroundColor: "#0F1729",
-  border: "1px solid #1E2D44",
-  borderRadius: "8px",
-  color: "#E2E8F0",
-  fontSize: "12px",
-};
 
 function OccupancyChart({ forecast }: { forecast: OccupancyForecast[] }) {
   const chartData = forecast.map((f) => ({
@@ -215,7 +204,7 @@ export default function AICommandCentre() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <BrainCircuit className="w-8 h-8 animate-pulse text-bastet-gold" />
+        <BrainCircuit className="w-8 h-8 animate-pulse text-brand-accent" />
         <p className="text-sm text-text-secondary">
           AI is analysing property data...
         </p>
@@ -237,7 +226,7 @@ export default function AICommandCentre() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <BrainCircuit className="w-6 h-6 text-bastet-gold" />
+            <BrainCircuit className="w-6 h-6 text-brand-accent" />
             <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               AI Command Centre
             </h1>
@@ -246,9 +235,9 @@ export default function AICommandCentre() {
             Real-time intelligence across all property systems
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-bastet-gold-muted border border-bastet-gold/20 self-start">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-accent-muted border border-brand-accent/20 self-start">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-medium text-bastet-gold">
+          <span className="text-xs font-medium text-brand-accent">
             Live analysis
           </span>
         </div>
@@ -316,7 +305,7 @@ export default function AICommandCentre() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-bastet-gold" />
+              <AlertTriangle className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">
                 Insight Severity
               </h3>
@@ -356,7 +345,7 @@ export default function AICommandCentre() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-bastet-gold" />
+              <Sparkles className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">
                 AI Insights
               </h3>
@@ -403,7 +392,7 @@ export default function AICommandCentre() {
                         </p>
                       )}
                       {insight.action && (
-                        <p className="text-xs text-bastet-gold mt-1 font-medium">
+                        <p className="text-xs text-brand-accent mt-1 font-medium">
                           → {insight.action}
                         </p>
                       )}
@@ -419,7 +408,7 @@ export default function AICommandCentre() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-bastet-gold" />
+              <Wallet className="w-4 h-4 text-brand-accent" />
               <h3 className="text-lg font-semibold text-text-primary">
                 Dynamic Pricing
               </h3>
@@ -430,7 +419,7 @@ export default function AICommandCentre() {
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-4 md:px-6 py-3">
                     Type
                   </th>
@@ -452,7 +441,7 @@ export default function AICommandCentre() {
                 {data.pricing_recommendations.map((rec) => (
                   <tr
                     key={rec.apartment_type}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50"
+                    className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50"
                   >
                     <td className="px-4 md:px-6 py-3 text-sm text-text-primary font-medium">
                       {rec.apartment_type}
@@ -485,9 +474,9 @@ export default function AICommandCentre() {
                     </td>
                     <td className="px-4 md:px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <div className="w-12 h-1.5 bg-bastet-bg rounded-full overflow-hidden">
+                        <div className="w-12 h-1.5 bg-brand-bg rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-bastet-gold rounded-full"
+                            className="h-full bg-brand-accent rounded-full"
                             style={{ width: `${rec.confidence}%` }}
                           />
                         </div>
@@ -502,7 +491,7 @@ export default function AICommandCentre() {
             </table>
             </div>
             {data.pricing_recommendations.length > 0 && (
-              <div className="px-4 md:px-6 py-3 border-t border-bastet-border">
+              <div className="px-4 md:px-6 py-3 border-t border-brand-border">
                 <p className="text-xs text-text-muted italic">
                   {data.pricing_recommendations[0].reason}
                 </p>
@@ -516,7 +505,7 @@ export default function AICommandCentre() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-bastet-gold" />
+            <Building2 className="w-4 h-4 text-brand-accent" />
             <h3 className="text-lg font-semibold text-text-primary">
               14-Day Occupancy Forecast
             </h3>
@@ -525,13 +514,13 @@ export default function AICommandCentre() {
         </CardHeader>
         <CardContent>
           <OccupancyChart forecast={data.occupancy_forecast} />
-          <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-4 pt-4 border-t border-bastet-border">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-4 pt-4 border-t border-brand-border">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-emerald-400/80" />
               <span className="text-xs text-text-muted">&gt;85% High</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-bastet-gold/60" />
+              <div className="w-3 h-3 rounded bg-brand-accent/60" />
               <span className="text-xs text-text-muted">60-85% Normal</span>
             </div>
             <div className="flex items-center gap-1.5">

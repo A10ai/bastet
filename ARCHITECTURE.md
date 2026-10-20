@@ -61,24 +61,24 @@ HospitAI is an AI-powered hotel operating system. The platform uses a **hybrid c
 ### Manchester AI Server
 
 - **Hardware**: 2x RTX 5090
-- **Model**: Llama 3 70B (via Ollama/LocalAI)
+- **Model (planned)**: Llama 3 70B via Ollama/LocalAI — not yet implemented; today all AI calls go to the Claude API
 - **Purpose**: Replace Claude API dependency for AI Brain and chat
 - **Privacy**: Guest data stays on own infrastructure (addresses PII concerns)
-- **Abstraction**: Code uses an abstraction layer — AI calls work with both Claude API and local Ollama endpoint
+- **Abstraction**: not yet built. `ai-brain.ts` and `ai-chat.ts` call `https://api.anthropic.com/v1/messages` directly; a provider abstraction is a KTP work item
 
 ## Codebase Structure
 
 ```
 src/
 ├── app/
-│   ├── api/v1/          # 68 API route files (110 HTTP methods)
+│   ├── api/v1/          # 75 API route files (118 HTTP methods)
 │   │   ├── auth/         # Login, logout, password reset, me
 │   │   ├── admin/        # Admin-only: users, database, migrate
 │   │   ├── ai/           # 11 AI endpoints (brain, chat, insights, etc.)
 │   │   ├── bookings/     # Booking CRUD + checkin/checkout/cancel
 │   │   ├── guests/       # Guest CRM + preferences/communications
 │   │   └── ...           # 20+ more resource groups
-│   ├── dashboard/        # 51 dashboard pages
+│   ├── dashboard/        # 52 dashboard pages
 │   └── login/            # Auth page
 ├── lib/                  # 23 domain engine files (~10,500 lines)
 │   ├── ai-brain.ts       # AI decision engine (Claude/LLM integration)
@@ -115,9 +115,9 @@ src/
 
 ## Key Architectural Decisions
 
-1. **Server-only guards**: All lib files that touch secrets or server-only APIs have `import "server-only"` to prevent client bundle leakage.
+1. **Server-only guards**: lib files that touch secrets (`api-auth`, `api-property`, `supabase/admin`, `env`, `sentry`, `csrf`, `rpc-error` and others) carry `import "server-only"`. The engines that only receive a Supabase client as a parameter do not yet; adding the guard to them is open housekeeping.
 
-2. **Dual Supabase clients**: `createServerSupabaseClient()` uses anon key (RLS enforced). `createAdminClient()` uses service-role key (bypasses RLS) — restricted to admin routes only.
+2. **Dual Supabase clients**: `createServerSupabaseClient()` uses the anon key (RLS enforced). `createAdminClient()` uses the service-role key (bypasses RLS) and is used by the admin routes, by `requireRole`/`api-property` to read the caller's staff row (RLS would be circular there), by login/reset-password, and by the AI brain config. Identity is always established with `auth.getUser()` first.
 
 3. **Event bus pattern**: 13 event types with a handler registry. Events are persisted to DB and handlers perform real Supabase operations.
 
@@ -129,8 +129,8 @@ src/
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Recharts
 - **Backend**: Next.js API Routes (serverless)
-- **Database**: Supabase (PostgreSQL 17) with 47 tables, RLS, 15 migrations
+- **Database**: Supabase (PostgreSQL 17) with 52 tables, RLS on every table, 21 migrations (00019-00021 added by the October 2026 audit)
 - **AI**: Claude API (Anthropic) → transitioning to local Llama 3 70B
 - **Auth**: Supabase Auth with middleware + API-level guards
-- **Integrations**: Stripe, OpenAI, Resend, Google Maps, Open Exchange Rates
+- **Integrations**: none wired yet. Environment keys exist for Stripe, Resend, Google Maps and Open Exchange Rates, but there is no code using them; currency rates are entered manually
 - **Edge**: Intel NUC, Docker, MQTT, Zigbee2MQTT, local PostgreSQL

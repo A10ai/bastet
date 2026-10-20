@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,21 +22,18 @@ import {
 } from "recharts";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Guest, LoyaltyTier } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
 const TIER_PIE_COLORS = ["#F97316", "#94A3B8", "#FBBF24", "#A78BFA"];
 const NAT_BAR_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 const TIER_COLORS: Record<LoyaltyTier, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
   silver: "bg-gray-400/20 text-gray-300",
-  gold: "bg-bastet-gold-muted text-bastet-gold",
+  gold: "bg-brand-accent-muted text-brand-accent",
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
@@ -47,88 +46,48 @@ interface GuestIntelligence {
 }
 
 export default function GuestsPage() {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [vipOnly, setVipOnly] = useState(false);
-  const [intelligence, setIntelligence] = useState<GuestIntelligence>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const fetchGuests = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (tierFilter !== "all") params.set("tier", tierFilter);
-      if (vipOnly) params.set("vip", "true");
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (tierFilter !== "all") params.set("tier", tierFilter);
+    if (vipOnly) params.set("vip", "true");
+    return params.toString();
+  }, [debouncedSearch, tierFilter, vipOnly]);
 
-      const res = await fetch(`/api/v1/guests?${params}`);
-      const json = await res.json();
-      const data = json.data || [];
-      setGuests(data);
+  const { data: guestRows, isLoading: loading } = useApi<Guest[]>(`/api/v1/guests?${query}`, undefined, ["guests"]);
+  const guests = useMemo(() => guestRows ?? [], [guestRows]);
+  const { data: aiGuests } = useApi<Record<string, unknown>>("/api/v1/ai/guests", { refreshInterval: 60_000 });
+  const { data: checkedOutRows } = useApi<Array<{ guest_id?: string | null; check_out?: string | null }>>("/api/v1/bookings?status=checked_out&limit=1000", undefined, ["bookings"]);
 
-      // Fetch guest intelligence cross-data
-      fetchIntelligence(data);
-    } catch {
-      setGuests([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchIntelligence = async (guestList: Guest[]) => {
-    try {
-      const res = await fetch("/api/v1/ai/guests");
-      const json = await res.json();
-      const aiData = json.data || json;
-
-      // Build intelligence map
-      const intel: GuestIntelligence = {};
-
-      // If the AI endpoint returns per-guest data
-      const guestIntel = aiData.guests || aiData.guest_intelligence || [];
-      if (Array.isArray(guestIntel)) {
-        for (const gi of guestIntel) {
-          intel[gi.guest_id || gi.id] = {
-            churn_risk: gi.churn_risk ?? gi.churn_score ?? undefined,
-            ltv_gbp: gi.ltv_gbp ?? gi.lifetime_value ?? undefined,
-            last_checkout: gi.last_checkout ?? gi.last_stay ?? undefined,
-          };
-        }
+  const intelligence = useMemo<GuestIntelligence>(() => {
+    const intel: GuestIntelligence = {};
+    const ai = aiGuests ?? {};
+    const guestIntel = (ai.guests || ai.guest_intelligence || []) as Array<Record<string, unknown>>;
+    if (Array.isArray(guestIntel)) {
+      for (const gi of guestIntel) {
+        const id = String(gi.guest_id ?? gi.id ?? "");
+        if (!id) continue;
+        intel[id] = {
+          churn_risk: (gi.churn_risk ?? gi.churn_score) as number | undefined,
+          ltv_gbp: (gi.ltv_gbp ?? gi.lifetime_value) as number | undefined,
+          last_checkout: (gi.last_checkout ?? gi.last_stay) as string | undefined,
+        };
       }
-
-      // Also fetch bookings for last stay dates if not provided by AI
-      try {
-        const bkRes = await fetch("/api/v1/bookings?status=checked_out&limit=1000");
-        const bkJson = await bkRes.json();
-        const bookings = bkJson.data || [];
-
-        // Find most recent checkout per guest
-        for (const b of bookings) {
-          if (b.guest_id && b.check_out) {
-            const existing = intel[b.guest_id]?.last_checkout;
-            if (!existing || b.check_out > existing) {
-              intel[b.guest_id] = {
-                ...intel[b.guest_id],
-                last_checkout: b.check_out,
-              };
-            }
-          }
-        }
-      } catch { /* — */ }
-
-      setIntelligence(intel);
-    } catch { /* — */ }
-  };
-
-  useEffect(() => {
-    fetchGuests();
-  }, [tierFilter, vipOnly]);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchGuests, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+    }
+    // Most recent checkout per guest when the AI endpoint does not provide it
+    for (const b of checkedOutRows ?? []) {
+      if (b.guest_id && b.check_out) {
+        const existing = intel[b.guest_id]?.last_checkout;
+        if (!existing || b.check_out > existing) intel[b.guest_id] = { ...intel[b.guest_id], last_checkout: b.check_out };
+      }
+    }
+    return intel;
+  }, [aiGuests, checkedOutRows]);
 
   const tiers: LoyaltyTier[] = ["bronze", "silver", "gold", "platinum"];
 
@@ -152,6 +111,7 @@ export default function GuestsPage() {
     return tiers
       .map((t) => ({ name: t.charAt(0).toUpperCase() + t.slice(1), value: counts[t] || 0 }))
       .filter((d) => d.value > 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [guests]);
 
   const nationalityChartData = useMemo(() => {
@@ -174,7 +134,7 @@ export default function GuestsPage() {
     else if (pct >= 30) color = "bg-status-warning";
     return (
       <div className="flex items-center gap-2">
-        <div className="w-16 h-2 bg-bastet-bg rounded-full overflow-hidden">
+        <div className="w-16 h-2 bg-brand-bg rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${color}`}
             style={{ width: `${pct}%` }}
@@ -240,7 +200,7 @@ export default function GuestsPage() {
                   <BarChart data={nationalityChartData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
                       {nationalityChartData.map((_, i) => (
                         <Cell key={i} fill={NAT_BAR_COLORS[i % NAT_BAR_COLORS.length]} />
@@ -264,7 +224,7 @@ export default function GuestsPage() {
                         <Cell key={i} fill={TIER_PIE_COLORS[i % TIER_PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} guests`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
@@ -290,15 +250,15 @@ export default function GuestsPage() {
             placeholder="Search name, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
         <button
           onClick={() => setVipOnly(!vipOnly)}
           className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-colors ${
             vipOnly
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           <Star className="w-3 h-3" />
@@ -312,8 +272,8 @@ export default function GuestsPage() {
           onClick={() => setTierFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             tierFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All Tiers
@@ -324,8 +284,8 @@ export default function GuestsPage() {
             onClick={() => setTierFilter(tier)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               tierFilter === tier
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {tier}
@@ -338,13 +298,13 @@ export default function GuestsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Name</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Email</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Tier</th>
@@ -364,7 +324,7 @@ export default function GuestsPage() {
                   return (
                     <tr
                       key={guest.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
                         <span className="text-sm font-semibold text-text-primary">
@@ -397,7 +357,7 @@ export default function GuestsPage() {
                       </td>
                       <td className="px-6 py-3">
                         {guest.vip_status && (
-                          <Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />
+                          <Star className="w-4 h-4 text-brand-accent fill-brand-accent" />
                         )}
                       </td>
                       <td className="px-6 py-3 hidden md:table-cell">
@@ -416,7 +376,7 @@ export default function GuestsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/guests/${guest.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

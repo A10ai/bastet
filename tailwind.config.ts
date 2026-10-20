@@ -10,13 +10,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bastet: {
-          bg: "var(--bastet-bg)",
-          card: "var(--bastet-card)",
-          border: "var(--bastet-border)",
-          gold: "var(--bastet-gold)",
-          "gold-hover": "var(--bastet-gold-hover)",
-          "gold-muted": "var(--bastet-gold-muted)",
+        brand: {
+          bg: "var(--brand-bg)",
+          card: "var(--brand-card)",
+          border: "var(--brand-border)",
+          accent: "var(--brand-accent)",
+          "accent-hover": "var(--brand-accent-hover)",
+          "accent-muted": "var(--brand-accent-muted)",
         },
         text: {
           primary: "var(--text-primary)",

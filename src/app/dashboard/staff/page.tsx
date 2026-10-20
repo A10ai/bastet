@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,84 +11,47 @@ import { Eye, Filter, Loader2, Search, Plus, Users, UserCheck, UserX } from "luc
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { STAFF_ROLES } from "@/lib/constants";
 import type { Staff } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const ACCENT = "#22D3EE";
 const ROLE_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6"];
 const DEPT_COLORS = ["#818CF8", "#6EE7B7", "#FB923C", "#E879F9", "#38BDF8", "#FCD34D"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 interface StaffTaskCounts {
   [staffId: string]: number;
 }
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("true");
   const [search, setSearch] = useState("");
-  const [taskCounts, setTaskCounts] = useState<StaffTaskCounts>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
-    const fetchStaff = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (activeFilter) params.set("is_active", activeFilter);
-        if (search) params.set("search", search);
-        const res = await fetch(`/api/v1/staff?${params}`);
-        const json = await res.json();
-        const data = json.data || [];
-        setStaff(data);
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (activeFilter) params.set("is_active", activeFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    return params.toString();
+  }, [activeFilter, debouncedSearch]);
 
-        // Fetch task counts
-        fetchTaskCounts(data);
-      } catch {
-        setStaff([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStaff();
-  }, [activeFilter, search]);
+  const { data: staffRows, isLoading: loading } = useApi<Staff[]>(`/api/v1/staff?${query}`, undefined, ["staff"]);
+  const staff = useMemo(() => staffRows ?? [], [staffRows]);
+  type AssignedRow = { assigned_staff_id?: string | null; status: string };
+  const { data: hkRows } = useApi<AssignedRow[]>("/api/v1/housekeeping", undefined, ["housekeeping_tasks"]);
+  const { data: mxRows } = useApi<AssignedRow[]>("/api/v1/maintenance", undefined, ["maintenance_requests"]);
 
-  const fetchTaskCounts = async (staffList: Staff[]) => {
+  const taskCounts = useMemo<StaffTaskCounts>(() => {
     const counts: StaffTaskCounts = {};
-
-    try {
-      const [hkRes, mxRes] = await Promise.all([
-        fetch("/api/v1/housekeeping").catch(() => null),
-        fetch("/api/v1/maintenance").catch(() => null),
-      ]);
-
-      if (hkRes) {
-        const hkJson = await hkRes.json();
-        const tasks = hkJson.data || [];
-        for (const t of tasks) {
-          if (t.assigned_staff_id && ["pending", "assigned", "in_progress"].includes(t.status)) {
-            counts[t.assigned_staff_id] = (counts[t.assigned_staff_id] || 0) + 1;
-          }
-        }
-      }
-
-      if (mxRes) {
-        const mxJson = await mxRes.json();
-        const requests = mxJson.data || [];
-        for (const r of requests) {
-          if (r.assigned_staff_id && ["open", "assigned", "in_progress"].includes(r.status)) {
-            counts[r.assigned_staff_id] = (counts[r.assigned_staff_id] || 0) + 1;
-          }
-        }
-      }
-    } catch { /* — */ }
-
-    setTaskCounts(counts);
-  };
+    for (const t of hkRows ?? []) {
+      if (t.assigned_staff_id && ["pending", "assigned", "in_progress"].includes(t.status)) counts[t.assigned_staff_id] = (counts[t.assigned_staff_id] || 0) + 1;
+    }
+    for (const r of mxRows ?? []) {
+      if (r.assigned_staff_id && ["open", "assigned", "in_progress"].includes(r.status)) counts[r.assigned_staff_id] = (counts[r.assigned_staff_id] || 0) + 1;
+    }
+    return counts;
+  }, [hkRows, mxRows]);
 
   /* ---------- Chart data ---------- */
   const statCards = useMemo(() => {
@@ -186,7 +151,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
@@ -213,7 +178,7 @@ export default function StaffPage() {
                         <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(v: RechartsValue) => [`${v} staff`, "Count"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-3 mt-2">
@@ -239,15 +204,15 @@ export default function StaffPage() {
             placeholder="Search staff..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
-        <div className="flex gap-1 bg-bastet-card border border-bastet-border rounded-lg p-0.5">
+        <div className="flex gap-1 bg-brand-card border border-brand-border rounded-lg p-0.5">
           <button
             onClick={() => setActiveFilter("true")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === "true"
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -257,7 +222,7 @@ export default function StaffPage() {
             onClick={() => setActiveFilter("false")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === "false"
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -267,7 +232,7 @@ export default function StaffPage() {
             onClick={() => setActiveFilter("")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               activeFilter === ""
-                ? "bg-bastet-gold text-bastet-bg"
+                ? "bg-brand-accent text-brand-bg"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -282,8 +247,8 @@ export default function StaffPage() {
           onClick={() => setRoleFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             roleFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({staff.length})
@@ -294,8 +259,8 @@ export default function StaffPage() {
             onClick={() => setRoleFilter(role)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               roleFilter === role
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {role} ({roleCounts[role] || 0})
@@ -308,13 +273,13 @@ export default function StaffPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Name</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Email</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Role</th>
@@ -330,7 +295,7 @@ export default function StaffPage() {
                   return (
                     <tr
                       key={member.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
                         <span className="text-sm font-semibold text-text-primary">
@@ -361,7 +326,7 @@ export default function StaffPage() {
                       </td>
                       <td className="px-6 py-3 hidden md:table-cell">
                         {taskCount > 0 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold bg-bastet-gold/15 text-bastet-gold">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold bg-brand-accent/15 text-brand-accent">
                             {taskCount}
                           </span>
                         ) : (
@@ -371,7 +336,7 @@ export default function StaffPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/staff/${member.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

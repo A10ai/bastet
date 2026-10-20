@@ -49,6 +49,7 @@ export default function MaintenanceDetailPage() {
 
   useEffect(() => {
     fetchRequest();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   const fetchStaff = async () => {
@@ -112,7 +113,7 @@ export default function MaintenanceDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -129,7 +130,7 @@ export default function MaintenanceDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/maintenance" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+          <Link href="/dashboard/maintenance" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
           </Link>
           <div>
@@ -195,7 +196,7 @@ export default function MaintenanceDetailPage() {
                     <select
                       value={selectedStaff}
                       onChange={(e) => setSelectedStaff(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       <option value="">Select staff member...</option>
                       {staffList.map((s) => (
@@ -230,7 +231,7 @@ export default function MaintenanceDetailPage() {
                       value={resolutionNotes}
                       onChange={(e) => setResolutionNotes(e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                       placeholder="Describe what was done..."
                     />
                   </div>
@@ -264,7 +265,7 @@ export default function MaintenanceDetailPage() {
             <CardContent>
               <p className="text-sm text-text-primary whitespace-pre-wrap">{req.description}</p>
               {req.resolution_notes && (
-                <div className="mt-4 pt-4 border-t border-bastet-border">
+                <div className="mt-4 pt-4 border-t border-brand-border">
                   <p className="text-xs text-text-muted mb-1">Resolution Notes</p>
                   <p className="text-sm text-text-primary whitespace-pre-wrap">{req.resolution_notes}</p>
                 </div>
@@ -285,7 +286,7 @@ export default function MaintenanceDetailPage() {
                 </div>
                 {req.started_at && (
                   <div className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-bastet-gold" />
+                    <div className="w-2 h-2 rounded-full bg-brand-accent" />
                     <span className="text-text-secondary">Started {timeAgo(req.started_at)}</span>
                   </div>
                 )}
@@ -309,14 +310,14 @@ export default function MaintenanceDetailPage() {
             <CardContent>
               {req.apartment ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-mono font-semibold text-bastet-gold">{req.apartment.number}</p>
+                  <p className="text-sm font-mono font-semibold text-brand-accent">{req.apartment.number}</p>
                   <p className="text-sm text-text-secondary">Floor {req.apartment.floor}</p>
                   {req.apartment.building && (
                     <p className="text-sm text-text-secondary">{req.apartment.building.name}</p>
                   )}
                   <Link
                     href={`/dashboard/apartments/${req.apartment_id}`}
-                    className="text-xs text-bastet-gold hover:underline"
+                    className="text-xs text-brand-accent hover:underline"
                   >
                     View apartment
                   </Link>

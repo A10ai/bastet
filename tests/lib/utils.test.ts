@@ -131,7 +131,7 @@ describe("cn (className merge)", () => {
 describe("getStatusColor", () => {
   it("returns correct color class for known statuses", () => {
     expect(getStatusColor("available")).toBe("text-status-success");
-    expect(getStatusColor("occupied")).toBe("text-bastet-gold");
+    expect(getStatusColor("occupied")).toBe("text-brand-accent");
     expect(getStatusColor("maintenance")).toBe("text-status-warning");
     expect(getStatusColor("cancelled")).toBe("text-status-error");
     expect(getStatusColor("checked_in")).toBe("text-status-success");
@@ -149,7 +149,7 @@ describe("getStatusColor", () => {
 describe("getStatusBgColor", () => {
   it("returns correct bg class for known statuses", () => {
     expect(getStatusBgColor("available")).toContain("bg-status-success");
-    expect(getStatusBgColor("occupied")).toContain("bg-bastet-gold");
+    expect(getStatusBgColor("occupied")).toContain("bg-brand-accent");
     expect(getStatusBgColor("urgent")).toContain("bg-status-error");
   });
 

@@ -1,34 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     // Get current month boundaries
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0];
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const monthStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const monthEnd = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDay)}`;
 
-    // Revenue: sum of bookings.total_amount_gbp for checked_in/checked_out bookings this month
-    const { data: revenueBookings } = await supabase
-      .from("bookings")
-      .select("total_amount_gbp, nights")
-      .in("status", ["checked_in", "checked_out"])
-      .gte("check_in", monthStart)
-      .lte("check_in", monthEnd);
-
-    const revenue = (revenueBookings || []).reduce(
-      (sum, b) => sum + (b.total_amount_gbp || 0),
-      0
-    );
+    // Revenue by STAY date: each occupied night counts on the night it happens
+    // (migration 00026 revenue_by_stay_date), not on the booking's check-in month.
+    const { data: stayDays } = await supabase.rpc("revenue_by_stay_date", {
+      p_property_id: auth.propertyId,
+      p_from: monthStart,
+      p_to: monthEnd,
+    });
+    const days = (stayDays || []) as { stay_date: string; room_nights: number; room_revenue_gbp: number; rooms_available: number }[];
+    const revenue = days.reduce((s, d) => s + Number(d.room_revenue_gbp), 0);
+    const occupiedNights = days.reduce((s, d) => s + Number(d.room_nights), 0);
+    const totalAptNights = days.reduce((s, d) => s + Number(d.rooms_available), 0);
 
     // Expenses: sum this month
     const { data: monthExpenses } = await supabase
@@ -42,31 +40,10 @@ export async function GET(request: NextRequest) {
       0
     );
 
-    // Occupancy: count checked_in bookings / total apartments
-    const { count: occupiedCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "checked_in");
-
-    const { count: totalApartments } = await supabase
-      .from("apartments")
-      .select("id", { count: "exact", head: true });
-
-    const occupancy =
-      totalApartments && totalApartments > 0
-        ? Math.round(((occupiedCount || 0) / totalApartments) * 100)
-        : 0;
-
-    // ADR: revenue / total occupied room-nights
-    const occupiedNights = (revenueBookings || []).reduce(
-      (sum, b) => sum + (b.nights || 0),
-      0
-    );
+    // Occupancy = room-nights sold / room-nights available (month to date basis)
+    const occupancy = totalAptNights > 0 ? Math.round((occupiedNights / totalAptNights) * 100) : 0;
+    // ADR = room revenue / room-nights sold; RevPAR = room revenue / room-nights available
     const adr = occupiedNights > 0 ? revenue / occupiedNights : 0;
-
-    // RevPAA: revenue / total apartment-nights in month
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const totalAptNights = (totalApartments || 0) * daysInMonth;
     const revpaa = totalAptNights > 0 ? revenue / totalAptNights : 0;
 
     // Invoices
@@ -478,17 +455,15 @@ export async function GET(request: NextRequest) {
       other: "General",
     };
 
-    // Budget estimates per department (monthly) — can be overridden by a budget table later
-    const departmentBudgets: Record<string, number> = {
-      Personnel: expenses * 0.35,
-      Energy: expenses * 0.15,
-      Property: expenses * 0.12,
-      Rooms: expenses * 0.10,
-      "Sales & Marketing": expenses * 0.12,
-      Administration: expenses * 0.08,
-      Technology: expenses * 0.05,
-      General: expenses * 0.03,
-    };
+    // Budgets come from department_budgets (migration 00026). When none are
+    // set for the month the budget is null, never a fabricated percentage.
+    const { data: budgetRows } = await supabase
+      .from("department_budgets")
+      .select("department, budget_gbp")
+      .eq("month", monthStart);
+    const departmentBudgets: Record<string, number> = {};
+    for (const b of budgetRows || []) departmentBudgets[b.department] = Number(b.budget_gbp);
+    const budgetSource = (budgetRows || []).length > 0 ? "department_budgets" : "none";
 
     const deptActualMap: Record<string, number> = {};
     for (const e of expensesByCategory || []) {
@@ -499,21 +474,23 @@ export async function GET(request: NextRequest) {
     const allDepts = new Set([...Object.keys(departmentBudgets), ...Object.keys(deptActualMap)]);
     const departmentCosts = Array.from(allDepts)
       .map((department) => {
-        const budget = departmentBudgets[department] || 0;
+        const budget = departmentBudgets[department];
         const actual = deptActualMap[department] || 0;
-        const variance = budget > 0 ? ((actual - budget) / budget) * 100 : 0;
+        const variance = budget && budget > 0 ? ((actual - budget) / budget) * 100 : null;
         return {
           department,
-          budget_gbp: Math.round(budget * 100) / 100,
+          budget_gbp: budget === undefined ? null : Math.round(budget * 100) / 100,
           actual_gbp: Math.round(actual * 100) / 100,
-          variance_pct: Math.round(variance * 100) / 100,
+          variance_pct: variance === null ? null : Math.round(variance * 100) / 100,
         };
       })
-      .filter((d) => d.actual_gbp > 0 || d.budget_gbp > 0)
+      .filter((d) => d.actual_gbp > 0 || (d.budget_gbp ?? 0) > 0)
       .sort((a, b) => b.actual_gbp - a.actual_gbp);
 
     return NextResponse.json({
       data: {
+        revenue_basis: "stay_date",
+        budget_source: budgetSource,
         revenue_gbp: Math.round(revenue * 100) / 100,
         expenses_gbp: Math.round(expenses * 100) / 100,
         net_profit_gbp: Math.round((revenue - expenses) * 100) / 100,

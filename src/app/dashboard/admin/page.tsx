@@ -1,5 +1,7 @@
 "use client";
 
+import { AdminLoading, AccessDenied, isAdminRole } from "@/components/admin/admin-gate";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
@@ -15,10 +17,7 @@ import {
   Zap,
   Trash2,
   Loader2,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-} from "lucide-react";
+  CheckCircle } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -31,7 +30,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 interface Toast {
   id: number;
@@ -61,6 +60,7 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, []);
 
   const fetchData = async () => {
@@ -97,30 +97,8 @@ export default function AdminOverviewPage() {
   };
 
   // Access control
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (!staff || !["owner", "admin"].includes(staff.role)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Shield className="w-16 h-16 text-status-error mb-4" />
-        <h1 className="text-2xl font-display font-bold text-text-primary mb-2">
-          Access Denied
-        </h1>
-        <p className="text-text-secondary">
-          You need owner or admin privileges to access this page.
-        </p>
-        <Link href="/dashboard" className="mt-4">
-          <Button variant="secondary">Back to Dashboard</Button>
-        </Link>
-      </div>
-    );
-  }
+  if (authLoading) return <AdminLoading />;
+  if (!staff || !isAdminRole(staff.role)) return <AccessDenied showBackLink />;
 
   const totalRecords = Object.values(tableCounts).reduce((a, b) => a + b, 0);
 
@@ -223,7 +201,7 @@ export default function AdminOverviewPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-4 h-4 text-status-success" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -234,7 +212,7 @@ export default function AdminOverviewPage() {
                 Connected
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Database className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -245,7 +223,7 @@ export default function AdminOverviewPage() {
                 {Object.keys(tableCounts).length}
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -256,7 +234,7 @@ export default function AdminOverviewPage() {
                 {loading ? "..." : totalRecords.toLocaleString()}
               </p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -271,19 +249,19 @@ export default function AdminOverviewPage() {
 
           {/* API Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-cyan-400">
                 {loading ? "..." : stats.totalBookings}
               </p>
               <p className="text-xs text-text-muted mt-1">Total Bookings</p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-emerald-400">
                 {loading ? "..." : stats.totalGuests}
               </p>
               <p className="text-xs text-text-muted mt-1">Total Guests</p>
             </div>
-            <div className="bg-bastet-bg rounded-lg p-4 border border-bastet-border text-center">
+            <div className="bg-brand-bg rounded-lg p-4 border border-brand-border text-center">
               <p className="text-2xl font-bold text-cyan-300">
                 {loading ? "..." : stats.totalRevenue}
               </p>
@@ -316,7 +294,7 @@ export default function AdminOverviewPage() {
                       paddingAngle={2}
                       dataKey="value"
                     >
-                      {donutData.map((_: Record<string, any>, i: number) => (
+                      {donutData.map((_: Record<string, unknown>, i: number) => (
                         <Cell key={i} fill={TABLE_COLORS[i % TABLE_COLORS.length]} />
                       ))}
                     </Pie>
@@ -334,13 +312,13 @@ export default function AdminOverviewPage() {
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                {donutData.map((entry: Record<string, any>, i: number) => (
-                  <div key={entry.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                {donutData.map((entry: Record<string, unknown>, i: number) => (
+                  <div key={String(entry.name)} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
                       style={{ backgroundColor: TABLE_COLORS[i % TABLE_COLORS.length] }}
                     />
-                    {entry.name}
+                    {String(entry.name)}
                   </div>
                 ))}
               </div>
@@ -478,7 +456,7 @@ export default function AdminOverviewPage() {
                   <Link
                     key={table}
                     href={`/dashboard/admin/database?table=${table}`}
-                    className="bg-bastet-bg border border-bastet-border rounded-lg p-3 hover:border-cyan-400/30 transition-colors group"
+                    className="bg-brand-bg border border-brand-border rounded-lg p-3 hover:border-cyan-400/30 transition-colors group"
                   >
                     <p className="text-xs text-text-muted font-mono truncate group-hover:text-cyan-400 transition-colors">
                       {table}

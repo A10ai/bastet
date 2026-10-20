@@ -52,6 +52,7 @@ export const SIDEBAR_NAV: NavGroup[] = [
   {
     label: "Business",
     items: [
+      { label: "Point of Sale", href: "/dashboard/pos", icon: "Receipt" },
       { label: "F&B", href: "/dashboard/fnb", icon: "UtensilsCrossed" },
       { label: "Tour Operators", href: "/dashboard/tour-operators", icon: "Handshake" },
       { label: "Channel Manager", href: "/dashboard/channels", icon: "Globe" },
@@ -73,12 +74,19 @@ export const LENGTH_OF_STAY_DISCOUNTS = [
   { min_nights: 28, discount: 0.2 },
 ] as const;
 
+/**
+ * Fallback commission FRACTIONS by channel code (seed codes). The database
+ * value in `booking_channels.commission_rate` (a percent) always takes
+ * precedence; see `commissionFraction()` in utils.
+ */
 export const CHANNEL_COMMISSIONS: Record<string, number> = {
   direct: 0,
+  booking_com: 0.15,
   "booking.com": 0.15,
   airbnb: 0.14,
   expedia: 0.18,
   phone: 0,
+  walkin: 0,
   "walk-in": 0,
 };
 
@@ -243,3 +251,6 @@ export const EXPENSE_CATEGORIES = [
   "travel",
   "other",
 ] as const;
+
+/** Hotel departments used for budgets and the finance department-cost view. */
+export const DEPARTMENTS = ["Rooms", "Personnel", "Energy", "Property", "Sales & Marketing", "Administration", "Technology", "General"] as const;

@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth, requireRole } from "@/lib/api-auth";
+import { requireRole, ROLES, roleAtLeast } from "@/lib/api-auth";
+import { revealGuestDocument } from "@/lib/pii-crypto";
 import { logAudit } from "@/lib/audit";
 import { handleDbError } from "@/lib/api-error";
 import { logger } from "@/lib/logger";
@@ -17,7 +19,7 @@ import { validateBody, formatZodErrors, gdprActionSchema } from "@/lib/validatio
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
     const { searchParams } = new URL(request.url);
@@ -32,6 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "export") {
+      // Full personal-data export is an admin operation (right to portability
+      // is exercised by the data controller, not by every manager).
+      if (!roleAtLeast(auth.role, "admin")) {
+        return NextResponse.json({ error: { code: "FORBIDDEN", message: "Data export requires admin or owner" } }, { status: 403 });
+      }
       return await exportGuestData(guestId);
     } else if (action === "consent") {
       return await getGuestConsent(guestId);
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
 
     const body = await request.json();
@@ -105,7 +112,7 @@ export async function POST(request: NextRequest) {
  * Collects data from all tables that reference the guest.
  */
 async function exportGuestData(guestId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const exportData: Record<string, unknown> = {
     exported_at: new Date().toISOString(),
@@ -118,7 +125,7 @@ async function exportGuestData(guestId: string) {
     .select("*")
     .eq("id", guestId)
     .single();
-  exportData.guest = guest;
+  exportData.guest = guest ? revealGuestDocument(guest, true) : null;
 
   // Guest preferences
   const { data: preferences } = await supabase
@@ -211,7 +218,7 @@ async function exportGuestData(guestId: string) {
  * Creates a pending request — actual deletion happens after approval.
  */
 async function requestErasure(guestId: string, reason?: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   // Verify guest exists
   const { data: guest } = await supabase
@@ -270,7 +277,7 @@ async function requestErasure(guestId: string, reason?: string) {
  * Anonymizes PII while keeping operational records (financial, audit) as required by law.
  */
 async function executeErasure(requestId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   // Get the request
   const { data: gdprRequest } = await supabase
@@ -352,7 +359,7 @@ async function executeErasure(requestId: string) {
  * Get consent status for a guest.
  */
 async function getGuestConsent(guestId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data: consent, error } = await supabase
     .from("guest_consent")
@@ -374,7 +381,7 @@ async function updateConsent(body: {
   method?: string;
   notes?: string;
 }) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   if (!body.guest_id || !body.consent_type || typeof body.granted !== "boolean") {
     return NextResponse.json(
@@ -426,7 +433,7 @@ async function updateConsent(body: {
  * Get GDPR requests for a guest.
  */
 async function getGdprRequests(guestId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data: requests, error } = await supabase
     .from("gdpr_requests")

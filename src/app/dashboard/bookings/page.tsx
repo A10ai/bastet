@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +19,7 @@ import {
   Wallet,
   TrendingUp,
   Globe,
+  Users,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -24,19 +27,16 @@ import {
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const CHANNEL_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 const TIER_BADGE_COLORS: Record<string, string> = {
   bronze: "bg-orange-900/20 text-orange-400",
   silver: "bg-gray-400/20 text-gray-300",
-  gold: "bg-bastet-gold-muted text-bastet-gold",
+  gold: "bg-brand-accent-muted text-brand-accent",
   platinum: "bg-purple-400/20 text-purple-300",
 };
 
@@ -54,93 +54,48 @@ interface GuestMeta {
 }
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [miniStats, setMiniStats] = useState<BookingMiniStats | null>(null);
-  const [guestMeta, setGuestMeta] = useState<GuestMeta>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const fetchBookings = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (search) params.set("search", search);
-      if (dateFrom) params.set("date_from", dateFrom);
-      if (dateTo) params.set("date_to", dateTo);
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    return params.toString();
+  }, [statusFilter, debouncedSearch, dateFrom, dateTo]);
 
-      const res = await fetch(`/api/v1/bookings?${params}`);
-      const json = await res.json();
-      const data = json.data || [];
-      setBookings(data);
+  // SWR: cached between navigations, revalidated on focus and on booking changes
+  const { data: bookingRows, isLoading: loading } = useApi<Booking[]>(`/api/v1/bookings?${query}`, undefined, ["bookings"]);
+  const bookings = useMemo(() => bookingRows ?? [], [bookingRows]);
+  const { data: guestRows } = useApi<Array<{ id: string; loyalty_tier?: GuestMeta[string]["loyalty_tier"]; vip_status?: GuestMeta[string]["vip_status"] }>>("/api/v1/guests?limit=1000", undefined, ["guests"]);
 
-      // Compute mini stats from bookings data
-      computeMiniStats(data);
-      // Fetch guest metadata for tier/VIP info
-      fetchGuestMeta(data);
-    } catch {
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const guestMeta = useMemo<GuestMeta>(() => {
+    const meta: GuestMeta = {};
+    for (const g of guestRows ?? []) meta[g.id] = { loyalty_tier: g.loyalty_tier, vip_status: g.vip_status };
+    return meta;
+  }, [guestRows]);
 
-  const computeMiniStats = (bks: Booking[]) => {
-    try {
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      const monthBookings = bks.filter(
-        (b) => b.check_in >= monthStart && !["cancelled", "no_show"].includes(b.status)
-      );
-      const totalRevenue = monthBookings.reduce((sum, b) => sum + (b.total_amount_gbp || 0), 0);
-      const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
-      const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
-      const directCount = monthBookings.filter(
-        (b) => (b as unknown as Record<string, any>).channel === "direct" || (b as unknown as Record<string, any>).source === "direct"
-      ).length;
-      const directPct = monthBookings.length > 0
-        ? Math.round((directCount / monthBookings.length) * 100)
-        : 0;
-
-      setMiniStats({
-        total_revenue_month: totalRevenue,
-        avg_nightly_rate: avgRate,
-        direct_booking_pct: directPct,
-      });
-    } catch {
-      // Non-critical
-    }
-  };
-
-  const fetchGuestMeta = async (bks: Booking[]) => {
-    try {
-      const res = await fetch("/api/v1/guests?limit=1000");
-      const json = await res.json();
-      const guests = json.data || [];
-      const meta: GuestMeta = {};
-      for (const g of guests) {
-        meta[g.id] = {
-          loyalty_tier: g.loyalty_tier,
-          vip_status: g.vip_status,
-        };
-      }
-      setGuestMeta(meta);
-    } catch { /* — */ }
-  };
-
-  useEffect(() => {
-    fetchBookings();
-  }, [statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchBookings();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const miniStats = useMemo<BookingMiniStats | null>(() => {
+    if (bookings.length === 0) return null;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const monthBookings = bookings.filter(
+      (b) => b.check_in >= monthStart && !["cancelled", "no_show"].includes(b.status)
+    );
+    const totalRevenue = monthBookings.reduce((sum, b) => sum + (b.total_amount_gbp || 0), 0);
+    const totalNights = monthBookings.reduce((sum, b) => sum + (b.nights || 1), 0);
+    const avgRate = totalNights > 0 ? totalRevenue / totalNights : 0;
+    const directCount = monthBookings.filter(
+      (b) => (b as unknown as Record<string, unknown>).channel === "direct" || (b as unknown as Record<string, unknown>).source === "direct"
+    ).length;
+    const directPct = monthBookings.length > 0 ? Math.round((directCount / monthBookings.length) * 100) : 0;
+    return { total_revenue_month: totalRevenue, avg_nightly_rate: avgRate, direct_booking_pct: directPct };
+  }, [bookings]);
 
   const statusCounts = BOOKING_STATUSES.reduce(
     (acc, s) => {
@@ -162,6 +117,12 @@ export default function BookingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/dashboard/bookings/groups">
+            <Button variant="secondary">
+              <Users className="w-4 h-4 mr-2" />
+              Groups
+            </Button>
+          </Link>
           <Link href="/dashboard/bookings/calendar">
             <Button variant="secondary">
               <CalendarDays className="w-4 h-4 mr-2" />
@@ -180,11 +141,11 @@ export default function BookingsPage() {
       {/* Mini Stat Cards */}
       {miniStats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Revenue This Month</p>
@@ -195,11 +156,11 @@ export default function BookingsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Avg Nightly Rate</p>
@@ -210,11 +171,11 @@ export default function BookingsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-bastet-gold/10">
+          <Card className="border-brand-accent/10">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-bastet-gold/10 flex items-center justify-center">
-                  <Globe className="w-4 h-4 text-bastet-gold" />
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-brand-accent" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase">Direct Booking %</p>
@@ -257,7 +218,7 @@ export default function BookingsPage() {
                             <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
+                        <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="space-y-1.5">
@@ -305,7 +266,7 @@ export default function BookingsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a4a" />
                       <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Bookings"]} />
+                      <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Bookings"]} />
                       <Area type="monotone" dataKey="bookings" stroke="#22D3EE" strokeWidth={2} fill="url(#bookingGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -325,7 +286,7 @@ export default function BookingsPage() {
             placeholder="Search reference, guest..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+            className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
           />
         </div>
         <Input
@@ -349,8 +310,8 @@ export default function BookingsPage() {
           onClick={() => setStatusFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({bookings.length})
@@ -361,8 +322,8 @@ export default function BookingsPage() {
             onClick={() => setStatusFilter(status)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
               statusFilter === status
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -375,13 +336,13 @@ export default function BookingsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Reference</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Guest</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3 hidden md:table-cell">Tier</th>
@@ -400,17 +361,17 @@ export default function BookingsPage() {
                   return (
                     <tr
                       key={booking.id}
-                      className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                      className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                     >
                       <td className="px-6 py-3">
-                        <span className="text-sm font-mono font-semibold text-bastet-gold">
+                        <span className="text-sm font-mono font-semibold text-brand-accent">
                           {booking.reference}
                         </span>
                       </td>
                       <td className="px-6 py-3 text-sm text-text-primary">
                         <div className="flex items-center gap-1.5">
                           {gm?.vip_status && (
-                            <Star className="w-3.5 h-3.5 text-bastet-gold fill-bastet-gold flex-shrink-0" />
+                            <Star className="w-3.5 h-3.5 text-brand-accent fill-brand-accent flex-shrink-0" />
                           )}
                           <span>
                             {booking.guest
@@ -422,7 +383,7 @@ export default function BookingsPage() {
                       <td className="px-6 py-3 hidden md:table-cell">
                         {gm?.loyalty_tier ? (
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${TIER_BADGE_COLORS[gm.loyalty_tier] || "bg-bastet-bg text-text-muted"}`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${TIER_BADGE_COLORS[gm.loyalty_tier] || "bg-brand-bg text-text-muted"}`}
                           >
                             {gm.loyalty_tier}
                           </span>
@@ -451,7 +412,7 @@ export default function BookingsPage() {
                       <td className="px-6 py-3 text-right">
                         <Link
                           href={`/dashboard/bookings/${booking.id}`}
-                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors"
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View

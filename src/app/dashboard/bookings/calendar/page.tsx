@@ -133,7 +133,7 @@ function BookingTooltip({
 }) {
   return (
     <div
-      className="absolute z-50 bg-navy-900 border border-bastet-border rounded-lg shadow-xl px-3 py-2 text-xs pointer-events-none"
+      className="absolute z-50 bg-navy-900 border border-brand-border rounded-lg shadow-xl px-3 py-2 text-xs pointer-events-none"
       style={style}
     >
       <div className="font-semibold text-text-primary">{booking.guest_name}</div>
@@ -277,21 +277,8 @@ export default function AvailabilityCalendarPage() {
           const gRes = await fetch("/api/v1/guests?vip=true&limit=500");
           const gJson = await gRes.json();
           const vipGuests = gJson.data || [];
-          const vipIds = new Set(vipGuests.map((g: Record<string, any>) => g.id));
-
-          if (data) {
-            const todayStr = format(new Date(), "yyyy-MM-dd");
-            let count = 0;
-            for (const apt of data.apartments) {
-              for (const b of apt.bookings) {
-                if (b.check_in === todayStr && b.status !== "cancelled") {
-                  // Simplified — if any arriving guest is VIP
-                  count++;
-                }
-              }
-            }
-            // This is approximate without guest IDs in calendar data
-          }
+          // VIP arrivals cannot be derived without guest ids in the calendar payload.
+          void vipGuests;
         } catch { /* — */ }
       }
     };
@@ -436,7 +423,7 @@ export default function AvailabilityCalendarPage() {
           accent="slate"
         />
         <SummaryCard
-          icon={<Star className="w-4 h-4 text-bastet-gold fill-bastet-gold" />}
+          icon={<Star className="w-4 h-4 text-brand-accent fill-brand-accent" />}
           label="VIP Arrivals"
           value={vipArrivals}
           accent="cyan"
@@ -444,7 +431,7 @@ export default function AvailabilityCalendarPage() {
       </div>
 
       {/* Date Navigation + Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-bastet-card border border-bastet-border rounded-xl px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-brand-card border border-brand-border rounded-xl px-4 py-3">
         {/* Date nav */}
         <div className="flex items-center gap-2">
           <Button
@@ -478,7 +465,7 @@ export default function AvailabilityCalendarPage() {
             <select
               value={floorFilter}
               onChange={(e) => setFloorFilter(e.target.value)}
-              className="bg-bastet-bg border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+              className="bg-brand-bg border border-brand-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
               aria-label="Filter by floor"
             >
               <option value="all">All Floors</option>
@@ -494,7 +481,7 @@ export default function AvailabilityCalendarPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-bastet-bg border border-bastet-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+              className="bg-brand-bg border border-brand-border rounded-lg text-xs text-text-primary px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
               aria-label="Filter by apartment type"
             >
               <option value="all">All Types</option>
@@ -511,11 +498,11 @@ export default function AvailabilityCalendarPage() {
       {/* Calendar Grid */}
       <div
         ref={containerRef}
-        className="relative bg-bastet-card border border-bastet-border rounded-xl overflow-hidden"
+        className="relative bg-brand-card border border-brand-border rounded-xl overflow-hidden"
       >
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+            <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
           </div>
         ) : !data || data.apartments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-text-muted">
@@ -525,10 +512,10 @@ export default function AvailabilityCalendarPage() {
         ) : (
           <div className="overflow-x-auto" ref={gridRef}>
             {/* Date Header Row */}
-            <div className="flex border-b border-bastet-border sticky top-0 z-20 bg-bastet-card">
+            <div className="flex border-b border-brand-border sticky top-0 z-20 bg-brand-card">
               {/* Apartment label column header */}
               <div
-                className="sticky left-0 z-30 bg-bastet-card border-r border-bastet-border flex items-end px-3 py-2 shrink-0"
+                className="sticky left-0 z-30 bg-brand-card border-r border-brand-border flex items-end px-3 py-2 shrink-0"
                 style={{ width: `${APT_COL_WIDTH}px`, minWidth: `${APT_COL_WIDTH}px` }}
               >
                 <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
@@ -543,7 +530,7 @@ export default function AvailabilityCalendarPage() {
                   <div
                     key={date.toISOString()}
                     className={cn(
-                      "shrink-0 flex flex-col items-center justify-end py-1.5 border-r border-bastet-border/50",
+                      "shrink-0 flex flex-col items-center justify-end py-1.5 border-r border-brand-border/50",
                       weekend && "bg-navy-800/40",
                       todayCol && "bg-cyan-400/10 border-x border-cyan-400/30"
                     )}
@@ -586,7 +573,7 @@ export default function AvailabilityCalendarPage() {
               <div key={group.floor}>
                 {/* Floor header */}
                 <div
-                  className="flex items-center border-b border-bastet-border bg-navy-800/60"
+                  className="flex items-center border-b border-brand-border bg-navy-800/60"
                   style={{ height: `${BUILDING_HEADER_HEIGHT}px` }}
                 >
                   <div
@@ -615,12 +602,12 @@ export default function AvailabilityCalendarPage() {
                 {group.apartments.map((apt) => (
                   <div
                     key={apt.id}
-                    className="flex border-b border-bastet-border/40 hover:bg-bastet-bg/20 transition-colors"
+                    className="flex border-b border-brand-border/40 hover:bg-brand-bg/20 transition-colors"
                     style={{ height: `${ROW_HEIGHT}px` }}
                   >
                     {/* Apartment label */}
                     <div
-                      className="sticky left-0 z-10 bg-bastet-card border-r border-bastet-border flex items-center px-3 shrink-0"
+                      className="sticky left-0 z-10 bg-brand-card border-r border-brand-border flex items-center px-3 shrink-0"
                       style={{
                         width: `${APT_COL_WIDTH}px`,
                         minWidth: `${APT_COL_WIDTH}px`,
@@ -646,7 +633,7 @@ export default function AvailabilityCalendarPage() {
                     >
                       {/* Background cells (date columns) */}
                       <div className="absolute inset-0 flex">
-                        {dates.map((date, idx) => {
+                        {dates.map((date) => {
                           const weekend = isWeekend(date);
                           const todayCol = isToday(date);
                           const dateStr = format(date, "yyyy-MM-dd");
@@ -660,7 +647,7 @@ export default function AvailabilityCalendarPage() {
                             <div
                               key={date.toISOString()}
                               className={cn(
-                                "h-full border-r border-bastet-border/30",
+                                "h-full border-r border-brand-border/30",
                                 weekend && "bg-navy-800/30",
                                 todayCol && "bg-cyan-400/5"
                               )}
@@ -763,7 +750,7 @@ export default function AvailabilityCalendarPage() {
           );
         })}
         <div className="flex items-center gap-1.5">
-          <div className="w-5 h-3 rounded-sm bg-bastet-bg border border-bastet-border/30" />
+          <div className="w-5 h-3 rounded-sm bg-brand-bg border border-brand-border/30" />
           <span className="text-xs text-text-muted">Available</span>
         </div>
         <div className="flex items-center gap-1.5 ml-2 text-[10px] text-text-muted">
@@ -781,7 +768,6 @@ function SummaryCard({
   icon,
   label,
   value,
-  accent,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -789,8 +775,8 @@ function SummaryCard({
   accent?: "emerald" | "amber" | "slate" | "cyan";
 }) {
   return (
-    <div className="bg-bastet-card border border-bastet-border rounded-xl px-4 py-3 flex items-center gap-3">
-      <div className="p-2 rounded-lg bg-bastet-bg">{icon}</div>
+    <div className="bg-brand-card border border-brand-border rounded-xl px-4 py-3 flex items-center gap-3">
+      <div className="p-2 rounded-lg bg-brand-bg">{icon}</div>
       <div>
         <div className="text-lg font-bold font-mono text-text-primary">
           {value}

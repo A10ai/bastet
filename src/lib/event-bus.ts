@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 export type EventType =
   | "booking.checked_out"
   | "booking.checked_in"
+  | "booking.precheckin_completed"
   | "booking.confirmed"
   | "booking.cancelled"
   | "apartment.status_changed"
@@ -87,7 +88,7 @@ async function getOccupancyPercent(supabase: SupabaseClient): Promise<number> {
 
 registerHandler("booking.checked_out", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, booking_id, guest_id } = event.payload as {
+  const { apartment_id } = event.payload as {
     apartment_id?: string;
     booking_id?: string;
     guest_id?: string;
@@ -95,7 +96,9 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
   if (!apartment_id) return results;
 
-  // 1. Create housekeeping task (checkout_clean, high priority)
+  // Housekeeping task creation and the apartment status change are performed
+  // atomically inside checkout_booking() (migration 00020). This handler only
+  // records the fact and continues with notifications.
   const { data: apt } = await supabase
     .from("apartments")
     .select("id, number, property_id")
@@ -103,37 +106,11 @@ registerHandler("booking.checked_out", async (event, supabase) => {
     .single();
 
   if (apt) {
-    const { error: hkError } = await supabase.from("housekeeping_tasks").insert({
-      property_id: apt.property_id,
-      apartment_id: apartment_id,
-      type: "checkout_clean",
-      status: "pending",
-      priority: "high",
-      scheduled_date: new Date().toISOString().split("T")[0],
-    });
-
     results.push({
       handler: "checkout_housekeeping",
       target_system: "housekeeping",
-      action: "create_task",
-      description: hkError
-        ? `Failed to create cleaning task for unit ${apt.number}: ${hkError.message}`
-        : `Checkout triggered cleaning task for unit ${apt.number}`,
-      success: !hkError,
-      timestamp: new Date().toISOString(),
-    });
-
-    // 2. Set apartment status to cleaning
-    await supabase
-      .from("apartments")
-      .update({ status: "cleaning" })
-      .eq("id", apartment_id);
-
-    results.push({
-      handler: "checkout_apartment_status",
-      target_system: "apartments",
-      action: "update_status",
-      description: `Set unit ${apt.number} status to cleaning`,
+      action: "task_created_in_transaction",
+      description: `Checkout created cleaning task for unit ${apt.number} (task ${String((event.payload as { housekeeping_task_id?: string }).housekeeping_task_id ?? "n/a")})`,
       success: true,
       timestamp: new Date().toISOString(),
     });
@@ -171,7 +148,7 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
 registerHandler("booking.checked_in", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, booking_id, guest_id } = event.payload as {
+  const { apartment_id, guest_id } = event.payload as {
     apartment_id?: string;
     booking_id?: string;
     guest_id?: string;
@@ -382,7 +359,7 @@ registerHandler("booking.confirmed", async (event, supabase) => {
 
 registerHandler("housekeeping.completed", async (event, supabase) => {
   const results: HandlerResult[] = [];
-  const { apartment_id, task_id } = event.payload as {
+  const { apartment_id } = event.payload as {
     apartment_id?: string;
     task_id?: string;
   };
@@ -549,7 +526,7 @@ registerHandler("maintenance.created", async (event, supabase) => {
 // Handler: occupancy.threshold_crossed
 // ---------------------------------------------------------------------------
 
-registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
+registerHandler("occupancy.threshold_crossed", async (event, _supabase) => {
   const results: HandlerResult[] = [];
   const { occupancy_percent, direction, threshold } = event.payload as {
     occupancy_percent?: number;
@@ -596,7 +573,7 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
 // Handler: energy.waste_detected
 // ---------------------------------------------------------------------------
 
-registerHandler("energy.waste_detected", async (event, supabase) => {
+registerHandler("energy.waste_detected", async (event, _supabase) => {
   const results: HandlerResult[] = [];
   const { vacant_units_with_hvac, estimated_daily_cost } = event.payload as {
     vacant_units_with_hvac?: number;
@@ -778,13 +755,29 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
 // Core: emitEvent — stores event and processes handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * Idempotency key: the same business fact (this booking checked in, this
+ * task completed) must run its side effects once, even if the caller
+ * retries or a workflow re-emits it. Callers may pass their own key; by
+ * default it is derived from the event type and the entity id in the payload.
+ */
+function defaultIdempotencyKey(type: EventType, payload: Record<string, unknown>): string | null {
+  const id = payload.booking_id ?? payload.task_id ?? payload.request_id ?? payload.guest_id ?? payload.apartment_id;
+  if (!id) return null;
+  const qualifier = payload.idempotency_qualifier ? `:${String(payload.idempotency_qualifier)}` : "";
+  return `${type}:${String(id)}${qualifier}`;
+}
+
 export async function emitEvent(
   type: EventType,
   sourceSystem: string,
   payload: Record<string, unknown>,
-  supabase: SupabaseClient
-): Promise<{ event_id: string; results: HandlerResult[] }> {
-  // 1. Store event in database
+  supabase: SupabaseClient,
+  options: { idempotencyKey?: string | null } = {}
+): Promise<{ event_id: string; results: HandlerResult[]; duplicate?: boolean }> {
+  const idempotencyKey = options.idempotencyKey === undefined ? defaultIdempotencyKey(type, payload) : options.idempotencyKey;
+
+  // 1. Store event in database (unique index on idempotency_key, migration 00025)
   const { data: inserted, error: insertError } = await supabase
     .from("system_events")
     .insert({
@@ -793,9 +786,20 @@ export async function emitEvent(
       payload,
       processed: false,
       results: [],
+      idempotency_key: idempotencyKey,
     })
     .select("id")
     .single();
+
+  if (insertError?.code === "23505" && idempotencyKey) {
+    const { data: existing } = await supabase
+      .from("system_events")
+      .select("id, results")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    logger.info({ type, idempotencyKey }, "[EventBus] Duplicate event ignored");
+    return { event_id: (existing?.id as string) || "", results: (existing?.results as HandlerResult[]) || [], duplicate: true };
+  }
 
   if (insertError || !inserted) {
     logger.error({ err: insertError?.message }, "[EventBus] Failed to store event");

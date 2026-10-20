@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { getActivePropertyId } from "@/lib/api-property";
 import { validateBody, formatZodErrors, messageSchema } from "@/lib/validation";
 
@@ -79,14 +80,20 @@ function sevenDaysAgo() {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type");
 
     // Resolve active property name for templates
     const propertyId = await getActivePropertyId(request);
+    if (!propertyId) {
+      return NextResponse.json(
+        { error: { code: "PROPERTY_FORBIDDEN", message: "No access to the requested property" } },
+        { status: 403 }
+      );
+    }
     let propertyName = "Property";
     if (propertyId) {
       const { data: propData } = await supabase
@@ -217,9 +224,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(messageSchema, body);

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +12,8 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { MAINTENANCE_STATUSES } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 import type { MaintenanceRequest } from "@/types";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
+import { darkTooltipProps } from "@/lib/chart-styles";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#22D3EE",
@@ -23,10 +26,6 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CATEGORY_COLORS = ["#22D3EE", "#34D399", "#FBBF24", "#A78BFA", "#F97316", "#F472B6", "#818CF8", "#6EE7B7"];
 
-const darkTooltipStyle = {
-  contentStyle: { background: "#1a1a2e", border: "1px solid #2a2a4a", borderRadius: 8, fontSize: 12, color: "#e2e8f0" },
-  itemStyle: { color: "#e2e8f0" },
-};
 
 interface MaintenanceCrossData {
   [requestId: string]: {
@@ -43,102 +42,55 @@ interface AlertStats {
 }
 
 export default function MaintenancePage() {
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [crossData, setCrossData] = useState<MaintenanceCrossData>({});
-  const [alertStats, setAlertStats] = useState<AlertStats>({ urgent_count: 0, emergency_count: 0, pattern_count: 0 });
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (search) params.set("search", search);
-        const res = await fetch(`/api/v1/maintenance?${params}`);
-        const json = await res.json();
-        const data = json.data || [];
-        setRequests(data);
+  const { data: requestRows, isLoading: loading } = useApi<MaintenanceRequest[]>(
+    `/api/v1/maintenance${debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""}`,
+    undefined,
+    ["maintenance_requests"]
+  );
+  const requests = useMemo(() => requestRows ?? [], [requestRows]);
+  const { data: checkedInRows } = useApi<Array<{ apartment_id?: string | null }>>("/api/v1/bookings?status=checked_in&limit=500", undefined, ["bookings"]);
 
-        // Fetch cross-data
-        fetchCrossData(data);
-      } catch {
-        setRequests([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRequests();
-  }, [search]);
-
-  const fetchCrossData = async (mxRequests: MaintenanceRequest[]) => {
+  const { crossData, alertStats } = useMemo(() => {
     const cd: MaintenanceCrossData = {};
-
-    // Fetch active bookings to check occupied apartments
-    try {
-      const bkRes = await fetch("/api/v1/bookings?status=checked_in&limit=500");
-      const bkJson = await bkRes.json();
-      const bookings = bkJson.data || [];
-      const occupiedApts = new Set(bookings.map((b: Record<string, any>) => b.apartment_id).filter(Boolean));
-
-      for (const req of mxRequests) {
-        cd[req.id] = {
-          ...cd[req.id],
-          is_occupied: req.apartment_id ? occupiedApts.has(req.apartment_id) : false,
-        };
-      }
-    } catch { /* — */ }
+    const occupiedApts = new Set((checkedInRows ?? []).map((b) => b.apartment_id).filter(Boolean));
+    for (const req of requests) {
+      cd[req.id] = { ...cd[req.id], is_occupied: req.apartment_id ? occupiedApts.has(req.apartment_id) : false };
+    }
 
     // Detect patterns: 3+ tickets for same apartment or category in 30 days
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const recentRequests = mxRequests.filter((r) => r.created_at >= thirtyDaysAgo);
-
-    // Count by apartment
+    const recentRequests = requests.filter((r) => r.created_at >= thirtyDaysAgo);
     const aptCounts: Record<string, number> = {};
     const catCounts: Record<string, number> = {};
     for (const r of recentRequests) {
-      if (r.apartment_id) {
-        aptCounts[r.apartment_id] = (aptCounts[r.apartment_id] || 0) + 1;
-      }
+      if (r.apartment_id) aptCounts[r.apartment_id] = (aptCounts[r.apartment_id] || 0) + 1;
       if (r.category) {
         const key = `${r.apartment_id || ""}:${r.category}`;
         catCounts[key] = (catCounts[key] || 0) + 1;
       }
     }
-
     let patternCount = 0;
-    for (const req of mxRequests) {
+    for (const req of requests) {
       const aptCount = req.apartment_id ? (aptCounts[req.apartment_id] || 0) : 0;
-      const catKey = `${req.apartment_id || ""}:${req.category}`;
-      const catCount = catCounts[catKey] || 0;
+      const catCount = catCounts[`${req.apartment_id || ""}:${req.category}`] || 0;
       const hasPattern = aptCount >= 3 || catCount >= 3;
-
-      const isHvac = ["hvac", "heating", "cooling", "air_conditioning", "ac"].includes(
-        (req.category || "").toLowerCase()
-      );
-
-      cd[req.id] = {
-        ...cd[req.id],
-        has_pattern: hasPattern,
-        is_hvac: isHvac,
-      };
-
+      const isHvac = ["hvac", "heating", "cooling", "air_conditioning", "ac"].includes((req.category || "").toLowerCase());
+      cd[req.id] = { ...cd[req.id], has_pattern: hasPattern, is_hvac: isHvac };
       if (hasPattern) patternCount++;
     }
 
-    setCrossData(cd);
-
-    // Compute alert stats
     const activeStatuses = ["open", "assigned", "in_progress"];
-    const urgentCount = mxRequests.filter((r) => r.priority === "urgent" && activeStatuses.includes(r.status)).length;
-    const emergencyCount = mxRequests.filter((r) => r.priority === "emergency" && activeStatuses.includes(r.status)).length;
-    setAlertStats({
-      urgent_count: urgentCount,
-      emergency_count: emergencyCount,
+    const stats: AlertStats = {
+      urgent_count: requests.filter((r) => r.priority === "urgent" && activeStatuses.includes(r.status)).length,
+      emergency_count: requests.filter((r) => r.priority === "emergency" && activeStatuses.includes(r.status)).length,
       pattern_count: patternCount,
-    });
-  };
+    };
+    return { crossData: cd, alertStats: stats };
+  }, [requests, checkedInRows]);
 
   const filtered =
     statusFilter === "all"
@@ -210,7 +162,7 @@ export default function MaintenancePage() {
           placeholder="Search requests..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:max-w-sm pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+          className="w-full sm:max-w-sm pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
         />
       </div>
 
@@ -235,7 +187,7 @@ export default function MaintenancePage() {
                         <Cell key={s} fill={STATUS_COLORS[s] || "#6B7280"} />
                       ))}
                     </Pie>
-                    <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} />
+                    <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tickets"]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">
@@ -266,7 +218,7 @@ export default function MaintenancePage() {
                     <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
                       <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis type="category" dataKey="name" width={90} tick={{ fill: "#94a3b8", fontSize: 11, textTransform: "capitalize" } as Record<string, unknown>} axisLine={false} tickLine={false} />
-                      <Tooltip {...darkTooltipStyle} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
+                      <Tooltip {...darkTooltipProps} formatter={(value: RechartsValue) => [value, "Tickets"]} cursor={{ fill: "rgba(34,211,238,0.08)" }} />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                         {catData.map((_, i) => (
                           <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
@@ -287,8 +239,8 @@ export default function MaintenancePage() {
           onClick={() => setStatusFilter("all")}
           className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
             statusFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({requests.length})
@@ -299,8 +251,8 @@ export default function MaintenancePage() {
             onClick={() => setStatusFilter(status)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
               statusFilter === status
-                ? "bg-bastet-gold text-bastet-bg"
-                : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                ? "bg-brand-accent text-brand-bg"
+                : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
             }`}
           >
             {status.replace("_", " ")} ({statusCounts[status] || 0})
@@ -313,7 +265,7 @@ export default function MaintenancePage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <>
@@ -321,7 +273,7 @@ export default function MaintenancePage() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-bastet-border">
+                    <tr className="border-b border-brand-border">
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Title</th>
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Apartment</th>
                       <th className="text-left text-xs font-medium text-text-muted px-4 py-3">Category</th>
@@ -340,10 +292,10 @@ export default function MaintenancePage() {
                       return (
                         <tr
                           key={req.id}
-                          className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                          className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                         >
                           <td className="px-4 py-3 text-sm font-semibold text-text-primary">{req.title}</td>
-                          <td className="px-4 py-3 text-sm font-mono text-bastet-gold">{req.apartment?.number || "—"}</td>
+                          <td className="px-4 py-3 text-sm font-mono text-brand-accent">{req.apartment?.number || "—"}</td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.category}>{req.category}</Badge></td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.priority} /></td>
                           <td className="px-4 py-3"><Badge variant="status" status={req.status} /></td>
@@ -379,7 +331,7 @@ export default function MaintenancePage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Link href={`/dashboard/maintenance/${req.id}`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-bastet-gold transition-colors">
+                            <Link href={`/dashboard/maintenance/${req.id}`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-brand-accent transition-colors">
                               <Eye className="w-3.5 h-3.5" /> View
                             </Link>
                           </td>
@@ -391,18 +343,18 @@ export default function MaintenancePage() {
               </div>
 
               {/* Mobile card list */}
-              <div className="md:hidden divide-y divide-bastet-border">
+              <div className="md:hidden divide-y divide-brand-border">
                 {filtered.map((req) => {
                   const cd = crossData[req.id];
                   return (
                     <Link
                       key={req.id}
                       href={`/dashboard/maintenance/${req.id}`}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-bastet-bg/50 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-brand-bg/50 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-mono text-bastet-gold">{req.apartment?.number || "—"}</span>
+                          <span className="text-sm font-mono text-brand-accent">{req.apartment?.number || "—"}</span>
                           <Badge variant="status" status={req.priority} />
                           <Badge variant="status" status={req.status} />
                           {cd?.is_occupied && (

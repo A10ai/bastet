@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { format, addDays } from "date-fns";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
 
     const from = searchParams.get("from") || format(new Date(), "yyyy-MM-dd");
@@ -72,8 +73,8 @@ export async function GET(request: NextRequest) {
 
     // Sort apartments by building code then number
     const sortedApartments = (apartments || []).sort((a, b) => {
-      const buildingA = (a.building as Record<string, any> | null)?.code || "";
-      const buildingB = (b.building as Record<string, any> | null)?.code || "";
+      const buildingA = String((a.building as unknown as Record<string, unknown> | null)?.code ?? "");
+      const buildingB = String((b.building as unknown as Record<string, unknown> | null)?.code ?? "");
       if (buildingA !== buildingB) return buildingA.localeCompare(buildingB);
       return a.number.localeCompare(b.number, undefined, { numeric: true });
     });

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/api-auth";
 import { apiError, handleDbError } from "@/lib/api-error";
@@ -41,9 +42,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Merge auth info into staff records
-    const enriched = (staffList || []).map((s: Record<string, any>) => ({
+    const enriched = (staffList || []).map((s: Record<string, unknown>) => ({
       ...s,
-      auth_info: s.auth_user_id ? authUsers[s.auth_user_id] || null : null,
+      auth_info: s.auth_user_id ? authUsers[s.auth_user_id as string] || null : null,
     }));
 
     return NextResponse.json({ data: enriched });

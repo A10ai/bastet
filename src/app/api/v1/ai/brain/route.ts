@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES, roleAtLeast } from "@/lib/api-auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   getBrainConfig,
   updateBrainConfig,
@@ -12,9 +14,9 @@ import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const config = await getBrainConfig();
     const history = await getBrainHistory(supabase, 10);
 
@@ -30,9 +32,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.MANAGEMENT);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(aiBrainActionSchema, body);
@@ -44,6 +46,8 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "run_cycle": {
+        const rl = await rateLimit(`brain-cycle:${auth.propertyId ?? "global"}`, RATE_LIMITS.AI_BRAIN_CYCLE);
+        if (!rl.allowed) return rateLimitResponse(rl, "Brain cycle limit reached (6 per hour).");
         const config = await getBrainConfig();
         if (!config.enabled) {
           return NextResponse.json(
@@ -57,6 +61,12 @@ export async function POST(request: NextRequest) {
       }
 
       case "update_config": {
+        if (!roleAtLeast(auth.role, "admin")) {
+          return NextResponse.json(
+            { error: { code: "FORBIDDEN", message: "Only admin or owner may change AI brain configuration" } },
+            { status: 403 }
+          );
+        }
         const { config } = validated;
         if (!config || typeof config !== "object") {
           return NextResponse.json(

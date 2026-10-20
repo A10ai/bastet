@@ -9,8 +9,8 @@ export function Card({ className, hover, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "bg-bastet-card border border-bastet-border rounded-xl",
-        hover && "hover:border-bastet-gold/30 transition-colors cursor-pointer",
+        "bg-brand-card border border-brand-border rounded-xl",
+        hover && "hover:border-brand-accent/30 transition-colors cursor-pointer",
         className
       )}
       {...props}
@@ -21,7 +21,7 @@ export function Card({ className, hover, ...props }: CardProps) {
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("px-6 py-4 border-b border-bastet-border", className)}
+      className={cn("px-6 py-4 border-b border-brand-border", className)}
       {...props}
     />
   );

@@ -52,6 +52,7 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     fetchInvoice();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   const handleSend = async () => {
@@ -101,7 +102,7 @@ export default function InvoiceDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -122,7 +123,7 @@ export default function InvoiceDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/finance/invoices" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+          <Link href="/dashboard/finance/invoices" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
           </Link>
           <div>
@@ -162,7 +163,7 @@ export default function InvoiceDetailPage() {
             <CardContent className="p-0">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-bastet-border">
+                  <tr className="border-b border-brand-border">
                     <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Description</th>
                     <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Qty</th>
                     <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Unit Price</th>
@@ -171,7 +172,7 @@ export default function InvoiceDetailPage() {
                 </thead>
                 <tbody>
                   {lineItems.map((item, i) => (
-                    <tr key={i} className="border-b border-bastet-border last:border-0">
+                    <tr key={i} className="border-b border-brand-border last:border-0">
                       <td className="px-6 py-3 text-sm text-text-primary">{item.description}</td>
                       <td className="px-6 py-3 text-sm text-right font-mono text-text-secondary">{item.quantity}</td>
                       <td className="px-6 py-3 text-sm text-right font-mono text-text-secondary">{formatCurrency(item.unit_price_gbp)}</td>
@@ -180,7 +181,7 @@ export default function InvoiceDetailPage() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-bastet-border">
+                  <tr className="border-t border-brand-border">
                     <td colSpan={3} className="px-6 py-2 text-sm text-right text-text-secondary">Subtotal</td>
                     <td className="px-6 py-2 text-sm text-right font-mono text-text-primary">{formatCurrency(invoice.subtotal_gbp)}</td>
                   </tr>
@@ -190,9 +191,9 @@ export default function InvoiceDetailPage() {
                       <td className="px-6 py-2 text-sm text-right font-mono text-text-primary">{formatCurrency(invoice.tax_amount_gbp)}</td>
                     </tr>
                   )}
-                  <tr className="border-t border-bastet-border">
+                  <tr className="border-t border-brand-border">
                     <td colSpan={3} className="px-6 py-3 text-sm text-right font-semibold text-text-primary">Total</td>
-                    <td className="px-6 py-3 text-sm text-right font-mono font-semibold text-bastet-gold">{formatCurrency(invoice.total_gbp)}</td>
+                    <td className="px-6 py-3 text-sm text-right font-mono font-semibold text-brand-accent">{formatCurrency(invoice.total_gbp)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -222,7 +223,7 @@ export default function InvoiceDetailPage() {
                     <select
                       value={payMethod}
                       onChange={(e) => setPayMethod(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       {PAYMENT_METHODS.map((m) => (
                         <option key={m} value={m}>{m.replace("_", " ")}</option>
@@ -255,7 +256,7 @@ export default function InvoiceDetailPage() {
               <CardContent className="p-0">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-bastet-border">
+                    <tr className="border-b border-brand-border">
                       <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Date</th>
                       <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Method</th>
                       <th className="text-right text-xs font-medium text-text-muted px-6 py-3">Amount</th>
@@ -264,7 +265,7 @@ export default function InvoiceDetailPage() {
                   </thead>
                   <tbody>
                     {payments.map((pay) => (
-                      <tr key={pay.id} className="border-b border-bastet-border last:border-0">
+                      <tr key={pay.id} className="border-b border-brand-border last:border-0">
                         <td className="px-6 py-3 text-sm text-text-secondary">
                           {pay.received_at ? formatDate(pay.received_at) : timeAgo(pay.created_at)}
                         </td>
@@ -344,7 +345,7 @@ export default function InvoiceDetailPage() {
                 <h3 className="text-lg font-semibold text-text-primary">Booking</h3>
               </CardHeader>
               <CardContent>
-                <p className="text-sm font-mono text-bastet-gold">{invoiceBooking.reference}</p>
+                <p className="text-sm font-mono text-brand-accent">{invoiceBooking.reference}</p>
                 <p className="text-sm text-text-secondary mt-1">
                   {formatDate(invoiceBooking.check_in)} — {formatDate(invoiceBooking.check_out)}
                 </p>

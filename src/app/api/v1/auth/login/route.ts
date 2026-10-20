@@ -1,20 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/api-error";
 import { validateBody, formatZodErrors, loginSchema } from "@/lib/validation";
 import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { generateCsrfToken, setCsrfCookie } from "@/lib/csrf";
 
 export async function POST(request: NextRequest) {
-  // Rate limit login attempts: 5 per 15 minutes per IP
+  // Rate limits: a whole property's staff share one NAT address, so the
+  // brute-force limit is per account (5 per 15 min) with a generous per-IP
+  // ceiling (60 per 15 min) against credential stuffing.
   const ip = getClientIp(request);
-  const rl = rateLimit(`login:${ip}`, RATE_LIMITS.LOGIN);
-  if (!rl.allowed) {
-    return apiError(
-      "RATE_LIMITED",
-      "Too many login attempts. Please try again in a few minutes.",
-      429
-    );
+  const ipLimit = await rateLimit(`login-ip:${ip}`, RATE_LIMITS.LOGIN_PER_IP);
+  if (!ipLimit.allowed) {
+    return apiError("RATE_LIMITED", "Too many login attempts from this network. Please try again later.", 429);
   }
 
   try {
@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = validation.data;
+
+    const accountLimit = await rateLimit(`login:${email.toLowerCase()}`, RATE_LIMITS.LOGIN);
+    if (!accountLimit.allowed) {
+      return apiError("RATE_LIMITED", "Too many login attempts for this account. Please try again in a few minutes.", 429);
+    }
 
     // 1. Verify the email belongs to an active staff member (quick check)
     const adminSupabase = createAdminClient();
@@ -67,9 +72,12 @@ export async function POST(request: NextRequest) {
       return apiError("INVALID_CREDENTIALS", "Invalid credentials", 401);
     }
 
-    // 3. Return staff data + set session cookies on the response
+    // 3. Return staff data + set session cookies on the response.
+    //    Rotate the CSRF token so a pre-login token cannot be reused.
+    const csrfToken = await generateCsrfToken();
     const authResponse = NextResponse.json({
       data: {
+        csrf_token: csrfToken,
         staff: {
           id: staffMember.id,
           first_name: staffMember.first_name,
@@ -87,6 +95,7 @@ export async function POST(request: NextRequest) {
         ...cookie,
       });
     }
+    setCsrfCookie(authResponse, csrfToken);
 
     return authResponse;
   } catch {

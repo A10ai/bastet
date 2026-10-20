@@ -369,7 +369,7 @@ export async function getUpsellOpportunities(
   for (const score of scores) {
     const gb = bookingsByGuest[score.guest_id] || [];
     const studioStays = gb.filter((b) => {
-      const apt = b.apartments as Record<string, any> | null;
+      const apt = b.apartments as { apartment_types?: { name?: string | null; bedrooms?: number | null } | null } | null;
       const typeName = apt?.apartment_types?.name?.toLowerCase() || "";
       return typeName.includes("studio") || (apt?.apartment_types?.bedrooms === 0);
     });
@@ -623,7 +623,6 @@ export async function getGuestInsights(
 
   // 3. Nationality revenue insight
   if (segments.top_nationalities.length >= 2) {
-    const totalAvgRevenue = segments.top_nationalities.reduce((s, n) => s + n.total_revenue, 0) / segments.top_nationalities.length;
     const topNat = segments.top_nationalities[0];
     const topAvg = topNat.count > 0 ? topNat.total_revenue / topNat.count : 0;
     const overallAvg = scores.length > 0 ? scores.reduce((s, g) => s + g.total_spend_gbp, 0) / scores.length : 0;

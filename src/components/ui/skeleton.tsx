@@ -5,10 +5,10 @@
 export function SkeletonCard({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-xl bg-bastet-card border border-bastet-border ${className}`}
+      className={`animate-pulse rounded-xl bg-brand-card border border-brand-border ${className}`}
     >
-      <div className="h-4 w-1/3 bg-bastet-border/50 rounded m-4" />
-      <div className="h-8 w-2/3 bg-bastet-border/50 rounded mx-4 mb-4" />
+      <div className="h-4 w-1/3 bg-brand-border/50 rounded m-4" />
+      <div className="h-8 w-2/3 bg-brand-border/50 rounded mx-4 mb-4" />
     </div>
   );
 }
@@ -19,14 +19,14 @@ export function SkeletonRow({ count = 5 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse flex items-center gap-4 p-3 rounded-lg bg-bastet-card border border-bastet-border"
+          className="animate-pulse flex items-center gap-4 p-3 rounded-lg bg-brand-card border border-brand-border"
         >
-          <div className="h-10 w-10 bg-bastet-border/50 rounded-full" />
+          <div className="h-10 w-10 bg-brand-border/50 rounded-full" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-1/4 bg-bastet-border/50 rounded" />
-            <div className="h-3 w-1/2 bg-bastet-border/30 rounded" />
+            <div className="h-4 w-1/4 bg-brand-border/50 rounded" />
+            <div className="h-3 w-1/2 bg-brand-border/30 rounded" />
           </div>
-          <div className="h-8 w-20 bg-bastet-border/50 rounded" />
+          <div className="h-8 w-20 bg-brand-border/50 rounded" />
         </div>
       ))}
     </div>
@@ -35,9 +35,9 @@ export function SkeletonRow({ count = 5 }: { count?: number }) {
 
 export function SkeletonChart() {
   return (
-    <div className="animate-pulse rounded-xl bg-bastet-card border border-bastet-border p-6">
-      <div className="h-4 w-1/4 bg-bastet-border/50 rounded mb-4" />
-      <div className="h-64 w-full bg-bastet-border/30 rounded" />
+    <div className="animate-pulse rounded-xl bg-brand-card border border-brand-border p-6">
+      <div className="h-4 w-1/4 bg-brand-border/50 rounded mb-4" />
+      <div className="h-64 w-full bg-brand-border/30 rounded" />
     </div>
   );
 }
@@ -55,7 +55,7 @@ export function SkeletonGrid({ count = 4 }: { count?: number }) {
 export function PageSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="animate-pulse h-8 w-48 bg-bastet-border/50 rounded" />
+      <div className="animate-pulse h-8 w-48 bg-brand-border/50 rounded" />
       <SkeletonGrid />
       <SkeletonChart />
       <SkeletonRow count={3} />

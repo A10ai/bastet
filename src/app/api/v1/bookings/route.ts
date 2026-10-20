@@ -1,22 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
+import { parsePagination, paginationMeta } from "@/lib/pagination";
 import {
-  calculateRate,
-  calculateBookingTotal,
   calculateNights,
   getNextBookingReference,
   checkAvailability,
   convertCurrency,
 } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
+import { quoteStay } from "@/lib/rate-plans";
+import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createBookingSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = request.nextUrl;
     const status = searchParams.get("status");
     const apartmentId = searchParams.get("apartment_id");
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
         guest:guests(id, first_name, last_name, email, loyalty_tier, vip_status),
         apartment:apartments(id, number, floor, view_type, building:buildings(id, name, code), apartment_type:apartment_types(id, name)),
         channel:booking_channels(id, name, code)
-      `)
+      `, { count: "exact" })
       .order("created_at", { ascending: false });
 
     if (propertyId) query = query.eq("property_id", propertyId);
@@ -46,11 +48,13 @@ export async function GET(request: NextRequest) {
       query = query.ilike("reference", `%${search}%`);
     }
 
-    const { data, error } = await query;
+    const pagination = parsePagination(searchParams);
+    query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
+    const { data, error, count } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -58,9 +62,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createBookingSchema, body);
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
       apartment_id,
       guest_id,
       channel_id,
+      rate_plan_id,
       check_in,
       check_out,
       adults = 1,
@@ -104,23 +109,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Apartment not found" }, { status: 404 });
     }
 
-    // Calculate rate
     const nights = calculateNights(check_in, check_out);
     if (nights <= 0) {
       return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 400 });
     }
 
-    const rateInfo = await calculateRate(apartment.apartment_type_id, check_in, check_out, supabase);
-    if (!rateInfo) {
-      return NextResponse.json({ error: "No rate found for this apartment type" }, { status: 400 });
+    // Channel is NOT NULL in the schema: default to the direct channel
+    let resolvedChannelId = channel_id || null;
+    let channelCode: string | null = null;
+    if (resolvedChannelId) {
+      const { data: ch } = await supabase.from("booking_channels").select("code").eq("id", resolvedChannelId).maybeSingle();
+      channelCode = ch?.code ?? null;
+    } else {
+      const { data: direct } = await supabase
+        .from("booking_channels")
+        .select("id, code")
+        .eq("code", "direct")
+        .maybeSingle();
+      resolvedChannelId = direct?.id ?? null;
+      channelCode = direct?.code ?? null;
+      if (!resolvedChannelId) {
+        return NextResponse.json({ error: "channel_id is required (no direct channel configured)" }, { status: 400 });
+      }
     }
 
-    const pricing = calculateBookingTotal(rateInfo.nightly_rate_gbp, nights);
+    // Price the stay night by night through the chosen (or default) rate plan
+    const { quote, error: quoteError } = await quoteStay(supabase, {
+      apartmentTypeId: apartment.apartment_type_id,
+      checkIn: check_in,
+      checkOut: check_out,
+      ratePlanId: rate_plan_id,
+      channelCode,
+    });
+    if (quoteError || !quote) return rpcErrorResponse(quoteError!, "quote_stay");
 
     // Convert to guest currency
     let totalGuestCurrency: number | null = null;
     if (guest_currency !== "GBP") {
-      const converted = await convertCurrency(pricing.total, guest_currency, supabase);
+      const converted = await convertCurrency(quote.total_gbp, guest_currency, supabase);
       if (converted) {
         totalGuestCurrency = converted.amount;
       }
@@ -135,18 +161,20 @@ export async function POST(request: NextRequest) {
       property_id: resolvedPropertyId,
       apartment_id,
       guest_id: guest_id || null,
-      channel_id: channel_id || null,
+      channel_id: resolvedChannelId,
       reference,
       status: "pending",
       check_in,
       check_out,
-      nights,
+      // `nights` is GENERATED ALWAYS in the schema; never insert it
       adults,
       children,
       infants,
-      rate_per_night_gbp: Math.round(rateInfo.nightly_rate_gbp * 100) / 100,
-      discount_percentage: pricing.discount_percentage,
-      total_amount_gbp: pricing.total,
+      rate_per_night_gbp: quote.rate_per_night_gbp,
+      discount_percentage: quote.discount_percentage,
+      total_amount_gbp: quote.total_gbp,
+      rate_plan_id: quote.rate_plan?.id ?? null,
+      rate_plan_snapshot: quote.rate_plan,
       total_amount_guest_currency: totalGuestCurrency,
       guest_currency,
       special_requests: special_requests || null,
@@ -164,9 +192,7 @@ export async function POST(request: NextRequest) {
       `)
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) return rpcErrorResponse(error, "bookings.insert");
 
     await logAudit(supabase, {
       action: "booking.create",

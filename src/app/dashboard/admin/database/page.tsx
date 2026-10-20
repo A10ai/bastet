@@ -1,13 +1,14 @@
 "use client";
 
+import { AdminLoading, AccessDenied, isAdminRole } from "@/components/admin/admin-gate";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield,
   Database,
   Search,
   Loader2,
@@ -19,7 +20,7 @@ import {
   X,
   ArrowUpDown,
 } from "lucide-react";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 interface Toast {
   id: number;
@@ -36,7 +37,7 @@ export default function DatabaseExplorerPage() {
   const [selectedTable, setSelectedTable] = useState(
     searchParams.get("table") || ""
   );
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -138,7 +139,7 @@ export default function DatabaseExplorerPage() {
   };
 
   // Inline edit handlers
-  const startEdit = (rowId: string, col: string, currentValue: any) => {
+  const startEdit = (rowId: string, col: string, currentValue: unknown) => {
     if (col === "id" || col === "created_at" || col === "updated_at") return;
     setEditingCell({ rowId, col });
     setEditValue(currentValue === null ? "" : String(currentValue));
@@ -237,27 +238,8 @@ export default function DatabaseExplorerPage() {
   };
 
   // Access control
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  if (!staff || !["owner", "admin"].includes(staff.role)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Shield className="w-16 h-16 text-status-error mb-4" />
-        <h1 className="text-2xl font-display font-bold text-text-primary mb-2">
-          Access Denied
-        </h1>
-        <p className="text-text-secondary">
-          You need owner or admin privileges to access this page.
-        </p>
-      </div>
-    );
-  }
+  if (authLoading) return <AdminLoading />;
+  if (!staff || !isAdminRole(staff.role)) return <AccessDenied />;
 
   return (
     <div className="space-y-6">
@@ -304,7 +286,7 @@ export default function DatabaseExplorerPage() {
         <select
           value={selectedTable}
           onChange={(e) => handleTableChange(e.target.value)}
-          className="bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-cyan-400/40 min-w-[200px]"
+          className="bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary px-3 py-2 focus:outline-none focus:border-cyan-400/40 min-w-[200px]"
         >
           <option value="">Select a table...</option>
           {tables.map((t) => (
@@ -326,7 +308,7 @@ export default function DatabaseExplorerPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="w-full pl-9 pr-3 py-2 bg-bastet-bg border border-bastet-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
+                className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
               />
             </div>
             <Button
@@ -359,7 +341,7 @@ export default function DatabaseExplorerPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-bastet-border bg-bastet-bg/50">
+                    <tr className="border-b border-brand-border bg-brand-bg/50">
                       {columns.map((col) => (
                         <th
                           key={col}
@@ -402,7 +384,7 @@ export default function DatabaseExplorerPage() {
                                     [col]: e.target.value,
                                   }))
                                 }
-                                className="w-full bg-bastet-bg border border-bastet-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
+                                className="w-full bg-brand-bg border border-brand-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-400/40"
                               />
                             )}
                           </td>
@@ -431,9 +413,9 @@ export default function DatabaseExplorerPage() {
                     {/* Data rows */}
                     {rows.map((row, idx) => (
                       <tr
-                        key={row.id || idx}
-                        className={`border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors ${
-                          idx % 2 === 1 ? "bg-bastet-bg/20" : ""
+                        key={String(row.id ?? idx)}
+                        className={`border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors ${
+                          idx % 2 === 1 ? "bg-brand-bg/20" : ""
                         }`}
                       >
                         {columns.map((col) => (
@@ -453,7 +435,7 @@ export default function DatabaseExplorerPage() {
                                   if (e.key === "Escape") cancelEdit();
                                 }}
                                 onBlur={saveEdit}
-                                className="w-full bg-bastet-bg border border-cyan-400/40 rounded px-2 py-0.5 text-xs text-text-primary focus:outline-none"
+                                className="w-full bg-brand-bg border border-cyan-400/40 rounded px-2 py-0.5 text-xs text-text-primary focus:outline-none"
                               />
                             ) : (
                               <span
@@ -465,7 +447,7 @@ export default function DatabaseExplorerPage() {
                                       : "text-text-secondary"
                                 }`}
                                 onClick={() =>
-                                  startEdit(row.id, col, row[col])
+                                  startEdit(String(row.id), col, row[col])
                                 }
                                 title={
                                   col === "id" ||
@@ -475,7 +457,7 @@ export default function DatabaseExplorerPage() {
                                     : "Click to edit"
                                 }
                               >
-                                {formatCell(row[col])}
+                                {formatCell(row[col] as RechartsValue)}
                               </span>
                             )}
                           </td>
@@ -484,7 +466,7 @@ export default function DatabaseExplorerPage() {
                           {deleteConfirm === row.id ? (
                             <div className="flex items-center justify-end gap-1">
                               <button
-                                onClick={() => handleDelete(row.id)}
+                                onClick={() => handleDelete(String(row.id))}
                                 className="px-2 py-0.5 bg-status-error/20 text-status-error text-xs rounded hover:bg-status-error/30 transition-colors"
                               >
                                 Confirm
@@ -498,7 +480,7 @@ export default function DatabaseExplorerPage() {
                             </div>
                           ) : (
                             <button
-                              onClick={() => setDeleteConfirm(row.id)}
+                              onClick={() => setDeleteConfirm(String(row.id))}
                               className="p-1 text-text-muted hover:text-status-error rounded transition-colors"
                               title="Delete row"
                             >
@@ -526,7 +508,7 @@ export default function DatabaseExplorerPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-bastet-border">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-brand-border">
                 <span className="text-xs text-text-muted">
                   Page {page} of {totalPages}
                 </span>
@@ -534,7 +516,7 @@ export default function DatabaseExplorerPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-brand-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -556,7 +538,7 @@ export default function DatabaseExplorerPage() {
                         onClick={() => setPage(pageNum)}
                         className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                           page === pageNum
-                            ? "bg-cyan-400 text-bastet-bg"
+                            ? "bg-cyan-400 text-brand-bg"
                             : "text-text-muted hover:text-text-primary"
                         }`}
                       >
@@ -569,7 +551,7 @@ export default function DatabaseExplorerPage() {
                       setPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-brand-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>

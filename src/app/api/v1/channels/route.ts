@@ -1,19 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+import { commissionFraction } from "@/lib/utils";
 
-// Commission rates by channel code
-const CHANNEL_COMMISSIONS: Record<string, number> = {
-  direct: 0,
-  "booking.com": 0.15,
-  airbnb: 0.14,
-  expedia: 0.18,
-  phone: 0,
-  "walk-in": 0,
-};
 
-// Hardcoded OTA connection definitions
+// Hardcoded OTA connection definitions — status/last_sync/listings are PLACEHOLDERS
+// (no channel manager integration exists). Flagged to clients via `placeholder_status`.
 const OTA_CONNECTIONS = [
   { id: "booking_com", name: "Booking.com", logo: "B", status: "connected", commission: 15, last_sync: "2026-03-24T10:00:00Z", listings: 0 },
   { id: "airbnb", name: "Airbnb", logo: "A", status: "connected", commission: 14, last_sync: "2026-03-24T09:30:00Z", listings: 100 },
@@ -34,9 +28,9 @@ const CHANNEL_TO_OTA: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.ALL_STAFF);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "overview";
@@ -57,7 +51,7 @@ export async function GET(request: NextRequest) {
         const ch = b.booking_channels as unknown as { id: string; name: string; code: string; commission_rate: number } | null;
         const name = ch?.name || "Unknown";
         const code = (ch?.code || "unknown").toLowerCase();
-        const commissionRate = CHANNEL_COMMISSIONS[code] ?? ch?.commission_rate ?? 0;
+        const commissionRate = commissionFraction(ch?.commission_rate); // fraction, from DB percent
 
         if (!channelMap[name]) {
           channelMap[name] = { name, code, bookings_count: 0, revenue_gbp: 0, commission_rate: commissionRate };
@@ -174,6 +168,7 @@ export async function GET(request: NextRequest) {
       }
 
       const connections = OTA_CONNECTIONS.map((conn) => ({
+        placeholder_status: true,
         ...conn,
         active_bookings: activeByOta[conn.id] || 0,
       }));

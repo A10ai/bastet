@@ -5,12 +5,12 @@
 @layer base {
   :root,
   .light {
-    --bastet-bg: #F8FAFC;
-    --bastet-card: #FFFFFF;
-    --bastet-border: #E2E8F0;
-    --bastet-gold: #0891B2;
-    --bastet-gold-hover: #06B6D4;
-    --bastet-gold-muted: rgba(8, 145, 178, 0.1);
+    --brand-bg: #F8FAFC;
+    --brand-card: #FFFFFF;
+    --brand-border: #E2E8F0;
+    --brand-accent: #0891B2;
+    --brand-accent-hover: #06B6D4;
+    --brand-accent-muted: rgba(8, 145, 178, 0.1);
     --text-primary: #0F172A;
     --text-secondary: #475569;
     --text-muted: #94A3B8;
@@ -30,12 +30,12 @@
   }
 
   .dark {
-    --bastet-bg: #0A0F1C;
-    --bastet-card: #0F1729;
-    --bastet-border: #1E2D44;
-    --bastet-gold: #22D3EE;
-    --bastet-gold-hover: #67E8F9;
-    --bastet-gold-muted: rgba(34, 211, 238, 0.12);
+    --brand-bg: #0A0F1C;
+    --brand-card: #0F1729;
+    --brand-border: #1E2D44;
+    --brand-accent: #22D3EE;
+    --brand-accent-hover: #67E8F9;
+    --brand-accent-muted: rgba(34, 211, 238, 0.12);
     --text-primary: #f1f5f9;
     --text-secondary: #CBD5E1;
     --text-muted: #64748B;

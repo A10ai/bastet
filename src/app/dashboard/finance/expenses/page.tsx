@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/use-api";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,28 +12,14 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Expense } from "@/types";
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [rndFilter, setRndFilter] = useState<string>("");
-
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (rndFilter) params.set("is_r_and_d", rndFilter);
-        const res = await fetch(`/api/v1/expenses?${params}`);
-        const json = await res.json();
-        setExpenses(json.data || []);
-      } catch {
-        setExpenses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExpenses();
-  }, [rndFilter]);
+  const { data: expenseRows, isLoading: loading } = useApi<Expense[]>(
+    `/api/v1/expenses${rndFilter ? `?is_r_and_d=${rndFilter}` : ""}`,
+    undefined,
+    ["expenses"]
+  );
+  const expenses = useMemo(() => expenseRows ?? [], [expenseRows]);
 
   const filtered =
     categoryFilter === "all"
@@ -47,7 +34,7 @@ export default function ExpensesPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link href="/dashboard/finance" className="text-sm text-text-secondary hover:text-bastet-gold">
+            <Link href="/dashboard/finance" className="text-sm text-text-secondary hover:text-brand-accent">
               Finance
             </Link>
             <span className="text-text-muted">/</span>
@@ -67,11 +54,11 @@ export default function ExpensesPage() {
 
       {/* R&D Toggle */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1 bg-bastet-card border border-bastet-border rounded-lg p-0.5">
+        <div className="flex gap-1 bg-brand-card border border-brand-border rounded-lg p-0.5">
           <button
             onClick={() => setRndFilter("")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              rndFilter === "" ? "bg-bastet-gold text-bastet-bg" : "text-text-secondary hover:text-text-primary"
+              rndFilter === "" ? "bg-brand-accent text-brand-bg" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             All
@@ -79,7 +66,7 @@ export default function ExpensesPage() {
           <button
             onClick={() => setRndFilter("true")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
-              rndFilter === "true" ? "bg-bastet-gold text-bastet-bg" : "text-text-secondary hover:text-text-primary"
+              rndFilter === "true" ? "bg-brand-accent text-brand-bg" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             <Beaker className="w-3 h-3" />
@@ -88,7 +75,7 @@ export default function ExpensesPage() {
           <button
             onClick={() => setRndFilter("false")}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              rndFilter === "false" ? "bg-bastet-gold text-bastet-bg" : "text-text-secondary hover:text-text-primary"
+              rndFilter === "false" ? "bg-brand-accent text-brand-bg" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             Non-R&D
@@ -102,8 +89,8 @@ export default function ExpensesPage() {
           onClick={() => setCategoryFilter("all")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             categoryFilter === "all"
-              ? "bg-bastet-gold text-bastet-bg"
-              : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+              ? "bg-brand-accent text-brand-bg"
+              : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
           }`}
         >
           All ({expenses.length})
@@ -117,8 +104,8 @@ export default function ExpensesPage() {
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
                 categoryFilter === cat
-                  ? "bg-bastet-gold text-bastet-bg"
-                  : "bg-bastet-card border border-bastet-border text-text-secondary hover:text-text-primary"
+                  ? "bg-brand-accent text-brand-bg"
+                  : "bg-brand-card border border-brand-border text-text-secondary hover:text-text-primary"
               }`}
             >
               {cat.replace("_", " ")} ({count})
@@ -132,12 +119,12 @@ export default function ExpensesPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-bastet-border">
+                <tr className="border-b border-brand-border">
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Date</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Description</th>
                   <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Category</th>
@@ -151,7 +138,7 @@ export default function ExpensesPage() {
                 {filtered.map((exp) => (
                   <tr
                     key={exp.id}
-                    className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50 transition-colors"
+                    className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50 transition-colors"
                   >
                     <td className="px-6 py-3 text-sm text-text-secondary">
                       {formatDate(exp.expense_date)}
@@ -176,7 +163,7 @@ export default function ExpensesPage() {
                           </span>
                         )}
                         {exp.is_recurring && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-bastet-gold-muted text-bastet-gold">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-accent-muted text-brand-accent">
                             Recurring
                           </span>
                         )}

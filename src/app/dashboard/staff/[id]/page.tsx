@@ -70,6 +70,7 @@ export default function StaffDetailPage() {
   useEffect(() => {
     fetchStaff();
     fetchSchedules();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetcher is recreated each render; depending on it would refetch in a loop
   }, [params.id]);
 
   const handleToggleActive = async () => {
@@ -111,7 +112,7 @@ export default function StaffDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-bastet-gold" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -128,7 +129,7 @@ export default function StaffDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/staff" className="p-2 rounded-lg hover:bg-bastet-card transition-colors">
+          <Link href="/dashboard/staff" className="p-2 rounded-lg hover:bg-brand-card transition-colors">
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
           </Link>
           <div>
@@ -152,14 +153,14 @@ export default function StaffDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-bastet-border">
+      <div className="flex gap-1 border-b border-brand-border">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.id
-                ? "border-bastet-gold text-bastet-gold"
+                ? "border-brand-accent text-brand-accent"
                 : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -222,8 +223,8 @@ export default function StaffDetailPage() {
             <Card>
               <CardContent className="py-6">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-bastet-gold/10 flex items-center justify-center mx-auto mb-3">
-                    <span className="text-xl font-bold text-bastet-gold">
+                  <div className="w-16 h-16 rounded-full bg-brand-accent/10 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-xl font-bold text-brand-accent">
                       {staff.first_name[0]}{staff.last_name[0]}
                     </span>
                   </div>
@@ -269,7 +270,7 @@ export default function StaffDetailPage() {
                     <select
                       value={shiftType}
                       onChange={(e) => setShiftType(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-bastet-bg border border-bastet-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-bastet-gold/50"
+                      className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
                     >
                       {SHIFT_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -294,7 +295,7 @@ export default function StaffDetailPage() {
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-bastet-border">
+                    <tr className="border-b border-brand-border">
                       <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Date</th>
                       <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Time</th>
                       <th className="text-left text-xs font-medium text-text-muted px-6 py-3">Type</th>
@@ -304,7 +305,7 @@ export default function StaffDetailPage() {
                   </thead>
                   <tbody>
                     {schedules.map((sched) => (
-                      <tr key={sched.id} className="border-b border-bastet-border last:border-0 hover:bg-bastet-bg/50">
+                      <tr key={sched.id} className="border-b border-brand-border last:border-0 hover:bg-brand-bg/50">
                         <td className="px-6 py-3 text-sm text-text-primary">{formatDate(sched.date)}</td>
                         <td className="px-6 py-3 text-sm font-mono text-text-secondary">
                           <Clock className="w-3.5 h-3.5 inline mr-1" />

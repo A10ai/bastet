@@ -1,45 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
+import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createMaintenanceRequestSchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from("maintenance_requests")
-      .select(`
+export const GET = getByIdHandler({
+  table: "maintenance_requests",
+  roles: ROLES.ALL_STAFF,
+  select: `
         *,
         apartment:apartments(id, number, floor, status, building:buildings(id, name, code)),
         assigned_staff:staff!maintenance_requests_assigned_to_fkey(id, first_name, last_name, role, email, phone)
-      `)
-      .eq("id", params.id)
-      .single();
+      `,
+  label: "Maintenance request",
+});
 
-    if (error) {
-      return NextResponse.json({ error: "Request not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const auth = await requireAuth(request);
+    const auth = await requireRole(request, ROLES.OPERATIONS);
     if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const validation = validateBody(createMaintenanceRequestSchema.partial(), body);

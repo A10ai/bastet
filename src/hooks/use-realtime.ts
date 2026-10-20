@@ -1,61 +1,57 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
  * Subscribe to Supabase Realtime changes on one or more tables.
- * When any INSERT/UPDATE/DELETE happens, calls `onUpdate` callback.
+ * When any INSERT/UPDATE/DELETE happens, calls `onUpdate` (debounced).
+ *
+ * The channel topic is unique per subscription: the browser client is a
+ * singleton, so reusing a fixed topic returned the already-subscribed
+ * channel on re-render and `.on()` then threw "cannot add postgres_changes
+ * callbacks after subscribe()". `onUpdate` is read through a ref so a new
+ * inline callback on each render does not resubscribe.
  */
 export function useRealtimeSubscription(
   tables: string[],
   onUpdate: () => void,
   debounceMs: number = 2000
 ) {
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
   const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-
-  const debouncedUpdate = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setLastUpdate(new Date());
-      onUpdate();
-    }, debounceMs);
-  }, [onUpdate, debounceMs]);
-
-  const stableTables = useMemo(() => tables, [tables.join(",")]);
+  const tablesKey = tables.join(",");
 
   useEffect(() => {
     const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const topic = `realtime-${tablesKey.replace(/[^a-z0-9_,-]/gi, "")}-${Math.random().toString(36).slice(2, 10)}`;
+    let channel = supabase.channel(topic);
 
-    let channel = supabase.channel("dashboard-realtime");
+    const fire = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setLastUpdate(new Date());
+        onUpdateRef.current();
+      }, debounceMs);
+    };
 
-    for (const table of stableTables) {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => {
-          debouncedUpdate();
-        }
-      );
+    for (const table of tablesKey.split(",").filter(Boolean)) {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, fire);
     }
 
     channel.subscribe((status) => {
       setConnected(status === "SUBSCRIBED");
     });
 
-    channelRef.current = channel;
-
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      if (timer) clearTimeout(timer);
+      setConnected(false);
+      supabase.removeChannel(channel);
     };
-  }, [stableTables, debouncedUpdate]);
+  }, [tablesKey, debounceMs]);
 
   return { connected, lastUpdate };
 }

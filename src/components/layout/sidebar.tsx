@@ -13,6 +13,7 @@ import {
   Globe,
   Handshake,
   UtensilsCrossed,
+  Receipt,
   LayoutDashboard,
   Building2,
   CalendarDays,
@@ -34,7 +35,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";
@@ -49,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Globe,
   Handshake,
   UtensilsCrossed,
+  Receipt,
   LayoutDashboard,
   Building2,
   CalendarDays,
@@ -101,17 +102,17 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const navContent = (showLabels: boolean) => (
     <>
       {/* Brand */}
-      <div className="h-16 flex items-center px-4 border-b border-bastet-border">
+      <div className="h-16 flex items-center px-4 border-b border-brand-border">
         {showLabels ? (
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onMobileClose}>
             <span className="text-xl font-display font-bold text-text-primary">
-              Hospit<span className="text-bastet-gold">AI</span>
+              Hospit<span className="text-brand-accent">AI</span>
             </span>
           </Link>
         ) : (
           <Link href="/dashboard" className="mx-auto">
             <span className="text-xl font-display font-bold text-text-primary">
-              H<span className="text-bastet-gold">.</span>
+              H<span className="text-brand-accent">.</span>
             </span>
           </Link>
         )}
@@ -119,7 +120,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {onMobileClose && showLabels && (
           <button
             onClick={onMobileClose}
-            className="ml-auto p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg transition-colors md:hidden"
+            className="ml-auto p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-brand-bg transition-colors md:hidden"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
@@ -154,8 +155,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-bastet-gold-muted text-bastet-gold"
-                        : "text-text-secondary hover:text-text-primary hover:bg-bastet-bg",
+                        ? "bg-brand-accent-muted text-brand-accent"
+                        : "text-text-secondary hover:text-text-primary hover:bg-brand-bg",
                       !showLabels && "justify-center px-2"
                     )}
                     title={!showLabels ? item.label : undefined}
@@ -171,10 +172,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </nav>
 
       {/* Collapse toggle - desktop only */}
-      <div className="p-2 border-t border-bastet-border hidden md:block">
+      <div className="p-2 border-t border-brand-border hidden md:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bastet-bg transition-colors"
+          className="w-full flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-brand-bg transition-colors"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed}
         >
@@ -193,7 +194,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "h-screen sticky top-0 bg-bastet-card border-r border-bastet-border flex-col transition-all duration-300 hidden md:flex theme-transition",
+          "h-screen sticky top-0 bg-brand-card border-r border-brand-border flex-col transition-all duration-300 hidden md:flex theme-transition",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -212,7 +213,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-bastet-card border-r border-bastet-border flex flex-col transition-transform duration-300 ease-in-out md:hidden theme-transition",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-brand-card border-r border-brand-border flex flex-col transition-transform duration-300 ease-in-out md:hidden theme-transition",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

@@ -38,3 +38,7 @@ yarn-error.log*
 next-env.d.ts
 .env.cloud
 .env.vercel
+
+# business collateral lives outside the product repo
+*.pdf
+deep-test-results.json

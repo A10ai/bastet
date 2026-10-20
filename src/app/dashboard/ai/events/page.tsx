@@ -34,7 +34,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import type { RechartsValue, RechartsName } from "@/types/recharts";
+import type { RechartsValue } from "@/types/recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,14 +106,14 @@ const eventTypeConfig: Record<
   },
   "housekeeping.completed": {
     label: "HK Complete",
-    color: "text-bastet-gold",
-    bg: "bg-bastet-gold/10 border-bastet-gold/20",
+    color: "text-brand-accent",
+    bg: "bg-brand-accent/10 border-brand-accent/20",
     icon: Sparkles,
   },
   "housekeeping.created": {
     label: "HK Created",
-    color: "text-bastet-gold",
-    bg: "bg-bastet-gold/10 border-bastet-gold/20",
+    color: "text-brand-accent",
+    bg: "bg-brand-accent/10 border-brand-accent/20",
     icon: Sparkles,
   },
   "maintenance.created": {
@@ -172,7 +172,7 @@ function getEventConfig(type: string) {
     eventTypeConfig[type] || {
       label: type,
       color: "text-text-secondary",
-      bg: "bg-bastet-card border-bastet-border",
+      bg: "bg-brand-card border-brand-border",
       icon: Zap,
     }
   );
@@ -290,7 +290,7 @@ export default function EventBusPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <Activity className="w-8 h-8 animate-pulse text-bastet-gold" />
+        <Activity className="w-8 h-8 animate-pulse text-brand-accent" />
         <p className="text-sm text-text-secondary">Loading event bus...</p>
       </div>
     );
@@ -305,7 +305,7 @@ export default function EventBusPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-bastet-gold" />
+            <Activity className="w-5 h-5 text-brand-accent" />
             <h1 className="text-xl md:text-2xl font-display font-bold text-text-primary">
               Event Bus
             </h1>
@@ -484,7 +484,7 @@ export default function EventBusPage() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="bg-bastet-bg border border-bastet-border rounded-lg text-xs text-text-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-bastet-gold/50"
+              className="bg-brand-bg border border-brand-border rounded-lg text-xs text-text-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-accent/50"
               aria-label="Filter by event type"
             >
               <option value="">All event types</option>
@@ -498,7 +498,7 @@ export default function EventBusPage() {
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
-              className="bg-bastet-bg border border-bastet-border rounded-lg text-xs text-text-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-bastet-gold/50"
+              className="bg-brand-bg border border-brand-border rounded-lg text-xs text-text-secondary px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-accent/50"
               aria-label="Filter by source system"
             >
               <option value="">All sources</option>
@@ -515,7 +515,7 @@ export default function EventBusPage() {
                   setFilterType("");
                   setFilterSource("");
                 }}
-                className="text-xs text-bastet-gold hover:text-cyan-300 transition-colors"
+                className="text-xs text-brand-accent hover:text-cyan-300 transition-colors"
               >
                 Clear filters
               </button>
@@ -532,7 +532,7 @@ export default function EventBusPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-bastet-gold" />
+            <Activity className="w-4 h-4 text-brand-accent" />
             <h3 className="text-lg font-semibold text-text-primary">
               Live Event Feed
             </h3>
@@ -550,7 +550,7 @@ export default function EventBusPage() {
         <CardContent className="p-0">
           {events.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <Activity className="w-10 h-10 text-bastet-border mx-auto mb-3" />
+              <Activity className="w-10 h-10 text-brand-border mx-auto mb-3" />
               <p className="text-sm text-text-muted mb-1">
                 No events recorded yet
               </p>
@@ -559,7 +559,7 @@ export default function EventBusPage() {
               </p>
             </div>
           ) : (
-            <div className="max-h-[640px] overflow-y-auto divide-y divide-bastet-border">
+            <div className="max-h-[640px] overflow-y-auto divide-y divide-brand-border">
               {events.map((event) => {
                 const config = getEventConfig(event.type);
                 const EventIcon = config.icon;
@@ -571,7 +571,7 @@ export default function EventBusPage() {
                 return (
                   <div
                     key={event.id}
-                    className="hover:bg-bastet-bg/30 transition-colors"
+                    className="hover:bg-brand-bg/30 transition-colors"
                   >
                     {/* Event row */}
                     <button
@@ -650,7 +650,7 @@ export default function EventBusPage() {
                         {/* Payload */}
                         {event.payload &&
                           Object.keys(event.payload).length > 0 && (
-                            <div className="mb-3 p-3 bg-bastet-bg rounded-lg border border-bastet-border">
+                            <div className="mb-3 p-3 bg-brand-bg rounded-lg border border-brand-border">
                               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
                                 Payload
                               </p>
@@ -688,7 +688,7 @@ export default function EventBusPage() {
                                   return (
                                     <div
                                       key={`${result.handler}-${idx}`}
-                                      className="flex items-start gap-3 p-2.5 bg-bastet-bg/50 rounded-lg"
+                                      className="flex items-start gap-3 p-2.5 bg-brand-bg/50 rounded-lg"
                                     >
                                       <TargetIcon
                                         className={cn(
@@ -703,7 +703,7 @@ export default function EventBusPage() {
                                           <span className="text-[10px] font-mono text-text-muted">
                                             {result.target_system}
                                           </span>
-                                          <ArrowRight className="w-2.5 h-2.5 text-bastet-border" />
+                                          <ArrowRight className="w-2.5 h-2.5 text-brand-border" />
                                           <span className="text-[10px] font-mono text-text-muted">
                                             {result.action}
                                           </span>

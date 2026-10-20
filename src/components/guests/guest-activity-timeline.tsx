@@ -45,7 +45,7 @@ export function GuestActivityTimeline({ guestId }: GuestActivityTimelineProps) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="w-5 h-5 animate-spin text-bastet-gold" />
+          <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
         </CardContent>
       </Card>
     );
@@ -67,12 +67,12 @@ export function GuestActivityTimeline({ guestId }: GuestActivityTimelineProps) {
         ) : (
           <div className="relative">
             {/* Vertical line */}
-            <div className="absolute left-3 top-2 bottom-2 w-px bg-bastet-border" />
+            <div className="absolute left-3 top-2 bottom-2 w-px bg-brand-border" />
 
             <div className="space-y-4">
               {activities.map((activity) => (
                 <div key={activity.id} className="flex gap-4 relative">
-                  <div className="w-6 h-6 rounded-full bg-bastet-card border border-bastet-border flex items-center justify-center shrink-0 z-10 text-xs">
+                  <div className="w-6 h-6 rounded-full bg-brand-card border border-brand-border flex items-center justify-center shrink-0 z-10 text-xs">
                     {ACTIVITY_ICONS[activity.activity_type] || "📌"}
                   </div>
                   <div className="flex-1 min-w-0">

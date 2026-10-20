@@ -39,6 +39,8 @@ export const createBookingSchema = z.object({
   apartment_id: z.string().uuid("Invalid apartment ID"),
   guest_id: z.string().uuid().optional().nullable(),
   channel_id: z.string().uuid().optional().nullable(),
+  /** Rate plan used to price the stay; the property's default plan when omitted. */
+  rate_plan_id: z.string().uuid().optional().nullable(),
   check_in: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   check_out: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   adults: z.number().int().min(1).max(20).default(1),
@@ -51,7 +53,12 @@ export const createBookingSchema = z.object({
 });
 
 export const updateBookingSchema = z.object({
-  status: z.enum(["pending", "confirmed", "checked_in", "checked_out", "cancelled", "no_show"]).optional(),
+  /**
+   * Only the pending -> confirmed transition may be made here. Check-in,
+   * check-out and cancellation have dedicated endpoints that enforce the
+   * state machine, availability and balance rules.
+   */
+  status: z.enum(["confirmed"]).optional(),
   adults: z.number().int().min(1).max(20).optional(),
   children: z.number().int().min(0).max(20).optional(),
   special_requests: z.string().max(2000).optional().nullable(),
@@ -188,7 +195,7 @@ export const updateStaffSchema = z.object({
 
 export const createHousekeepingTaskSchema = z.object({
   apartment_id: z.string().uuid("Invalid apartment ID"),
-  type: z.enum(["checkout_clean", "stay_clean", "deep_clean", "inspection", "turnover"]),
+  type: z.enum(["checkout_clean", "midstay_clean", "deep_clean", "inspection", "turndown"]),
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   assigned_to: z.string().uuid().optional().nullable(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional().default("normal"),
@@ -201,7 +208,7 @@ export const createMaintenanceRequestSchema = z.object({
   apartment_id: z.string().uuid().optional().nullable(),
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().max(5000).optional().nullable(),
-  category: z.enum(["plumbing", "electrical", "hvac", "appliance", "structural", "cosmetic", "other"]),
+  category: z.enum(["plumbing", "electrical", "hvac", "furniture", "appliance", "structural", "pest", "other"]),
   priority: z.enum(["low", "normal", "high", "urgent", "emergency"]).optional().default("normal"),
   reported_by_staff: z.string().uuid().optional().nullable(),
   reported_by_guest: z.string().uuid().optional().nullable(),
@@ -255,12 +262,26 @@ export const cancelBookingSchema = z.object({
   cancellation_reason: z.string().max(500).optional(),
 }).strict();
 
+export const updateBookingChannelSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  /** Percent, 0-100 (e.g. 15 for Booking.com). */
+  commission_rate: z.number().min(0).max(100).optional(),
+  is_active: z.boolean().optional(),
+  channel_type: z.string().max(30).optional(),
+}).strict();
+
+export const assignSchema = z.object({
+  staff_id: z.string().uuid("staff_id must be a UUID"),
+}).strict();
+
 export const checkinSchema = z.object({
   notes: z.string().max(2000).optional(),
 }).strict();
 
 export const checkoutSchema = z.object({
   notes: z.string().max(2000).optional(),
+  /** Manager+ only: check out with an unpaid balance (recorded in audit). */
+  allow_outstanding_balance: z.boolean().optional(),
 }).strict();
 
 // ── Guest preferences ──────────────────────────────────────────────────────
@@ -286,7 +307,7 @@ export const staffScheduleSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   shift_start: z.string().min(1, "shift_start is required"),
   shift_end: z.string().min(1, "shift_end is required"),
-  shift_type: z.enum(["regular", "overtime", "cover", "training"]).optional().default("regular"),
+  shift_type: z.enum(["regular", "overtime", "on_call", "holiday"]).optional().default("regular"),
   notes: z.string().max(2000).optional().nullable(),
 }).strict();
 
@@ -327,7 +348,8 @@ export const createInvoiceSchema = z.object({
   guest_currency: z.string().length(3).default("GBP"),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be YYYY-MM-DD"),
   notes: z.string().max(2000).optional().nullable(),
-  tax_rate: z.number().min(0).max(100).optional().default(0),
+  /** Percent (0-100). Omit to use the property VAT rate. */
+  tax_rate: z.number().min(0).max(100).optional(),
 }).strict();
 
 export const updateInvoiceSchema = z.object({
@@ -336,9 +358,6 @@ export const updateInvoiceSchema = z.object({
     quantity: z.number().min(0),
     unit_price_gbp: z.number().min(0),
   })).optional(),
-  subtotal_gbp: z.number().min(0).optional(),
-  tax_amount_gbp: z.number().min(0).optional(),
-  total_gbp: z.number().min(0).optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   notes: z.string().max(2000).optional().nullable(),
   guest_id: z.string().uuid().optional().nullable(),
@@ -503,3 +522,156 @@ export function formatZodErrors(error: z.ZodError): string {
     .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
     .join("; ");
 }
+
+// ---------------------------------------------------------------------------
+// Rate plans (migration 00027)
+// ---------------------------------------------------------------------------
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
+export const RATE_PLAN_PRICING_MODES = ["bar", "percent_off", "percent_markup", "fixed_nightly"] as const;
+export const CANCELLATION_POLICIES = ["flexible", "moderate", "strict", "non_refundable"] as const;
+
+const ratePlanBase = z.object({
+  property_id: z.string().uuid().optional(),
+  code: z.string().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/, "Code may contain letters, digits, - and _"),
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional().nullable(),
+  pricing_mode: z.enum(RATE_PLAN_PRICING_MODES).default("bar"),
+  adjustment: z.number().min(0).max(100000).default(0),
+  cancellation_policy: z.enum(CANCELLATION_POLICIES).default("flexible"),
+  free_cancellation_days: z.number().int().min(0).max(365).default(1),
+  min_nights: z.number().int().min(1).max(365).default(1),
+  max_nights: z.number().int().min(1).max(365).optional().nullable(),
+  includes_breakfast: z.boolean().default(false),
+  valid_from: isoDate.optional().nullable(),
+  valid_to: isoDate.optional().nullable(),
+  channel_codes: z.array(z.string().min(1).max(30)).max(20).optional().nullable(),
+  is_default: z.boolean().default(false),
+  is_active: z.boolean().default(true),
+});
+const ratePlanRules = (v: Partial<z.infer<typeof ratePlanBase>>, ctx: z.RefinementCtx) => {
+  if (v.pricing_mode === "percent_off" && (v.adjustment ?? 0) > 100) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["adjustment"], message: "A discount cannot exceed 100%" });
+  if (v.pricing_mode === "fixed_nightly" && (v.adjustment ?? 0) <= 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["adjustment"], message: "A fixed nightly rate must be above zero" });
+  if (v.max_nights != null && v.min_nights != null && v.max_nights < v.min_nights) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["max_nights"], message: "max_nights must be at least min_nights" });
+  if (v.valid_from && v.valid_to && v.valid_to < v.valid_from) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["valid_to"], message: "valid_to must be on or after valid_from" });
+};
+export const ratePlanSchema = ratePlanBase.superRefine(ratePlanRules);
+export const updateRatePlanSchema = ratePlanBase.partial().superRefine(ratePlanRules);
+
+export const quoteStaySchema = z
+  .object({
+    apartment_id: z.string().uuid().optional(),
+    apartment_type_id: z.string().uuid().optional(),
+    check_in: isoDate,
+    check_out: isoDate,
+    rate_plan_id: z.string().uuid().optional().nullable(),
+    channel_code: z.string().max(30).optional().nullable(),
+  })
+  .refine((v) => v.apartment_id || v.apartment_type_id, { message: "apartment_id or apartment_type_id is required", path: ["apartment_id"] })
+  .refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });
+
+
+// ---------------------------------------------------------------------------
+// Group bookings (migration 00028)
+// ---------------------------------------------------------------------------
+export const GROUP_STATUSES = ["tentative", "confirmed", "cancelled", "completed"] as const;
+const groupBase = z.object({
+  property_id: z.string().uuid().optional(),
+  name: z.string().min(2).max(120),
+  organiser_guest_id: z.string().uuid().optional().nullable(),
+  organiser_name: z.string().max(120).optional().nullable(),
+  organiser_email: z.string().email().max(255).optional().nullable(),
+  organiser_phone: z.string().max(50).optional().nullable(),
+  company: z.string().max(120).optional().nullable(),
+  check_in: isoDate,
+  check_out: isoDate,
+  rooms_requested: z.number().int().min(0).max(500).default(0),
+  rate_plan_id: z.string().uuid().optional().nullable(),
+  channel_id: z.string().uuid().optional().nullable(),
+  billing_mode: z.enum(["individual", "master"]).default("individual"),
+  cutoff_date: isoDate.optional().nullable(),
+  status: z.enum(["tentative", "confirmed"]).default("tentative"),
+  notes: z.string().max(2000).optional().nullable(),
+  /** Rooms to block immediately (optional). */
+  apartment_ids: z.array(z.string().uuid()).max(200).optional(),
+  adults: z.number().int().min(1).max(20).default(2),
+});
+const groupRules = (v: { check_in?: string; check_out?: string; cutoff_date?: string | null }, ctx: z.RefinementCtx) => {
+  if (v.check_in && v.check_out && v.check_out <= v.check_in) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["check_out"], message: "check_out must be after check_in" });
+  if (v.cutoff_date && v.check_in && v.cutoff_date > v.check_in) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cutoff_date"], message: "cutoff_date must be on or before check_in" });
+};
+export const createGroupSchema = groupBase.superRefine(groupRules);
+export const updateGroupSchema = groupBase.omit({ apartment_ids: true, adults: true, property_id: true }).extend({ status: z.enum(["tentative", "confirmed", "completed"]).optional() }).partial().superRefine(groupRules);
+export const addGroupRoomsSchema = z
+  .object({
+    apartment_ids: z.array(z.string().uuid()).min(1).max(200),
+    guest_ids: z.array(z.string().uuid().nullable()).optional(),
+    adults: z.number().int().min(1).max(20).default(2),
+    rate_plan_id: z.string().uuid().optional().nullable(),
+  })
+  .refine((v) => !v.guest_ids || v.guest_ids.length === v.apartment_ids.length, { message: "guest_ids must match apartment_ids one to one", path: ["guest_ids"] });
+export const groupPaymentSchema = z.object({
+  amount_gbp: z.number().positive().max(1_000_000),
+  method: z.enum(["cash", "card", "bank_transfer", "stripe", "other"]),
+  reference: z.string().max(100).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+export const cancelGroupSchema = z.object({ reason: z.string().min(3).max(500) });
+
+
+// ---------------------------------------------------------------------------
+// Guest portal (migration 00029)
+// ---------------------------------------------------------------------------
+export const precheckinSchema = z.object({
+  arrival_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM").optional().nullable(),
+  flight_or_transport: z.string().max(120).optional().nullable(),
+  adults: z.number().int().min(1).max(20).optional(),
+  children: z.number().int().min(0).max(20).optional(),
+  phone: z.string().max(50).optional().nullable(),
+  email: z.string().email().max(255).optional().nullable(),
+  special_requests: z.string().max(1000).optional().nullable(),
+  marketing_consent: z.boolean().default(false),
+  accept_terms: z.literal(true, { message: "You must accept the booking terms" }),
+});
+
+
+// ---------------------------------------------------------------------------
+// Point of sale (migration 00030)
+// ---------------------------------------------------------------------------
+export const POS_OUTLET_TYPES = ["restaurant", "bar", "spa", "shop", "minibar", "other"] as const;
+export const posOutletSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  code: z.string().min(2).max(20).regex(/^[A-Za-z0-9_-]+$/),
+  name: z.string().min(2).max(100),
+  type: z.enum(POS_OUTLET_TYPES).default("restaurant"),
+  default_tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  is_active: z.boolean().default(true),
+});
+export const updatePosOutletSchema = posOutletSchema.omit({ property_id: true }).partial();
+export const posItemSchema = z.object({
+  sku: z.string().max(30).optional().nullable(),
+  name: z.string().min(1).max(120),
+  category: z.string().max(60).optional().nullable(),
+  unit_price_gbp: z.number().min(0).max(100000),
+  tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  is_active: z.boolean().default(true),
+});
+export const updatePosItemSchema = posItemSchema.partial();
+const posTicketItem = z
+  .object({
+    item_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(120).optional(),
+    quantity: z.number().positive().max(999).default(1),
+    unit_price_gbp: z.number().min(0).max(100000).optional(),
+    tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
+  })
+  .refine((v) => v.item_id || (v.name && v.unit_price_gbp !== undefined), { message: "Give an item_id or a name and a price", path: ["item_id"] });
+export const posTicketSchema = z
+  .object({
+    outlet_id: z.string().uuid(),
+    booking_id: z.string().uuid().optional(),
+    room_number: z.string().min(1).max(20).optional(),
+    ticket_reference: z.string().max(40).optional().nullable(),
+    items: z.array(posTicketItem).min(1).max(100),
+  })
+  .refine((v) => v.booking_id || v.room_number, { message: "booking_id or room_number is required", path: ["room_number"] });
+export const voidPosTicketSchema = z.object({ reason: z.string().min(3).max(500) });

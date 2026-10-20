@@ -1,47 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
-import { formatZodErrors, guestCommunicationsQuerySchema } from "@/lib/validation";
+import { createGuestSubresourceHandler } from "@/lib/guest-subresource";
+import { guestCommunicationsQuerySchema } from "@/lib/validation";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return auth.error!;
-    const supabase = createServerSupabaseClient();
-
-    // Validate query params
-    const { searchParams } = request.nextUrl;
-    const queryParams: Record<string, string | undefined> = {};
-    const limit = searchParams.get("limit") ?? undefined;
-    const type = searchParams.get("type") ?? undefined;
-    if (limit !== undefined) queryParams.limit = limit;
-    if (type !== undefined) queryParams.type = type;
-
-    const queryValidation = guestCommunicationsQuerySchema.safeParse(queryParams);
-    if (!queryValidation.success) {
-      return NextResponse.json({ error: formatZodErrors(queryValidation.error) }, { status: 400 });
-    }
-
-    let query = supabase
-      .from("guest_communications")
-      .select("*")
-      .eq("guest_id", params.id)
-      .order("created_at", { ascending: false });
-
-    if (type) query = query.eq("type", type);
-    const effectiveLimit = queryValidation.data.limit ?? 100;
-    query = query.limit(effectiveLimit);
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ data: data || [] });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+export const GET = createGuestSubresourceHandler({
+  table: "guest_communications",
+  typeColumn: "type",
+  querySchema: guestCommunicationsQuerySchema,
+  defaultLimit: 100,
+});
