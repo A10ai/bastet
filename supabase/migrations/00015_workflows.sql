@@ -1,7 +1,7 @@
 -- Workflow Engine: turns AI recommendations into executable multi-step actions
 -- with human approval checkpoints.
 
-CREATE TABLE workflows (
+CREATE TABLE IF NOT EXISTS workflows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id UUID,
   title TEXT NOT NULL,
@@ -23,6 +23,6 @@ CREATE TABLE workflows (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_workflows_status ON workflows(status, created_at DESC);
-CREATE INDEX idx_workflows_source ON workflows(source, created_at DESC);
-CREATE INDEX idx_workflows_priority ON workflows(priority);
+CREATE INDEX IF NOT EXISTS idx_workflows_status ON workflows(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workflows_source ON workflows(source, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workflows_priority ON workflows(priority);
