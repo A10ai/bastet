@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ShieldCheck, ShieldAlert, Loader2, Trash2 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface MfaStatus {
   next_level: string | null;
   enrolled: boolean;
   verification_required: boolean;
+  enrolment_required?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ interface MfaStatus {
  */
 export default function SecuritySettingsPage() {
   const { getCSRFHeaders, loading: csrfLoading } = useCSRFToken();
+  const router = useRouter();
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -82,12 +85,14 @@ export default function SecuritySettingsPage() {
   const confirmEnrol = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!enrolling) return;
+    const wasRequired = !!status?.enrolment_required && !status?.enrolled;
     setError(""); setBusy(true);
     try {
       await post({ action: "verify", factor_id: enrolling.id, code: code.trim() });
       setEnrolling(null); setCode("");
-      setNotice("Authenticator enrolled. You will be asked for a code at every sign-in.");
+      setNotice("Authenticator enrolled. You will be asked for a code at every sign-in. Taking you to the dashboard…");
       await refresh();
+      if (wasRequired) setTimeout(() => router.replace("/dashboard"), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid code");
     } finally {
@@ -114,6 +119,7 @@ export default function SecuritySettingsPage() {
   };
 
   const enrolled = !!status?.enrolled;
+  const mustEnrol = !!status?.enrolment_required && !enrolled;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -126,6 +132,20 @@ export default function SecuritySettingsPage() {
           <p className="text-sm text-text-secondary mt-1">Two-factor authentication for your account</p>
         </div>
       </div>
+
+      {mustEnrol && (
+        <div
+          role="alert"
+          data-testid="mfa-enrolment-notice"
+          className="p-4 rounded-lg border border-amber-400/30 bg-amber-400/10 text-sm text-amber-100"
+        >
+          <p className="font-semibold text-amber-200">Set up two-factor authentication to continue</p>
+          <p className="mt-1">
+            Your role requires an authenticator app before the rest of HospitAI is available. It takes about a
+            minute: tap &ldquo;Set up authenticator&rdquo;, scan the code, and enter the six digits.
+          </p>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

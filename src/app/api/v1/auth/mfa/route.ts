@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, getUserRole } from "@/lib/api-auth";
+import { mfaRequiredForRole } from "@/lib/mfa";
 import { validateBody, formatZodErrors } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -11,7 +12,8 @@ import { logger } from "@/lib/logger";
  * Multi-factor authentication (TOTP) through the application's own API so
  * the session cookies are always written server-side.
  *
- * GET  /api/v1/auth/mfa                      -> factors + assurance level
+ * GET  /api/v1/auth/mfa                      -> factors, assurance level and
+ *                                               whether this role must enrol
  * POST /api/v1/auth/mfa {action:"enroll"}    -> { factor_id, qr_code, secret }
  * POST /api/v1/auth/mfa {action:"verify", factor_id, code}   -> session upgraded to aal2
  * POST /api/v1/auth/mfa {action:"unenroll", factor_id}       -> factor removed (needs aal2)
@@ -31,9 +33,10 @@ export async function GET(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
   try {
     const supabase = await createServerSupabaseClient();
-    const [{ data: factors, error: fErr }, { data: aal, error: aErr }] = await Promise.all([
+    const [{ data: factors, error: fErr }, { data: aal, error: aErr }, role] = await Promise.all([
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      getUserRole(request),
     ]);
     if (fErr || aErr) {
       logger.error({ err: (fErr || aErr)?.message }, "[auth/mfa] status failed");
@@ -47,6 +50,9 @@ export async function GET(request: NextRequest) {
         next_level: aal?.nextLevel ?? null,
         enrolled: verified.length > 0,
         verification_required: aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2",
+        // True for owners/admins (MFA_REQUIRED_ROLES) while MFA_ENFORCE is on:
+        // the dashboard sends them to Settings > Security until they enrol.
+        enrolment_required: mfaRequiredForRole(role ?? undefined),
       },
     });
   } catch (err) {
