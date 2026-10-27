@@ -298,7 +298,6 @@ export const updateBookingChannelSchema = z.object({
   /** Percent, 0-100 (e.g. 15 for Booking.com). */
   commission_rate: z.number().min(0).max(100).optional(),
   is_active: z.boolean().optional(),
-  channel_type: z.string().max(30).optional(),
 }).strict();
 
 export const assignSchema = z.object({

@@ -12,12 +12,12 @@ export const GET = getByIdHandler({
 
 export const PUT = updateByIdHandler({
   table: "booking_channels",
-  // Channels are shared by every property: owner only (the database grants no
-  // UPDATE on booking_channels to app roles, so this answers 403 until it does)
+  // Channels are shared by every property: owner only. Migration 00035 grants
+  // UPDATE on exactly these columns, with an owner-only policy.
   roles: ROLES.OWNER,
   schema: updateBookingChannelSchema,
   select: BOOKING_CHANNEL_COLUMNS,
-  allowedFields: ["name", "commission_rate", "is_active", "channel_type"],
+  allowedFields: ["name", "commission_rate", "is_active"],
   label: "Booking channel",
   audit: { action: "booking_channel.update", category: "settings", resource_type: "booking_channel" },
 });
