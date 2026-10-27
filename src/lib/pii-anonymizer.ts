@@ -40,7 +40,34 @@ export function anonymizeEmail(email: string): string {
 export function anonymizePhone(phone: string): string {
   if (!phone) return "[redacted]";
   if (phone.length <= 4) return "***";
+  // Short local numbers would come back whole as first-3 + last-3
+  if (phone.length < 10) return `***${phone.slice(-2)}`;
   return `${phone.slice(0, 3)}***${phone.slice(-3)}`;
+}
+
+/**
+ * Keys whose values are guest PII or guest-written free text. They are
+ * removed wherever they appear in a snapshot, at any depth. Free text such
+ * as special_requests is also a prompt-injection channel, so it never goes
+ * to the model.
+ */
+const PII_KEYS = new Set([
+  "guest_name", "first_name", "last_name", "full_name", "email", "phone", "phone_number",
+  "mobile", "whatsapp", "passport", "passport_number", "passport_number_encrypted", "id_number",
+  "date_of_birth", "dob", "address", "address_line1", "address_line2", "special_requests",
+  "internal_notes", "notes", "precheckin", "ip_address",
+]);
+
+/** Remove PII keys at any depth; guest objects keep only non-identifying fields. */
+export function scrubPii(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(scrubPii);
+  if (value === null || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (PII_KEYS.has(k)) continue;
+    out[k] = scrubPii(v);
+  }
+  return out;
 }
 
 /**
@@ -89,10 +116,11 @@ export function anonymizeSnapshot(rawData: Record<string, unknown>): Record<stri
         return rest;
       });
     } else {
-      // Pass through non-PII fields (occupancy, revenue, maintenance, etc.)
+      // Non-PII sections (occupancy, revenue, maintenance, ...) pass through,
+      // with any nested PII keys removed (e.g. arrivals.bookings[].guest_name)
       safe[key] = value;
     }
   }
 
-  return safe;
+  return scrubPii(safe) as Record<string, unknown>;
 }

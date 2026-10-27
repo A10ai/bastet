@@ -14,6 +14,8 @@
  * defaults below as a fallback.
  */
 
+import { csvCell } from "./csv";
+
 export type AccountKey =
   | "guest_ledger" | "cash" | "card_clearing" | "bank" | "other_receipts"
   | "vat_output" | "tourism_levy" | "room_revenue" | "fnb_revenue" | "extras_revenue" | "adjustments";
@@ -147,6 +149,5 @@ export function journalRows(entries: JournalEntry[]): Record<string, string | nu
 export function toCsv(rows: Record<string, string | number>[]): string {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]);
-  const esc = (v: string | number) => { const s = String(v ?? ""); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  return [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h])).join(","))].join("\r\n") + "\r\n";
+  return [headers.map(csvCell).join(","), ...rows.map((r) => headers.map((h) => csvCell(r[h])).join(","))].join("\r\n") + "\r\n";
 }

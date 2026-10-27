@@ -5,6 +5,8 @@
  * pricing recommendations, and predictions.
  */
 
+import { addDays, businessDate, dayOfWeek as dayOfWeekOf } from "./business-date";
+
 export interface AIInsight {
   id: string;
   type: "pricing" | "energy" | "maintenance" | "occupancy" | "revenue" | "guest" | "housekeeping";
@@ -238,10 +240,10 @@ export function generateOccupancyForecast(
   const forecast: OccupancyForecast[] = [];
   let occ = currentOccupancy;
 
+  const today = businessDate();
   for (let i = 0; i < 14; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    const dayOfWeek = date.getDay();
+    const date = addDays(today, i);
+    const dayOfWeek = dayOfWeekOf(date);
 
     // Simple seasonal + day-of-week model (fallback only)
     const weekendBoost = dayOfWeek === 5 || dayOfWeek === 6 ? 8 : 0;
@@ -256,7 +258,7 @@ export function generateOccupancyForecast(
     if (occ > 85) factors.push("High season pattern");
 
     forecast.push({
-      date: date.toISOString().split("T")[0],
+      date,
       predicted_occupancy: Math.round(occ),
       confidence: Math.max(50, 92 - i * 3),
       factors: factors.length > 0 ? factors : ["Baseline forecast"],

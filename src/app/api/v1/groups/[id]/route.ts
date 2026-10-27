@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
-import { validateBody, formatZodErrors, updateGroupSchema, cancelGroupSchema } from "@/lib/validation";
+import { validateBody, formatZodErrors, updateGroupSchema, cancelGroupSchema, groupDatesError } from "@/lib/validation";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -42,6 +42,9 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     const { data: before } = await supabase.from("booking_groups").select("*").eq("id", id).maybeSingle();
     if (!before) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Group not found" } }, { status: 404 });
     if (before.status === "cancelled") return NextResponse.json({ error: { code: "GROUP_CLOSED", message: "A cancelled group cannot be edited" } }, { status: 409 });
+    // A PATCH may change one date only; check it against the stored other one
+    const datesError = groupDatesError(before, updates);
+    if (datesError) return NextResponse.json({ error: "Validation failed", details: `check_out: ${datesError}` }, { status: 400 });
     if ((updates.check_in || updates.check_out)) {
       const { count } = await supabase.from("bookings").select("id", { count: "exact", head: true }).eq("group_id", id).not("status", "in", "(cancelled,no_show)");
       if ((count ?? 0) > 0) return NextResponse.json({ error: { code: "ROOMS_BLOCKED", message: "Dates cannot change while rooms are blocked; cancel or move the rooms first" } }, { status: 409 });

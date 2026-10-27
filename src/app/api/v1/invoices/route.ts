@@ -6,6 +6,7 @@ import { parsePagination, paginationMeta } from "@/lib/pagination";
 import {
   getNextInvoiceNumber,
   calculateInvoiceTotals,
+  lineTotalGbp,
 } from "@/lib/finance-engine";
 import { convertCurrency } from "@/lib/booking-engine";
 import { logAudit } from "@/lib/audit";
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
         description: item.description,
         quantity: item.quantity,
         unit_price_gbp: item.unit_price_gbp,
-        total_gbp: Math.round(item.quantity * item.unit_price_gbp * 100) / 100,
+        total_gbp: lineTotalGbp(item.quantity, item.unit_price_gbp),
       })
     );
 

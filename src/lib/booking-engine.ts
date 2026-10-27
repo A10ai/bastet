@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateBookingRef, getLengthOfStayDiscount } from "./utils";
-import { differenceInDays } from "date-fns";
+import { daysBetween } from "./business-date";
 
 /**
  * Query rates table for the nightly rate for a given apartment type and check-in date.
@@ -55,14 +55,14 @@ export function calculateBookingTotal(
   ratePerNight: number,
   nights: number
 ): { subtotal: number; discount: number; total: number; discount_percentage: number } {
-  const subtotal = ratePerNight * nights;
+  // Work in whole pence so subtotal - discount always equals total
+  const subtotalPence = Math.round(ratePerNight * nights * 100);
   const discount_percentage = getLengthOfStayDiscount(nights);
-  const discount = subtotal * discount_percentage;
-  const total = subtotal - discount;
+  const discountPence = Math.round(subtotalPence * discount_percentage);
   return {
-    subtotal: Math.round(subtotal * 100) / 100,
-    discount: Math.round(discount * 100) / 100,
-    total: Math.round(total * 100) / 100,
+    subtotal: subtotalPence / 100,
+    discount: discountPence / 100,
+    total: (subtotalPence - discountPence) / 100,
     discount_percentage: discount_percentage * 100,
   };
 }
@@ -194,8 +194,9 @@ export async function convertCurrency(
 }
 
 /**
- * Calculate the number of nights between two dates.
+ * Calculate the number of nights between two dates. Calendar arithmetic, so
+ * the result does not depend on the server's time zone or DST.
  */
 export function calculateNights(checkIn: string, checkOut: string): number {
-  return differenceInDays(new Date(checkOut), new Date(checkIn));
+  return daysBetween(checkIn, checkOut);
 }
