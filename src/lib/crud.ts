@@ -5,7 +5,7 @@ import type { ZodType } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, type StaffRole } from "@/lib/api-auth";
 import { logAudit, type AuditEntry } from "@/lib/audit";
-import { validateBody, formatZodErrors } from "@/lib/validation";
+import { validatePatchBody, formatZodErrors } from "@/lib/validation";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logger } from "@/lib/logger";
 
@@ -75,7 +75,7 @@ export function updateByIdHandler<T extends Record<string, unknown>>(config: Upd
       const supabase = await createServerSupabaseClient();
       const body = await request.json().catch(() => ({}));
 
-      const validation = validateBody(config.schema, body);
+      const validation = validatePatchBody(config.schema, body);
       if (!validation.success) {
         return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
       }

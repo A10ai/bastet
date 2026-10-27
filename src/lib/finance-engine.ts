@@ -57,7 +57,9 @@ export function calculateInvoiceTotals(
     (sum, item) => sum + Math.round(lineTotalGbp(item.quantity, item.unit_price_gbp) * 100),
     0
   );
-  const taxPence = Math.round((subtotalPence * taxRatePercent) / 100);
+  // invoices.tax_rate_percent is NUMERIC(5,2); use the rate as stored
+  const storedRate = roundHalfUp2(taxRatePercent);
+  const taxPence = Math.round(Number(((subtotalPence * storedRate) / 100).toPrecision(12)));
 
   return {
     subtotal_gbp: subtotalPence / 100,
@@ -68,7 +70,18 @@ export function calculateInvoiceTotals(
 
 /** A line item's total rounded to the penny; the value stored on the line. */
 export function lineTotalGbp(quantity: number, unitPriceGbp: number): number {
-  return Math.round(quantity * unitPriceGbp * 100) / 100;
+  return roundHalfUp2(quantity * unitPriceGbp);
+}
+
+/**
+ * Round to 2 decimals the way PostgreSQL ROUND(numeric, 2) does. Float
+ * products such as 1.5 * 0.15 = 0.22499999999999998 are first snapped to 12
+ * significant digits so a true half (0.225) rounds up to 0.23, matching the
+ * totals the database recomputes for invoices.
+ */
+function roundHalfUp2(value: number): number {
+  const snapped = Number(value.toPrecision(12));
+  return Math.sign(snapped) * Math.round(Math.abs(snapped) * 100) / 100;
 }
 
 /** Compare money in whole pence so 100.10 + 200.20 equals 300.30. */

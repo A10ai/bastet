@@ -119,6 +119,16 @@ SELECT tst.eq('only the night stayed is revenue',
   '1:100.00,0:0.00,0:0.00,0:0.00,0:0.00');
 ROLLBACK;
 
+BEGIN;
+-- Same-day departure: checkout charged the first night, so it is revenue
+SELECT tst.mk('f5000000-0000-0000-0000-000000000002', '103', 'checked_out', 0, 3);
+UPDATE bookings SET checked_in_at = now(), checked_out_at = now() WHERE id = 'f5000000-0000-0000-0000-000000000002';
+SELECT tst.eq('same-day departure keeps its one charged night',
+  (SELECT string_agg(room_nights || ':' || room_revenue_gbp, ',' ORDER BY stay_date)
+     FROM revenue_by_stay_date('aaaaaaaa-0000-0000-0000-000000000001', current_date, current_date + 2)),
+  '1:100.00,0:0.00,0:0.00');
+ROLLBACK;
+
 -- ------------------------------------------------------------
 -- Duplicate checkout cleans: worked-on copies are kept, not deleted
 -- ------------------------------------------------------------

@@ -146,9 +146,13 @@ AS $$
     FROM days d
     LEFT JOIN bookings b ON b.property_id = p_property_id AND b.status IN ('confirmed','checked_in','checked_out')
          AND b.check_in <= d.d AND b.check_out > d.d
+         -- Early departure: nights from the departure date on were never
+         -- charged, but checkout always charges at least the first night
+         -- (same-day stays), so that night still counts.
          AND NOT (b.status = 'checked_out'
                   AND (b.checked_out_at IS NULL
-                       OR (b.checked_out_at AT TIME ZONE COALESCE((SELECT tz FROM prop), 'UTC'))::date <= d.d))
+                       OR d.d >= GREATEST((b.checked_out_at AT TIME ZONE COALESCE((SELECT tz FROM prop), 'UTC'))::date,
+                                          b.check_in + 1)))
    GROUP BY d.d ORDER BY d.d;
 $$;
 

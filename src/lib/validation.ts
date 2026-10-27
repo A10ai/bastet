@@ -549,6 +549,25 @@ export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown):
 }
 
 /**
+ * Validate a PATCH/PUT body and keep only the fields the caller sent.
+ *
+ * zod v4 still applies `.default()` values inside `.partial()` schemas, so a
+ * body of `{ status: "confirmed" }` would otherwise also "update" every
+ * defaulted field (e.g. reset a group's billing_mode to "individual").
+ */
+export function validatePatchBody<T>(schema: z.ZodSchema<T>, body: unknown):
+  { success: true; data: T } | { success: false; error: z.ZodError } {
+  const result = validateBody(schema, body);
+  if (!result.success || !body || typeof body !== "object" || Array.isArray(body)) return result;
+  if (!result.data || typeof result.data !== "object") return result;
+  const sent = new Set(Object.keys(body as Record<string, unknown>));
+  const data = Object.fromEntries(
+    Object.entries(result.data as Record<string, unknown>).filter(([k]) => sent.has(k))
+  ) as T;
+  return { success: true, data };
+}
+
+/**
  * Format Zod errors into a user-friendly string.
  */
 export function formatZodErrors(error: z.ZodError): string {

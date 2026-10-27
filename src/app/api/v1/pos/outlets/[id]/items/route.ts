@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
-import { validateBody, formatZodErrors, posItemSchema, updatePosItemSchema } from "@/lib/validation";
+import { validateBody, validatePatchBody, formatZodErrors, posItemSchema, updatePosItemSchema } from "@/lib/validation";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const body = (await request.json().catch(() => null)) as { id?: string } | null;
   if (!body?.id) return NextResponse.json({ error: "item id is required" }, { status: 400 });
   const { id: itemId, ...rest } = body;
-  const validation = validateBody(updatePosItemSchema, rest);
+  const validation = validatePatchBody(updatePosItemSchema, rest);
   if (!validation.success) return NextResponse.json({ error: "Validation failed", details: formatZodErrors(validation.error) }, { status: 400 });
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.from("pos_items").update(validation.data).eq("id", itemId).eq("outlet_id", id).select("*").single();

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, updateBookingSchema } from "@/lib/validation";
+import { validatePatchBody, formatZodErrors, updateBookingSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const validation = validateBody(updateBookingSchema, body);
+    const validation = validatePatchBody(updateBookingSchema, body);
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }

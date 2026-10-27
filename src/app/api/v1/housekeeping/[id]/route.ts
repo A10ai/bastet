@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, createHousekeepingTaskSchema } from "@/lib/validation";
+import { validatePatchBody, formatZodErrors, createHousekeepingTaskSchema } from "@/lib/validation";
 
 export const GET = getByIdHandler({
   table: "housekeeping_tasks",
@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const validation = validateBody(createHousekeepingTaskSchema.partial(), body);
+    const validation = validatePatchBody(createHousekeepingTaskSchema.partial(), body);
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }

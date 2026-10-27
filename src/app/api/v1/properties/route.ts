@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, createPropertySchema } from "@/lib/validation";
+import { validateBody, validatePatchBody, formatZodErrors, createPropertySchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,7 +89,7 @@ export async function PUT(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const validation = validateBody(createPropertySchema.partial(), body);
+    const validation = validatePatchBody(createPropertySchema.partial(), body);
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }

@@ -5,7 +5,7 @@ import { requireRole, ROLES, canManageRole, type AuthContext } from "@/lib/api-a
 import { getActivePropertyId } from "@/lib/api-property";
 import { apiError, handleDbError } from "@/lib/api-error";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, updateStaffSchema, adminCreateUserSchema } from "@/lib/validation";
+import { validateBody, validatePatchBody, formatZodErrors, updateStaffSchema, adminCreateUserSchema } from "@/lib/validation";
 
 /**
  * User administration on the service-role client (it creates auth users).
@@ -174,7 +174,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Allowlist schema: no property_id, no auth_user_id.
-    const validation = validateBody(updateStaffSchema, updates);
+    const validation = validatePatchBody(updateStaffSchema, updates);
     if (!validation.success) {
       return apiError("VALIDATION_ERROR", formatZodErrors(validation.error), 400);
     }

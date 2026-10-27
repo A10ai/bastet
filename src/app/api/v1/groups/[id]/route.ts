@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
-import { validateBody, formatZodErrors, updateGroupSchema, cancelGroupSchema, groupDatesError } from "@/lib/validation";
+import { validateBody, validatePatchBody, formatZodErrors, updateGroupSchema, cancelGroupSchema, groupDatesError } from "@/lib/validation";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   try {
     const body = await request.json();
-    const validation = validateBody(updateGroupSchema, body);
+    const validation = validatePatchBody(updateGroupSchema, body);
     if (!validation.success) {
       return NextResponse.json({ error: "Validation failed", details: formatZodErrors(validation.error) }, { status: 400 });
     }
