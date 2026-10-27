@@ -53,7 +53,11 @@ let validatedEnv: Env | null = null;
 export function getEnv(): Env {
   if (validatedEnv) return validatedEnv;
 
-  const result = envSchema.safeParse(process.env);
+  // A blank line in .env.local (`PII_ENCRYPTION_KEY=`, as in .env.example)
+  // means "not set", not "set to the empty string": without this, copying
+  // .env.example failed validation on every optional variable with a format.
+  const provided = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ""));
+  const result = envSchema.safeParse(provided);
 
   if (!result.success) {
     const errors = result.error.issues

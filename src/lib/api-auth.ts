@@ -4,7 +4,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMutatingMethod, validateCsrfToken, CSRF_HEADER_NAME, CSRF_COOKIE_NAME } from "@/lib/csrf";
-import { checkMfa } from "@/lib/mfa";
+import { checkMfa, userHasVerifiedFactor } from "@/lib/mfa";
 import { verifyAccessToken } from "@/lib/jwt-verify";
 
 /**
@@ -52,6 +52,8 @@ export const ROLES = {
 
 export interface AuthContext {
   authenticated: boolean;
+  /** Verified identity details, carried from requireAuth into requireRole. */
+  verified?: VerifiedUser;
   error?: NextResponse;
   /** Verified Supabase auth user id. */
   userId?: string;
@@ -86,6 +88,27 @@ function deny(code: string, message: string, status: number): AuthContext {
   };
 }
 
+export interface VerifiedUser {
+  id: string;
+  email?: string;
+  /** `aal` claim of the verified access token ("aal1" | "aal2"). */
+  aal?: string;
+  /** The verified access token (for the server-side factor lookup). */
+  accessToken?: string;
+  /** Set when the auth server returned the user object on this request. */
+  hasVerifiedFactor?: boolean;
+}
+
+/** Decode a JWT payload without checking it. Only for tokens already verified. */
+function decodePayload(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split(".")[1];
+    return part ? (JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verify the caller's identity against Supabase Auth.
  *
@@ -94,9 +117,7 @@ function deny(code: string, message: string, status: number): AuthContext {
  * Auth server and verifies its signature. `auth.getSession()` only decodes the
  * cookie and must never be used to establish identity on the server.
  */
-export async function getVerifiedUser(
-  request: NextRequest
-): Promise<{ id: string; email?: string } | null> {
+export async function getVerifiedUser(request: NextRequest): Promise<VerifiedUser | null> {
   try {
     const supabase = requestScopedClient(request);
     // Fast path: verify the access token's signature locally (SUPABASE_JWT_SECRET
@@ -107,16 +128,33 @@ export async function getVerifiedUser(
     } = await supabase.auth.getSession();
     if (session?.access_token) {
       const verified = await verifyAccessToken(session.access_token);
-      if (verified.ok) return { id: verified.claims.sub, email: verified.claims.email };
+      if (verified.ok) {
+        return {
+          id: verified.claims.sub,
+          email: verified.claims.email,
+          aal: verified.claims.aal,
+          accessToken: session.access_token,
+        };
+      }
       if (verified.reason === "invalid") return null;
     }
-    // No local key material: ask the auth server (one network call).
+    // No local key material: ask the auth server (one network call). The user
+    // object it returns is authoritative, including its factor list.
     const {
       data: { user },
       error,
     } = await supabase.auth.getUser();
     if (error || !user) return null;
-    return { id: user.id, email: user.email ?? undefined };
+    // getUser() just verified the session's access token, so its claims can be read.
+    const claims = session?.access_token ? decodePayload(session.access_token) : null;
+    const sameUser = claims?.sub === user.id;
+    return {
+      id: user.id,
+      email: user.email ?? undefined,
+      aal: sameUser && typeof claims?.aal === "string" ? claims.aal : undefined,
+      accessToken: sameUser ? session?.access_token : undefined,
+      hasVerifiedFactor: userHasVerifiedFactor(user),
+    };
   } catch {
     return null;
   }
@@ -149,7 +187,7 @@ export async function requireAuth(request: NextRequest): Promise<AuthContext> {
     return deny("UNAUTHORIZED", "Unauthorized", 401);
   }
 
-  return { authenticated: true, userId: user.id, email: user.email };
+  return { authenticated: true, userId: user.id, email: user.email, verified: user };
 }
 
 /**
@@ -203,8 +241,14 @@ export async function requireRole(
     // Second factor: enrolled users must have verified it this session;
     // privileged roles must be enrolled at all (see src/lib/mfa.ts).
     if (!options?.skipMfa) {
-      const mfa = await checkMfa(requestScopedClient(request), userRole);
-      if (!mfa.ok) return deny(mfa.code, mfa.message, 403);
+      const v = auth.verified;
+      const mfa = await checkMfa(requestScopedClient(request), userRole, {
+        userId: auth.userId,
+        aal: v?.aal,
+        accessToken: v?.accessToken,
+        hasVerifiedFactor: v?.hasVerifiedFactor,
+      });
+      if (!mfa.ok) return deny(mfa.code, mfa.message, mfa.code === "MFA_CHECK_UNAVAILABLE" ? 503 : 403);
     }
 
     return {
@@ -218,6 +262,22 @@ export async function requireRole(
   } catch {
     return deny("AUTH_CHECK_FAILED", "Authorization check failed", 500);
   }
+}
+
+/** Numeric privilege level of a role (0 for unknown roles). */
+export function roleLevel(role: string | undefined | null): number {
+  return role ? (ROLE_LEVELS[role as StaffRole] ?? 0) : 0;
+}
+
+/**
+ * Staff management rule: an actor may only create, change or deactivate
+ * accounts strictly below their own level, and only hand out roles strictly
+ * below their own level. Owners are therefore never created or promoted
+ * through the API, and an admin cannot touch another admin or an owner.
+ */
+export function canManageRole(actorRole: StaffRole | undefined, targetRole: string | undefined | null): boolean {
+  if (!actorRole || !targetRole) return false;
+  return roleLevel(targetRole) > 0 && roleLevel(targetRole) < roleLevel(actorRole);
 }
 
 /**

@@ -16,9 +16,12 @@ export const dynamic = "force-dynamic";
  * documents, internal notes or other guests.
  */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ token: string }> }) {
-  const limit = await rateLimit(`portal:${getClientIp(request)}`, { windowMs: 15 * 60 * 1000, max: 60 });
-  if (!limit.allowed) return rateLimitResponse(limit, "Too many requests");
   const { token } = await ctx.params;
+  // Per address when the address is trustworthy; otherwise per link, so all
+  // guests do not share one bucket (tokens are 256-bit, guessing is moot).
+  const ip = getClientIp(request);
+  const limit = await rateLimit(ip !== "unknown" ? `portal:${ip}` : `portal-link:${token.slice(0, 64)}`, { windowMs: 15 * 60 * 1000, max: 60 });
+  if (!limit.allowed) return rateLimitResponse(limit, "Too many requests");
   try {
     const admin = createAdminClient();
     const link = await resolvePortalToken(admin, token);

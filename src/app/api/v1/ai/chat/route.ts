@@ -1,14 +1,17 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireRole, ROLES } from "@/lib/api-auth";
 import { processChat } from "@/lib/ai-chat";
 import { validateBody, formatZodErrors, aiChatSchema } from "@/lib/validation";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req);
+    // requireRole, not requireAuth: an active staff account and a completed
+    // second factor are required. Front desk floor because the answers are
+    // built from bookings and guest records (the same floor as guest PII).
+    const auth = await requireRole(req, ROLES.FRONT_DESK);
     if (!auth.authenticated) return auth.error!;
     // Anthropic spend guard: 10 messages per minute per user
     const rl = await rateLimit(`ai-chat:${auth.userId}`, RATE_LIMITS.AI_ENDPOINT);

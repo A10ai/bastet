@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
  * Middleware responsibilities
@@ -15,6 +16,19 @@ function hasSessionCookie(request: NextRequest): boolean {
   return request.cookies
     .getAll()
     .some((c) => (c.name.startsWith("sb-") || c.name.startsWith("sb.")) && c.name.includes("auth-token"));
+}
+
+/** `aal` claim of an access token the auth server has already verified. */
+function tokenAal(token: string | undefined): string | undefined {
+  try {
+    const part = token?.split(".")[1];
+    if (!part) return undefined;
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4))) as { aal?: unknown };
+    return typeof payload.aal === "string" ? payload.aal : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function buildCsp(nonce: string): string {
@@ -90,6 +104,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: sessionCookieOptions(),
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
@@ -119,8 +134,15 @@ export async function middleware(request: NextRequest) {
       console.error("[middleware] auth server error", error.status, error.message);
     }
     if (userId) {
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      needsMfa = aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2";
+      // The factor list comes from the user object the auth server just
+      // returned and the level from the access token it just verified. The
+      // no-argument getAuthenticatorAssuranceLevel() reads `user.factors`
+      // from the cookie, which the client can edit to skip this step.
+      const enrolled = (data.user?.factors || []).some((f) => f.status === "verified");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      needsMfa = enrolled && tokenAal(session?.access_token) !== "aal2";
     }
   } catch (err) {
     console.error("[middleware] session check threw", err instanceof Error ? err.message : String(err));
@@ -146,5 +168,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Every page (for CSP); API routes set their own headers and carry no HTML.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|woff2?|txt|xml)$).*)"],
+  // The second entry keeps /dashboard/anything.png behind the session check:
+  // the static-file exclusion in the first one would otherwise skip it.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|woff2?|txt|xml)$).*)",
+    "/dashboard/:path*",
+  ],
 };

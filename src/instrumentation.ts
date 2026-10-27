@@ -10,8 +10,16 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   const { getEnv } = await import("@/lib/env");
-  // Throws with a readable list of missing variables.
-  getEnv();
+  try {
+    getEnv();
+  } catch (err) {
+    console.error(`[startup] ${err instanceof Error ? err.message : String(err)}`);
+    // A long-running server (`next start`, Docker) refuses to start. On
+    // Vercel there is no process to stop: rethrowing makes every request fail
+    // with this message in the function logs instead of half-working.
+    if (!process.env.VERCEL) process.exit(1);
+    throw err;
+  }
 
   const { isSentryEnabled } = await import("@/lib/sentry");
   const { logger } = await import("@/lib/logger");

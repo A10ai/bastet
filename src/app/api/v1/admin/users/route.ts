@@ -1,47 +1,75 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole } from "@/lib/api-auth";
+import { requireRole, ROLES, canManageRole, type AuthContext } from "@/lib/api-auth";
+import { getActivePropertyId } from "@/lib/api-property";
 import { apiError, handleDbError } from "@/lib/api-error";
 import { logAudit } from "@/lib/audit";
+import { validateBody, formatZodErrors, updateStaffSchema, adminCreateUserSchema } from "@/lib/validation";
+
+/**
+ * User administration on the service-role client (it creates auth users).
+ *
+ * SECURITY: the service role bypasses RLS, so every query here is scoped to
+ * the caller's active property, and staff management follows canManageRole:
+ * an actor only creates, changes or deactivates accounts below their own
+ * level and only hands out roles below their own level.
+ */
+
+async function scope(request: NextRequest): Promise<string | null> {
+  return (await getActivePropertyId(request)) ?? null;
+}
+
+const actor = (auth: AuthContext) => ({ user_id: auth.userId, user_email: auth.email });
+
+async function loadTarget(supabase: ReturnType<typeof createAdminClient>, id: string, propertyId: string) {
+  const { data } = await supabase
+    .from("staff")
+    .select("id, role, property_id, auth_user_id")
+    .eq("id", id)
+    .eq("property_id", propertyId)
+    .maybeSingle();
+  return data as { id: string; role: string; property_id: string; auth_user_id: string | null } | null;
+}
 
 export async function GET(request: NextRequest) {
-  const auth = await requireRole(request, ["owner", "admin"]);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {
-    // Use admin client for staff listing (RLS would scope to single property)
+    const propertyId = await scope(request);
+    if (!propertyId) return apiError("FORBIDDEN", "No property access", 403);
     const supabase = createAdminClient();
 
     const { data: staffList, error } = await supabase
       .from("staff")
       .select("*")
+      .eq("property_id", propertyId)
       .order("created_at", { ascending: false });
 
     if (error) {
       return handleDbError(error, "admin-users-list");
     }
 
-    // Get auth users list (requires service role)
+    // Auth details for this property's staff only (requires service role)
+    const wanted = new Set((staffList || []).map((s: Record<string, unknown>) => s.auth_user_id).filter(Boolean));
     const authUsers: Record<string, unknown> = {};
     try {
       const { data: authData } = await supabase.auth.admin.listUsers();
-      if (authData?.users) {
-        for (const u of authData.users) {
-          authUsers[u.id] = {
-            email: u.email,
-            last_sign_in_at: u.last_sign_in_at,
-            created_at: u.created_at,
-            email_confirmed_at: u.email_confirmed_at,
-            banned_until: u.banned_until,
-          };
-        }
+      for (const u of authData?.users || []) {
+        if (!wanted.has(u.id)) continue;
+        authUsers[u.id] = {
+          email: u.email,
+          last_sign_in_at: u.last_sign_in_at,
+          created_at: u.created_at,
+          email_confirmed_at: u.email_confirmed_at,
+          banned_until: u.banned_until,
+        };
       }
     } catch {
       // Auth admin API may not be available
     }
 
-    // Merge auth info into staff records
     const enriched = (staffList || []).map((s: Record<string, unknown>) => ({
       ...s,
       auth_info: s.auth_user_id ? authUsers[s.auth_user_id as string] || null : null,
@@ -57,33 +85,23 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireRole(request, ["owner", "admin"]);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {
-    const supabase = createAdminClient();
-    const body = await request.json();
-    const {
-      first_name,
-      last_name,
-      email,
-      password,
-      phone,
-      role,
-      department,
-    } = body;
-
-    if (!first_name || !last_name || !email || !role || !password) {
-      return NextResponse.json(
-        {
-          error:
-            "Required: first_name, last_name, email, password, role",
-        },
-        { status: 400 }
-      );
+    const propertyId = await scope(request);
+    if (!propertyId) return apiError("FORBIDDEN", "No property access", 403);
+    const body = await request.json().catch(() => null);
+    const validation = validateBody(adminCreateUserSchema, body);
+    if (!validation.success) {
+      return apiError("VALIDATION_ERROR", formatZodErrors(validation.error), 400);
+    }
+    const { first_name, last_name, email, password, phone, role, department } = validation.data;
+    if (!canManageRole(auth.role, role)) {
+      return apiError("FORBIDDEN", "You can only create accounts with a role below your own", 403);
     }
 
-    // Create auth user
+    const supabase = createAdminClient();
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
         email,
@@ -91,25 +109,14 @@ export async function POST(request: NextRequest) {
         email_confirm: true,
       });
 
-    if (authError) {
-      return NextResponse.json(
-        { error: `Auth error: ${authError.message}` },
-        { status: 400 }
-      );
+    if (authError || !authData?.user) {
+      return apiError("VALIDATION_ERROR", `Auth error: ${authError?.message ?? "user not created"}`, 400);
     }
 
-    // Get default property
-    const { data: prop } = await supabase
-      .from("properties")
-      .select("id")
-      .limit(1)
-      .single();
-
-    // Create staff record linked to auth user
     const { data: staffData, error: staffError } = await supabase
       .from("staff")
       .insert({
-        property_id: prop?.id,
+        property_id: propertyId,
         auth_user_id: authData.user.id,
         first_name,
         last_name,
@@ -126,19 +133,18 @@ export async function POST(request: NextRequest) {
     if (staffError) {
       // Cleanup auth user if staff creation fails
       await supabase.auth.admin.deleteUser(authData.user.id);
-      return NextResponse.json(
-        { error: `Staff error: ${staffError.message}` },
-        { status: 400 }
-      );
+      return apiError("VALIDATION_ERROR", `Staff error: ${staffError.message}`, 400);
     }
 
     await logAudit(supabase, {
+      ...actor(auth),
       action: "admin.user.create",
       category: "settings",
       resource_type: "staff",
       resource_id: staffData?.id,
       description: `Created staff user ${email}`,
-      new_data: body,
+      // Never the password.
+      new_data: { first_name, last_name, email, phone, role, department, property_id: propertyId },
     });
 
     return NextResponse.json({ data: staffData }, { status: 201 });
@@ -151,29 +157,46 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireRole(request, ["owner", "admin"]);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {
+    const propertyId = await scope(request);
+    if (!propertyId) return apiError("FORBIDDEN", "No property access", 403);
     const supabase = createAdminClient();
-    const body = await request.json();
-    const { id, ...updates } = body;
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+    const { id, ...updates } = body || {};
 
-    if (!id) {
+    if (!id || typeof id !== "string") {
       return apiError("VALIDATION_ERROR", "Staff id is required", 400);
     }
 
-    // Validate updates against allowlist schema (prevents mass-assignment of role/is_active/property_id)
-    const { validateBody, formatZodErrors, updateStaffSchema } = await import("@/lib/validation");
+    // Allowlist schema: no property_id, no auth_user_id.
     const validation = validateBody(updateStaffSchema, updates);
     if (!validation.success) {
       return apiError("VALIDATION_ERROR", formatZodErrors(validation.error), 400);
+    }
+
+    const target = await loadTarget(supabase, id, propertyId);
+    if (!target) return apiError("NOT_FOUND", "Staff member not found", 404);
+
+    const self = target.id === auth.staffId;
+    if (self) {
+      if (validation.data.role !== undefined || validation.data.is_active !== undefined) {
+        return apiError("FORBIDDEN", "You cannot change your own role or active status", 403);
+      }
+    } else if (!canManageRole(auth.role, target.role)) {
+      return apiError("FORBIDDEN", "You can only manage accounts with a role below your own", 403);
+    }
+    if (validation.data.role !== undefined && !canManageRole(auth.role, validation.data.role)) {
+      return apiError("FORBIDDEN", "You can only assign roles below your own", 403);
     }
 
     const { data, error } = await supabase
       .from("staff")
       .update(validation.data)
       .eq("id", id)
+      .eq("property_id", propertyId)
       .select()
       .single();
 
@@ -182,12 +205,13 @@ export async function PUT(request: NextRequest) {
     }
 
     await logAudit(supabase, {
+      ...actor(auth),
       action: "admin.user.update",
       category: "settings",
       resource_type: "staff",
       resource_id: data?.id || id,
       description: `Updated staff user ${id}`,
-      new_data: body,
+      new_data: validation.data,
     });
 
     return NextResponse.json({ data });
@@ -197,42 +221,43 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireRole(request, ["owner", "admin"]);
+  const auth = await requireRole(request, ROLES.ADMIN);
   if (!auth.authenticated) return auth.error!;
 
   try {
+    const propertyId = await scope(request);
+    if (!propertyId) return apiError("FORBIDDEN", "No property access", 403);
     const supabase = createAdminClient();
-    const { searchParams } = request.nextUrl;
-    const id = searchParams.get("id");
+    const id = request.nextUrl.searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Staff id is required" },
-        { status: 400 }
-      );
+      return apiError("VALIDATION_ERROR", "Staff id is required", 400);
+    }
+
+    const target = await loadTarget(supabase, id, propertyId);
+    if (!target) return apiError("NOT_FOUND", "Staff member not found", 404);
+    if (target.id === auth.staffId) {
+      return apiError("FORBIDDEN", "You cannot deactivate your own account", 403);
+    }
+    if (!canManageRole(auth.role, target.role)) {
+      return apiError("FORBIDDEN", "You can only manage accounts with a role below your own", 403);
     }
 
     // Disable the staff member rather than hard delete
-    const { data: staffRecord } = await supabase
-      .from("staff")
-      .select("auth_user_id")
-      .eq("id", id)
-      .single();
-
-    // Deactivate staff
     const { error } = await supabase
       .from("staff")
       .update({ is_active: false })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("property_id", propertyId);
 
     if (error) {
       return handleDbError(error, "admin-users-delete");
     }
 
     // Ban auth user if exists
-    if (staffRecord?.auth_user_id) {
+    if (target.auth_user_id) {
       try {
-        await supabase.auth.admin.updateUserById(staffRecord.auth_user_id, {
+        await supabase.auth.admin.updateUserById(target.auth_user_id, {
           ban_duration: "876000h", // ~100 years
         });
       } catch {
@@ -241,6 +266,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await logAudit(supabase, {
+      ...actor(auth),
       action: "admin.user.deactivate",
       category: "settings",
       resource_type: "staff",

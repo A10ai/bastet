@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
   if (!auth.authenticated) return auth.error!;
 
-  // Rate limit password changes
+  // Rate limit password changes per user (and per network when it is known)
   const ip = getClientIp(request);
-  const rl = await rateLimit(`pwchange:${ip}`, RATE_LIMITS.API_DEFAULT);
+  const rl = await rateLimit(`pwchange:${auth.userId}:${ip}`, RATE_LIMITS.API_DEFAULT);
   if (!rl.allowed) {
     return apiError("RATE_LIMITED", "Too many requests", 429);
   }

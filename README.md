@@ -24,7 +24,7 @@ cp .env.example .env.local   # fill in Supabase keys
 npm run dev                  # http://localhost:3000
 ```
 
-Required environment variables are validated at server start by `src/lib/env.ts` (wired through `src/instrumentation.ts`). The server refuses to start with a readable list of what is missing.
+Required environment variables are validated at server start by `src/lib/env.ts` (wired through `src/instrumentation.ts`). Blank lines copied from `.env.example` count as unset. `next start` and Docker refuse to start with a readable list of what is missing or malformed; on Vercel, where there is no process to stop, every request fails with that list in the function logs.
 
 ## Database
 
@@ -57,11 +57,13 @@ Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`,
 | `SUPABASE_JWT_SECRET` | Recommended | Verifies session tokens locally (`src/lib/jwt-verify.ts`) instead of one auth-server call per API request. Projects on asymmetric signing keys need nothing: the JWKS is used. Without either, routes fall back to `auth.getUser()`. |
 | `PII_ENCRYPTION_KEY_PREVIOUS` | During rotation | The key being retired; see `docs/runbooks/key-rotation.md`. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Production on Vercel | Shared rate limiting for login, password reset and AI endpoints. Without them the limiter is per-instance and the server logs a warning. |
+| `TRUST_PROXY_HEADERS` | Self-hosted behind a proxy | `true` when a reverse proxy in front overwrites `X-Forwarded-For`/`X-Real-IP`. On Vercel they are trusted automatically; elsewhere they are ignored, so per-IP limits cannot be dodged by rotating the header (per-account limits still apply). |
+| `SUPABASE_JWT_ISSUER` | Optional | Expected `iss` of access tokens when it is not `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1` on a `*.supabase.co` project. |
 | `MFA_ENFORCE` | Optional, default `true` | Owners and admins must enrol an authenticator app (Settings > Security) before using the system. Set `false` during rollout. |
 | `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
 | `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
 | `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
-| `CRON_SECRET` | Production | Bearer token sent to `/api/v1/cron/*` by Vercel Cron (night audit 03:00 UTC, automations 05:00 UTC, FX rates 06:15 UTC) and by the GitHub Actions scheduler in `.github/workflows/automations-cron.yml`, which calls the automations route every 15 minutes because Vercel's Hobby plan only allows daily crons. Admins can also trigger these by hand. |
+| `CRON_SECRET` | Production | Bearer token sent to `/api/v1/cron/*` by Vercel Cron (night audit 03:00 UTC, automations 05:00 UTC, FX rates 06:15 UTC) and by the GitHub Actions scheduler in `.github/workflows/automations-cron.yml`, which calls the automations route every 15 minutes because Vercel's Hobby plan only allows daily crons. Vercel Cron sends GET: a GET with the secret runs the job (`?status=1` only reports), POST does the same for other schedulers. Admins can also trigger these by hand, scoped to their own properties. |
 | `SCHEDULER_INTERVAL_MINUTES` | Optional, default `15` | How often the automations route is expected to run; the health check reports `scheduler` degraded after twice this interval (minimum 60 min). Set `1440` on an environment that relies on the daily Vercel cron alone. |
 | `ANTHROPIC_MODEL` | Optional, default `claude-sonnet-5-5` | Claude model for the AI brain and chat (`src/lib/ai-model.ts`). |
 | `OPEN_EXCHANGE_RATES_APP_ID` | Optional | Exchange-rate provider; without it ECB reference rates (frankfurter.app) are used. |

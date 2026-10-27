@@ -6,7 +6,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "DELETE /admin/database",
+      "summary": "Generic table browser/editor for the admin console. (DELETE)",
       "responses": {
         "200": {
           "description": "OK"
@@ -26,7 +26,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "GET /admin/database",
+      "summary": "Generic table browser/editor for the admin console. (GET)",
       "responses": {
         "200": {
           "description": "OK"
@@ -43,7 +43,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "POST /admin/database",
+      "summary": "Generic table browser/editor for the admin console. (POST)",
       "responses": {
         "200": {
           "description": "OK"
@@ -63,7 +63,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "PUT /admin/database",
+      "summary": "Generic table browser/editor for the admin console. (PUT)",
       "responses": {
         "200": {
           "description": "OK"
@@ -126,7 +126,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "DELETE /admin/users",
+      "summary": "User administration on the service-role client (it creates auth users). (DELETE)",
       "responses": {
         "200": {
           "description": "OK"
@@ -146,7 +146,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "GET /admin/users",
+      "summary": "User administration on the service-role client (it creates auth users). (GET)",
       "responses": {
         "200": {
           "description": "OK"
@@ -163,7 +163,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "POST /admin/users",
+      "summary": "User administration on the service-role client (it creates auth users). (POST)",
       "responses": {
         "200": {
           "description": "OK"
@@ -183,7 +183,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "PUT /admin/users",
+      "summary": "User administration on the service-role client (it creates auth users). (PUT)",
       "responses": {
         "200": {
           "description": "OK"
@@ -851,7 +851,7 @@ export const generatedPaths = {
       "tags": [
         "Auth"
       ],
-      "summary": "POST /auth/login",
+      "summary": "Login CSRF guard. Signing in sets session cookies, so a cross-site form (POST)",
       "responses": {
         "200": {
           "description": "OK"
@@ -1578,11 +1578,28 @@ export const generatedPaths = {
     }
   },
   "/cron/fx": {
+    "get": {
+      "tags": [
+        "Admin"
+      ],
+      "summary": "GET: Vercel Cron (daily 06:15 UTC, vercel.json) calls with GET and the cron (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
     "post": {
       "tags": [
         "Admin"
       ],
-      "summary": "POST /cron/fx",
+      "summary": "GET: Vercel Cron (daily 06:15 UTC, vercel.json) calls with GET and the cron (POST)",
       "responses": {
         "200": {
           "description": "OK"
@@ -1604,7 +1621,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "GET /cron/night-audit",
+      "summary": "Closes the previous business day for every active property: (GET)",
       "responses": {
         "200": {
           "description": "OK"
@@ -1621,7 +1638,7 @@ export const generatedPaths = {
       "tags": [
         "Admin"
       ],
-      "summary": "POST /cron/night-audit",
+      "summary": "Closes the previous business day for every active property: (POST)",
       "responses": {
         "200": {
           "description": "OK"

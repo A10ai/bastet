@@ -4,17 +4,53 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError } from "@/lib/api-error";
 import { validateBody, formatZodErrors, loginSchema } from "@/lib/validation";
-import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { rateLimit, getClientIp, RATE_LIMITS, failuresBelowLimit, recordFailure, clearFailures } from "@/lib/rate-limit";
+import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 import { generateCsrfToken, setCsrfCookie } from "@/lib/csrf";
 
+/** One message for every failure, so the endpoint does not reveal which emails are staff. */
+const INVALID = () => apiError("INVALID_CREDENTIALS", "Invalid email or password", 401);
+
+/**
+ * Login CSRF guard. Signing in sets session cookies, so a cross-site form
+ * must not be able to sign a victim into an attacker's account. Requiring a
+ * JSON body makes the request non-simple (a cross-origin page cannot send it
+ * without a CORS preflight, which only our origin passes); an Origin header,
+ * when the browser sends one, must be ours.
+ */
+function sameOriginJson(request: NextRequest): boolean {
+  const type = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  if (type !== "application/json") return false;
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  const allowed = new Set([request.nextUrl.origin]);
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    try {
+      allowed.add(new URL(process.env.NEXT_PUBLIC_APP_URL).origin);
+    } catch {
+      // ignore a malformed APP_URL
+    }
+  }
+  return allowed.has(origin);
+}
+
 export async function POST(request: NextRequest) {
+  if (!sameOriginJson(request)) {
+    return apiError("BAD_REQUEST", "Send a JSON body from the application's own origin", 400);
+  }
+
   // Rate limits: a whole property's staff share one NAT address, so the
-  // brute-force limit is per account (5 per 15 min) with a generous per-IP
-  // ceiling (60 per 15 min) against credential stuffing.
+  // brute-force limit counts FAILED attempts per account and network (5 per
+  // 15 min) plus a wider per-account ceiling across networks (50), and a
+  // generous per-IP ceiling (60 per 15 min) against credential stuffing.
+  // Only failures count, so someone else's wrong passwords from another
+  // network cannot lock the real user out.
   const ip = getClientIp(request);
-  const ipLimit = await rateLimit(`login-ip:${ip}`, RATE_LIMITS.LOGIN_PER_IP);
-  if (!ipLimit.allowed) {
-    return apiError("RATE_LIMITED", "Too many login attempts from this network. Please try again later.", 429);
+  if (ip !== "unknown") {
+    const ipLimit = await rateLimit(`login-ip:${ip}`, RATE_LIMITS.LOGIN_PER_IP);
+    if (!ipLimit.allowed) {
+      return apiError("RATE_LIMITED", "Too many login attempts from this network. Please try again later.", 429);
+    }
   }
 
   try {
@@ -25,11 +61,24 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = validation.data;
+    const account = email.toLowerCase();
+    const localKey = `login:${account}:${ip}`;
+    const globalKey = `login:${account}`;
 
-    const accountLimit = await rateLimit(`login:${email.toLowerCase()}`, RATE_LIMITS.LOGIN);
-    if (!accountLimit.allowed) {
+    const [localOk, globalOk] = await Promise.all([
+      failuresBelowLimit(localKey, RATE_LIMITS.LOGIN),
+      failuresBelowLimit(globalKey, RATE_LIMITS.LOGIN_ACCOUNT_GLOBAL),
+    ]);
+    if (!localOk || !globalOk) {
       return apiError("RATE_LIMITED", "Too many login attempts for this account. Please try again in a few minutes.", 429);
     }
+    const fail = async () => {
+      await Promise.all([
+        recordFailure(localKey, RATE_LIMITS.LOGIN),
+        recordFailure(globalKey, RATE_LIMITS.LOGIN_ACCOUNT_GLOBAL),
+      ]);
+      return INVALID();
+    };
 
     // 1. Verify the email belongs to an active staff member (quick check)
     const adminSupabase = createAdminClient();
@@ -41,7 +90,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (staffError || !staffMember) {
-      return apiError("INVALID_CREDENTIALS", "Invalid credentials or inactive account", 401);
+      return fail();
     }
 
     // 2. Verify the password via Supabase Auth
@@ -51,6 +100,7 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        cookieOptions: sessionCookieOptions(),
         cookies: {
           get(name: string) {
             return request.cookies.get(name)?.value;
@@ -69,8 +119,9 @@ export async function POST(request: NextRequest) {
       await supabase.auth.signInWithPassword({ email, password });
 
     if (authError || !authData.session) {
-      return apiError("INVALID_CREDENTIALS", "Invalid credentials", 401);
+      return fail();
     }
+    await clearFailures(localKey, RATE_LIMITS.LOGIN);
 
     // 3. Return staff data + set session cookies on the response.
     //    Rotate the CSRF token so a pre-login token cannot be reused.

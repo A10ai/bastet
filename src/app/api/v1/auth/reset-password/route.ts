@@ -10,11 +10,15 @@ import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
  * Always returns 200 (don't leak whether email exists or not).
  */
 export async function POST(request: NextRequest) {
-  // Rate limit: 3 requests per hour per IP
+  // Rate limit: 3 requests per hour per IP (when the IP can be trusted, see
+  // getClientIp; otherwise all clients would share one bucket) and 3 per hour
+  // per email address, so nobody's inbox can be flooded.
   const ip = getClientIp(request);
-  const rl = await rateLimit(`pwreset:${ip}`, RATE_LIMITS.PASSWORD_RESET);
-  if (!rl.allowed) {
-    return apiError("RATE_LIMITED", "Too many reset requests. Try again later.", 429);
+  if (ip !== "unknown") {
+    const rl = await rateLimit(`pwreset:${ip}`, RATE_LIMITS.PASSWORD_RESET);
+    if (!rl.allowed) {
+      return apiError("RATE_LIMITED", "Too many reset requests. Try again later.", 429);
+    }
   }
 
   try {
@@ -25,6 +29,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { email } = validation.data;
+    const perEmail = await rateLimit(`pwreset-email:${email.toLowerCase()}`, RATE_LIMITS.PASSWORD_RESET);
+    if (!perEmail.allowed) {
+      return apiError("RATE_LIMITED", "Too many reset requests. Try again later.", 429);
+    }
 
     // Check if email belongs to an active staff member (don't leak to client)
     const admin = createAdminClient();

@@ -16,9 +16,12 @@ import { logger } from "@/lib/logger";
  * Idempotent; safe to run repeatedly. Reports how many rows still cannot be
  * read with the current key so the operator knows when the previous key can
  * be retired (docs/runbooks/key-rotation.md).
+ *
+ * Owner only: the key is deployment-wide, so the job rewrites guests of
+ * every property, which no property-scoped admin should be able to start.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireRole(request, ROLES.ADMIN);
+  const auth = await requireRole(request, ROLES.OWNER);
   if (!auth.authenticated) return auth.error!;
 
   if (!process.env.PII_ENCRYPTION_KEY) {

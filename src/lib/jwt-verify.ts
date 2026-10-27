@@ -45,6 +45,33 @@ const AUDIENCE = "authenticated";
 let jwks: JWTVerifyGetKey | null = null;
 let jwksBackoffUntil = 0;
 
+/**
+ * Expected `iss`. SUPABASE_JWT_ISSUER wins; otherwise hosted projects
+ * (*.supabase.co) issue `<project url>/auth/v1`. Self-hosted and the local
+ * CLI stack are not checked by default, because the issuer there often names
+ * a different host (127.0.0.1 vs localhost) than the URL the app uses.
+ */
+function expectedIssuer(): string | undefined {
+  if (process.env.SUPABASE_JWT_ISSUER) return process.env.SUPABASE_JWT_ISSUER;
+  try {
+    const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "");
+    return url.hostname.endsWith(".supabase.co") ? `${url.origin}/auth/v1` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function verifyOptions(alg: string) {
+  return {
+    algorithms: [alg],
+    audience: AUDIENCE,
+    issuer: expectedIssuer(),
+    // Supabase always sets exp; a token without one would never expire.
+    requiredClaims: ["exp", "sub"],
+    clockTolerance: 30,
+  };
+}
+
 function secretKey(): Uint8Array | null {
   const raw = process.env.SUPABASE_JWT_SECRET;
   return raw && raw.length >= 32 ? new TextEncoder().encode(raw) : null;
@@ -96,7 +123,7 @@ export async function verifyAccessToken(token: string): Promise<VerifyResult> {
     const key = secretKey();
     if (!key) return { ok: false, reason: "unavailable" };
     try {
-      const { payload } = await jwtVerify(token, key, { algorithms: [alg], audience: AUDIENCE, clockTolerance: 30 });
+      const { payload } = await jwtVerify(token, key, verifyOptions(alg));
       const claims = toClaims(payload as Record<string, unknown>);
       return claims ? { ok: true, claims } : { ok: false, reason: "invalid" };
     } catch {
@@ -108,18 +135,22 @@ export async function verifyAccessToken(token: string): Promise<VerifyResult> {
     const keys = remoteKeys();
     if (!keys) return { ok: false, reason: "unavailable" };
     try {
-      const { payload } = await jwtVerify(token, keys, { algorithms: [alg], audience: AUDIENCE, clockTolerance: 30 });
+      const { payload } = await jwtVerify(token, keys, verifyOptions(alg));
       const claims = toClaims(payload as Record<string, unknown>);
       return claims ? { ok: true, claims } : { ok: false, reason: "invalid" };
     } catch (err) {
-      // Signature, expiry, audience: the token is bad. Anything about fetching
-      // or matching keys: we cannot tell, so let the caller ask the auth server.
+      // Signature, expiry, audience, or a key id the (freshly refetched) JWKS
+      // does not contain: the token is bad. Treating an unknown kid as "keys
+      // unavailable" let one forged token switch off local verification for
+      // every request for 60 s. Only fetch failures fall back to the auth server.
       if (
         err instanceof errors.JWTExpired ||
         err instanceof errors.JWSSignatureVerificationFailed ||
         err instanceof errors.JWTClaimValidationFailed ||
         err instanceof errors.JWSInvalid ||
-        err instanceof errors.JWTInvalid
+        err instanceof errors.JWTInvalid ||
+        err instanceof errors.JWKSNoMatchingKey ||
+        err instanceof errors.JWKSMultipleMatchingKeys
       ) {
         return { ok: false, reason: "invalid" };
       }

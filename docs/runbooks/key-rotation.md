@@ -43,11 +43,11 @@ application:
 2. In Vercel set `PII_ENCRYPTION_KEY_PREVIOUS` to the **current** key and
    `PII_ENCRYPTION_KEY` to the **new** key. Redeploy. From now on new writes
    use the new key and reads fall back to the previous one.
-3. As an admin, re-encrypt existing rows:
+3. As an owner (the job touches every property, so admins cannot start it), re-encrypt existing rows:
 
    ```bash
    curl -X POST https://app.hospitai.uk/api/v1/admin/encrypt-pii \
-     -H "Cookie: <admin session>" -H "X-CSRF-Token: <token>"
+     -H "Cookie: <owner session>" -H "X-CSRF-Token: <token>"
    # {"data":{"scanned":412,"encrypted":412,"unreadable":0}}
    ```
 

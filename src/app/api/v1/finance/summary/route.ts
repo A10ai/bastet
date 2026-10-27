@@ -10,11 +10,14 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
 
     // Get current month boundaries
+    // UTC calendar arithmetic throughout: mixing local getters with
+    // toISOString() shifted every boundary by a day on non-UTC servers.
     const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const monthStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const monthEnd = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDay)}`;
+    const Y = now.getUTCFullYear();
+    const M = now.getUTCMonth();
+    const utcDay = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+    const monthStart = utcDay(Y, M, 1);
+    const monthEnd = utcDay(Y, M + 1, 0);
 
     // Revenue by STAY date: each occupied night counts on the night it happens
     // (migration 00026 revenue_by_stay_date), not on the booking's check-in month.
@@ -141,12 +144,8 @@ export async function GET(request: NextRequest) {
     const profitMarginPct = revenue > 0 ? ((revenue - expenses) / revenue) * 100 : 0;
 
     // Previous month boundaries for comparison
-    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      .toISOString()
-      .split("T")[0];
-    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-      .toISOString()
-      .split("T")[0];
+    const prevMonthStart = utcDay(Y, M - 1, 1);
+    const prevMonthEnd = utcDay(Y, M, 0);
 
     const { data: prevRevenueBookings } = await supabase
       .from("bookings")
@@ -177,7 +176,7 @@ export async function GET(request: NextRequest) {
       prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : null;
 
     // YTD boundaries
-    const yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
+    const yearStart = utcDay(Y, 0, 1);
 
     const { data: ytdRevenueBookings } = await supabase
       .from("bookings")
@@ -222,12 +221,10 @@ export async function GET(request: NextRequest) {
     // Monthly chart data (last 6 months)
     const monthlyData: { month: string; revenue: number; expenses: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const mStart = d.toISOString().split("T")[0];
-      const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-        .toISOString()
-        .split("T")[0];
-      const monthLabel = d.toLocaleString("en", { month: "short", year: "2-digit" });
+      const d = new Date(Date.UTC(Y, M - i, 1));
+      const mStart = utcDay(Y, M - i, 1);
+      const mEnd = utcDay(Y, M - i + 1, 0);
+      const monthLabel = d.toLocaleString("en", { month: "short", year: "2-digit", timeZone: "UTC" });
 
       const { data: mRevenue } = await supabase
         .from("bookings")
@@ -406,12 +403,10 @@ export async function GET(request: NextRequest) {
     const cporTrend: { month: string; cpor_gbp: number }[] = [];
     try {
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const mStart = d.toISOString().split("T")[0];
-        const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-          .toISOString()
-          .split("T")[0];
-        const monthLabel = d.toLocaleString("en", { month: "short", year: "2-digit" });
+        const d = new Date(Date.UTC(Y, M - i, 1));
+        const mStart = utcDay(Y, M - i, 1);
+        const mEnd = utcDay(Y, M - i + 1, 0);
+        const monthLabel = d.toLocaleString("en", { month: "short", year: "2-digit", timeZone: "UTC" });
 
         // Use existing monthlyData for expenses if already computed, otherwise query
         const existingMonth = monthlyData.find((m) => m.month === monthLabel);
