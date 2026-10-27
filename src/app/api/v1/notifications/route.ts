@@ -165,6 +165,8 @@ export async function POST(request: NextRequest) {
         }
         const created = await createNotification(supabase, {
           staff_id: validated.staff_id || null,
+          // A broadcast reaches the caller's property only
+          property_id: auth.propertyId,
           title,
           message,
           type: type || "info",

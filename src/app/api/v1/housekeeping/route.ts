@@ -1,6 +1,7 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { logAudit } from "@/lib/audit";
@@ -99,6 +100,12 @@ export async function POST(request: NextRequest) {
       `)
       .single();
 
+    if (isUniqueViolation(error)) {
+      return NextResponse.json(
+        { error: "An open checkout clean for this unit and date already exists" },
+        { status: 409 }
+      );
+    }
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

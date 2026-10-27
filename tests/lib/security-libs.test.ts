@@ -59,6 +59,22 @@ describe("api-error and rpc-error", () => {
     expect(JSON.stringify(await r3.json())).not.toMatch(/secret_table/);
     expect(rpcErrorResponse({ message: "LEDGER_IMMUTABLE: nope" }, "t").status).toBe(409);
   });
+
+  it("maps the 00033/00034 codes and database permission errors", async () => {
+    const { rpcErrorResponse } = await import("@/lib/rpc-error");
+    expect(rpcErrorResponse({ message: "ROLE_FORBIDDEN: manager required", code: "42501" }, "t").status).toBe(403);
+    expect(rpcErrorResponse({ message: "PROPERTY_FORBIDDEN" }, "t").status).toBe(403);
+    expect(rpcErrorResponse({ message: "STALE_STAY: stay ended" }, "t").status).toBe(409);
+    expect(rpcErrorResponse({ message: "BUSINESS_DATE_OPEN: 2026-10-27 has not ended" }, "t").status).toBe(409);
+    // any <ENTITY>_NOT_FOUND, including ones not listed explicitly
+    const nf = rpcErrorResponse({ message: "GUEST_NOT_FOUND" }, "t");
+    expect(nf.status).toBe(404);
+    expect((await nf.json()).error.code).toBe("GUEST_NOT_FOUND");
+    // RLS refusal / missing grant: 403 without leaking the relation name
+    const denied = rpcErrorResponse({ message: "permission denied for table folio_lines", code: "42501" }, "t");
+    expect(denied.status).toBe(403);
+    expect(JSON.stringify(await denied.json())).not.toMatch(/folio_lines/);
+  });
 });
 
 describe("cron-auth", () => {

@@ -11,6 +11,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, businessDate } from "./business-date";
+import { isUniqueViolation } from "./db-errors";
+import { logger } from "./logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,7 +199,7 @@ async function runAutoPricing(
       });
 
       {
-        await supabase.from("pricing_decisions").insert({
+        const { error: decisionError } = await supabase.from("pricing_decisions").insert({
           property_id: prop.id,
           apartment_type_id: aptType.id,
           decision_date: todayStr(),
@@ -208,6 +210,10 @@ async function runAutoPricing(
           demand_score: Math.round(occupancy) / 100,
           was_accepted: true,
         });
+        // 23505: another run already recorded today's decision for this type
+        if (decisionError && !isUniqueViolation(decisionError)) {
+          logger.error({ err: decisionError.message, type: aptType.id }, "[Automations] Failed to record pricing decision");
+        }
       }
     }
   }
@@ -382,6 +388,11 @@ async function runAutoHousekeeping(
       scheduled_date: td,
       notes: `Auto-created by Smart Automations. ${isVip ? "VIP room — priority clean." : ""} ${isArrivalDue ? "New arrival due today — urgent turnaround." : ""}`.trim(),
     });
+    // 23505: an open checkout clean for this unit today already exists
+    // (uq_housekeeping_open_checkout_clean), e.g. from a concurrent run
+    if (error && !isUniqueViolation(error)) {
+      logger.error({ err: error.message, apartment: booking.apartment_id }, "[Automations] Failed to create checkout clean");
+    }
 
     if (!error) {
       const staffMember = hkStaff?.find(

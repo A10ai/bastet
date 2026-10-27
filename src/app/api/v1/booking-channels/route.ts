@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { BOOKING_CHANNEL_COLUMNS } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("booking_channels")
-      .select("*")
+      .select(BOOKING_CHANNEL_COLUMNS)
       .eq("is_active", true)
       .order("name");
 

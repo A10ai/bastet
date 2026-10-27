@@ -28,7 +28,7 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00031` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00034` (October 2026 audit, grade-A programme and deep test) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -42,6 +42,11 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00030_pos.sql`: `pos_outlets`, `pos_items`, `pos_tickets`, `post_pos_ticket()` (outlet ticket to the in-house folio as charge and VAT lines), `void_pos_ticket()`
 - `00029_guest_portal.sql`: `booking_access_tokens` (hashed, expiring, revocable guest links), `bookings.precheckin` and `precheckin_completed_at`
 - `00028_group_bookings.sql`: `booking_groups`, `bookings.group_id`, `add_group_rooms()` (atomic room blocks), `group_statement()`, `record_group_payment()` (one payment allocated across room folios), `cancel_group()`
+- `00032_guests_property_backfill.sql`: attaches guests with no property to the single property (single-property databases) and makes `guests.property_id` NOT NULL when nothing violates it
+- `00033_tenant_isolation.sql`: active staff only; tenant checks and role floors on every policy; `property_id` on notifications, system events and audit log; channel credentials server-only; no self-granted property membership; `search_path` pinned on SECURITY DEFINER functions; no TRUNCATE for app roles
+- `00034_ledger_integrity.sql`: ledger tables written only through functions that check property and role; invoice payments post to the folio; issued invoices cannot be reverted or deleted; night audit only for ended days; POS ticket idempotency; one open checkout clean per unit and day
+
+Re-running an older migration after `00033`/`00034` reinstates superseded definitions; re-run `00033` and `00034` afterwards. `npm run test:db` applies every migration to a throwaway PostgreSQL (server binaries required, `PG_BIN` to override) and runs the RLS and ledger regression tests in `tests/db/`.
 
 ## Authorisation model
 
@@ -80,6 +85,7 @@ Content-Security-Policy is generated per request in `src/middleware.ts` with a n
 | `npm test` | Vitest unit tests |
 | `npm run test:coverage` | Unit tests with v8 coverage |
 | `npm run test:e2e` | Playwright smoke tests and authenticated journeys (`E2E_EMAIL`/`E2E_PASSWORD`) |
+| `npm run test:db` | Migrations, row-level security and ledger tests against a throwaway PostgreSQL |
 | `node scripts/deep-test.mjs` | End-to-end API battery against a running server (see `docs/STAGING.md`) |
 | `npm run test:load` | Load test: 50 virtual users on dashboard, availability, bookings and a booking write path |
 | `npm run drill:backup` | Backup and restore drill against the local Supabase stack |

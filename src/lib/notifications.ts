@@ -78,6 +78,12 @@ export async function createNotification(
     return 1;
   }
 
+  if (!property_id) {
+    // With the service-role client this reaches every property's staff, and
+    // under RLS (00033) a property-less row is visible to no one.
+    logger.warn({ title }, "[Notifications] Broadcast without property_id");
+  }
+
   // Broadcast: one row per active staff member (of one property when given)
   let staffQuery = supabase.from("staff").select("id").eq("is_active", true);
   if (property_id) {

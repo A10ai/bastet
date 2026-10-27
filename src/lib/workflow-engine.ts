@@ -12,6 +12,8 @@ import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import type { BrainDecision } from "@/lib/ai-brain";
 import { logger } from "@/lib/logger";
+import { isUniqueViolation } from "@/lib/db-errors";
+import { businessDate } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -501,6 +503,7 @@ async function executeStepAction(
 
       if (!apt) throw new Error("Apartment not found");
 
+      const taskDate = scheduled_date || businessDate();
       const { data: task, error } = await supabase
         .from("housekeeping_tasks")
         .insert({
@@ -509,16 +512,32 @@ async function executeStepAction(
           type: type || "checkout_clean",
           status: "pending",
           priority: priority || "normal",
-          scheduled_date: scheduled_date || new Date().toISOString().split("T")[0],
+          scheduled_date: taskDate,
           notes: notes || null,
         })
         .select("id")
         .single();
 
-      if (error) throw new Error(`Failed to create housekeeping task: ${error.message}`);
+      let taskId = task?.id as string | undefined;
+      if (isUniqueViolation(error)) {
+        // An open checkout clean for this unit and day already exists
+        // (uq_housekeeping_open_checkout_clean): reuse it.
+        const { data: existing } = await supabase
+          .from("housekeeping_tasks")
+          .select("id")
+          .eq("apartment_id", apartment_id)
+          .eq("scheduled_date", taskDate)
+          .eq("type", type || "checkout_clean")
+          .not("status", "in", "(completed,verified)")
+          .limit(1)
+          .maybeSingle();
+        taskId = existing?.id;
+      } else if (error) {
+        throw new Error(`Failed to create housekeeping task: ${error.message}`);
+      }
 
       return {
-        task_id: task?.id,
+        task_id: taskId,
         apartment: apt.number,
         type: type || "checkout_clean",
       };

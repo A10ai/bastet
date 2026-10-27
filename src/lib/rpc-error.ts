@@ -32,6 +32,10 @@ const STATUS_BY_CODE: Record<string, number> = {
   LEDGER_IMMUTABLE: 409,
   INVOICE_IMMUTABLE: 409,
   PROPERTY_FORBIDDEN: 403,
+  // tenant isolation and ledger integrity (00033, 00034)
+  ROLE_FORBIDDEN: 403,
+  STALE_STAY: 409,
+  BUSINESS_DATE_OPEN: 409,
   // rate plans (00027)
   TYPE_NOT_FOUND: 404,
   RATE_PLAN_NOT_FOUND: 404,
@@ -64,10 +68,21 @@ export function rpcErrorResponse(
 ): NextResponse {
   const message = error?.message ?? "";
   const match = message.match(/^([A-Z_]+)(?::\s*(.*))?$/);
-  if (match && STATUS_BY_CODE[match[1]]) {
+  // Any <ENTITY>_NOT_FOUND is a 404: require_staff() (00033) raises the
+  // caller-supplied not-found code for rows in another property too.
+  const status = match ? STATUS_BY_CODE[match[1]] ?? (/_NOT_FOUND$/.test(match[1]) ? 404 : undefined) : undefined;
+  if (match && status) {
     return NextResponse.json(
       { error: { code: match[1], message: match[2] || match[1].toLowerCase().replace(/_/g, " ") } },
-      { status: STATUS_BY_CODE[match[1]] }
+      { status }
+    );
+  }
+  // insufficient_privilege: a missing grant or a row-level security refusal
+  if (error?.code === "42501") {
+    logger.warn({ context, err: message }, "[RPC] Permission denied by the database");
+    return NextResponse.json(
+      { error: { code: "ROLE_FORBIDDEN", message: "You do not have permission to do that" } },
+      { status: 403 }
     );
   }
   // Exclusion constraint from 00020: two active bookings overlap

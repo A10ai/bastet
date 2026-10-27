@@ -798,7 +798,16 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
   // 5. Create notification summarising the brain cycle
   if (storedDecisions.length > 0) {
     try {
+      // The brain analyses the installation as one property (the first,
+      // as gatherDataSnapshot does); scope the summary to its staff.
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("id")
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
       await createNotification(supabase, {
+        property_id: (prop as { id?: string } | null)?.id ?? null,
         title: `AI Brain: ${storedDecisions.length} decision${storedDecisions.length > 1 ? "s" : ""}`,
         message: analysisResult.summary,
         type: "ai_decision",
