@@ -33,7 +33,9 @@ SELECT tst.mk('d1000000-0000-0000-0000-000000000002', '102', 'confirmed', -2, 3)
 SELECT tst.mk('d1000000-0000-0000-0000-000000000003', '103', 'confirmed', -2, 3);
 SELECT tst.ok('check in 2', $$select checkin_booking('d1000000-0000-0000-0000-000000000002')$$);
 SELECT tst.ok('check in 3', $$select checkin_booking('d1000000-0000-0000-0000-000000000003')$$);
+RESET ROLE; SELECT tst.as_user('mgrA');  -- the unpaid override is a manager's (00036)
 SELECT tst.ok('early checkout of 2', $$select checkout_booking('d1000000-0000-0000-0000-000000000002', null, true)$$);
+RESET ROLE; SELECT tst.as_user('recA');
 SELECT tst.eq('2 charged two nights', tst.val($$select count(*) from folio_lines l join folios f on f.id = l.folio_id where f.booking_id = 'd1000000-0000-0000-0000-000000000002' and l.type = 'room'$$), '2');
 SELECT tst.eq('3 not charged by 2''s checkout', tst.val($$select count(*) from folio_lines l join folios f on f.id = l.folio_id where f.booking_id = 'd1000000-0000-0000-0000-000000000003' and l.type = 'room'$$), '0');
 SELECT tst.eq('one checkout clean for 102', tst.val($$select count(*) from housekeeping_tasks where apartment_id = 'aaaaaaaa-0000-0000-0001-000000000102' and type = 'checkout_clean'$$), '1');
@@ -43,7 +45,7 @@ INSERT INTO housekeeping_tasks (property_id, apartment_id, type, status, priorit
 VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0001-000000000103', 'checkout_clean', 'pending', 'normal', current_date);
 SELECT tst.raises('second open clean for the same unit and day',
   $$insert into housekeeping_tasks (property_id, apartment_id, type, status, priority, scheduled_date) values ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0001-000000000103', 'checkout_clean', 'pending', 'normal', current_date)$$, 'uq_housekeeping_open_checkout_clean');
-SELECT tst.as_user('recA');
+SELECT tst.as_user('mgrA');
 SELECT tst.ok('checkout of 3 with a queued clean', $$select checkout_booking('d1000000-0000-0000-0000-000000000003', null, true)$$);
 SELECT tst.eq('still one clean for 103', tst.val($$select count(*) from housekeeping_tasks where apartment_id = 'aaaaaaaa-0000-0000-0001-000000000103' and type = 'checkout_clean'$$), '1');
 RESET ROLE;

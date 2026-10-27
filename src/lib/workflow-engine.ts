@@ -976,7 +976,18 @@ export async function createWorkflowFromBrainDecision(
   if (decision.confidence >= 95) priority = "urgent";
   if (decision.confidence < 60) priority = "low";
 
+  // The brain analyses the installation as one property (the first, as its
+  // snapshot and cycle summary do). Without a property the service-role
+  // insert would leave the workflow visible to every property's staff.
+  const { data: prop } = await supabase
+    .from("properties")
+    .select("id")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+
   const workflow = await createWorkflow(supabase, {
+    property_id: (prop as { id?: string } | null)?.id ?? undefined,
     title: decision.action,
     description: decision.reasoning,
     source: "ai_brain",

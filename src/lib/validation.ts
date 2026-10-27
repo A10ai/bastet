@@ -712,7 +712,8 @@ const posTicketItem = z
     item_id: z.string().uuid().optional(),
     name: z.string().min(1).max(120).optional(),
     // Whole units, or at most two decimals for things sold by weight/measure
-    quantity: z.number().min(0.01).max(999).refine(isWholePence, "Quantity can have at most 2 decimals").default(1),
+    // Whole units, as post_pos_ticket (00034) requires
+    quantity: z.number().int("Quantity must be a whole number").min(1).max(999).default(1),
     unit_price_gbp: money().refine((v) => v <= 100000, "Too large").optional(),
     tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
   })

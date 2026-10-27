@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
       description: `Created staff user ${email}`,
       // Never the password.
       new_data: { first_name, last_name, email, phone, role, department, property_id: propertyId },
+      // Service-role insert: the property cannot be inferred from the session
+      metadata: { property_id: propertyId },
     });
 
     return NextResponse.json({ data: staffData }, { status: 201 });
@@ -212,6 +214,7 @@ export async function PUT(request: NextRequest) {
       resource_id: data?.id || id,
       description: `Updated staff user ${id}`,
       new_data: validation.data,
+      metadata: { property_id: propertyId },
     });
 
     return NextResponse.json({ data });
@@ -272,6 +275,7 @@ export async function DELETE(request: NextRequest) {
       resource_type: "staff",
       resource_id: id,
       description: `Deactivated staff user ${id}`,
+      metadata: { property_id: propertyId },
     });
 
     return NextResponse.json({ success: true });

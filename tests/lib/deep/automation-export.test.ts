@@ -20,6 +20,39 @@ describe("automations-engine auto-pricing at exactly 85% occupancy", () => {
     const newRate = db.apartment_types[0].base_weekly_rate_gbp as number;
     expect({ newRate, actions: res.map((r) => r.action) }).toEqual({ newRate: 300, actions: ["pricing_check"] });
   });
+
+  async function runPricing(db: FakeDb, opts: Parameters<typeof createFakeSupabase>[1] = {}) {
+    const { runAutomation, getAutomations } = await import("@/lib/automations-engine");
+    const id = (getAutomations() as { id: string; name: string }[]).find((a) => /pric/i.test(a.id + a.name))!.id;
+    return runAutomation(id, createFakeSupabase(db, opts));
+  }
+  const busyDb = (): FakeDb => ({
+    apartments: Array.from({ length: 20 }, (_, i) => ({ id: `a${i}`, status: i < 19 ? "occupied" : "available" })), // 95%
+    properties: [{ id: "p1" }],
+    apartment_types: [{ id: "t1", name: "Studio", base_weekly_rate_gbp: 300, property_id: "p1" }],
+    pricing_decisions: [],
+  });
+
+  it("records the decision, then raises the rate", async () => {
+    const db = busyDb();
+    const res = await runPricing(db);
+    expect(db.apartment_types[0].base_weekly_rate_gbp).toBe(345);
+    expect(db.pricing_decisions).toHaveLength(1);
+    expect(res.map((r) => r.action)).toContain("rate_adjusted");
+  });
+
+  it("leaves the rate alone when another run already claimed today (23505)", async () => {
+    const db = busyDb();
+    const res = await runPricing(db, { errors: { pricing_decisions: { message: "duplicate key", code: "23505", op: "insert" } } });
+    expect(db.apartment_types[0].base_weekly_rate_gbp).toBe(300);
+    expect(res.map((r) => r.action)).toEqual(["pricing_cooldown"]);
+  });
+
+  it("never changes a rate it could not record", async () => {
+    const db = busyDb();
+    await runPricing(db, { errors: { pricing_decisions: { message: "new row violates row-level security policy", code: "42501", op: "insert" } } });
+    expect(db.apartment_types[0].base_weekly_rate_gbp).toBe(300);
+  });
 });
 
 describe("export-utils.toCSV", () => {

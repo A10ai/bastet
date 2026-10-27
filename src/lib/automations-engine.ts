@@ -146,7 +146,7 @@ async function runAutoPricing(
 
   const { data: types } = await supabase
     .from("apartment_types")
-    .select("id, name, base_weekly_rate_gbp");
+    .select("id, name, base_weekly_rate_gbp, property_id");
 
   if (!types || types.length === 0) return results;
 
@@ -185,37 +185,51 @@ async function runAutoPricing(
       continue;
     }
 
+    // Record today's decision first: the unique index on (type, day) makes
+    // it the claim, so two concurrent runs cannot both change the rate, and
+    // a rate is never changed without the record the cooldown and drift cap
+    // read.
+    const { error: decisionError } = await supabase.from("pricing_decisions").insert({
+      property_id: (aptType as { property_id?: string }).property_id ?? prop.id,
+      apartment_type_id: aptType.id,
+      decision_date: todayStr(),
+      base_rate_gbp: currentRate,
+      recommended_rate_gbp: newRate,
+      applied_rate_gbp: newRate,
+      adjustment_reason: high ? "high_demand" : "low_demand",
+      demand_score: Math.round(occupancy) / 100,
+      was_accepted: true,
+    });
+    if (decisionError) {
+      if (isUniqueViolation(decisionError)) {
+        // 23505: another run already decided today's rate for this type
+        results.push({
+          action: "pricing_cooldown",
+          description: `${aptType.name}: already adjusted today. No change.`,
+          impact: "No change",
+          timestamp: now(),
+        });
+      } else {
+        logger.error({ err: decisionError.message, type: aptType.id }, "[Automations] Failed to record pricing decision; rate left unchanged");
+      }
+      continue;
+    }
+
     const { error } = await supabase
       .from("apartment_types")
       .update({ base_weekly_rate_gbp: newRate })
       .eq("id", aptType.id);
 
-    if (!error) {
-      results.push({
-        action: "rate_adjusted",
-        description: `${aptType.name}: weekly rate changed from £${currentRate} to £${newRate}/week. ${reason}.`,
-        impact: `£${Math.abs(newRate - currentRate)}/week ${newRate > currentRate ? "increase" : "decrease"} (reference £${reference}, limit ±${AUTO_PRICING_MAX_DRIFT * 100}%)`,
-        timestamp: now(),
-      });
-
-      {
-        const { error: decisionError } = await supabase.from("pricing_decisions").insert({
-          property_id: prop.id,
-          apartment_type_id: aptType.id,
-          decision_date: todayStr(),
-          base_rate_gbp: currentRate,
-          recommended_rate_gbp: newRate,
-          applied_rate_gbp: newRate,
-          adjustment_reason: high ? "high_demand" : "low_demand",
-          demand_score: Math.round(occupancy) / 100,
-          was_accepted: true,
-        });
-        // 23505: another run already recorded today's decision for this type
-        if (decisionError && !isUniqueViolation(decisionError)) {
-          logger.error({ err: decisionError.message, type: aptType.id }, "[Automations] Failed to record pricing decision");
-        }
-      }
+    if (error) {
+      logger.error({ err: error.message, type: aptType.id }, "[Automations] Rate change failed after recording the decision");
+      continue;
     }
+    results.push({
+      action: "rate_adjusted",
+      description: `${aptType.name}: weekly rate changed from £${currentRate} to £${newRate}/week. ${reason}.`,
+      impact: `£${Math.abs(newRate - currentRate)}/week ${newRate > currentRate ? "increase" : "decrease"} (reference £${reference}, limit ±${AUTO_PRICING_MAX_DRIFT * 100}%)`,
+      timestamp: now(),
+    });
   }
 
   if (results.length === 0) {

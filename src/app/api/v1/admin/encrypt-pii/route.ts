@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       category: "settings",
       resource_type: "guests",
       description: `Re-encrypted ${updated} passport numbers under the current key`,
-      metadata: { scanned: rows?.length ?? 0, updated, unreadable },
+      metadata: { scanned: rows?.length ?? 0, updated, unreadable, property_id: auth.propertyId },
     });
 
     return NextResponse.json({ data: { scanned: rows?.length ?? 0, encrypted: updated, unreadable } });

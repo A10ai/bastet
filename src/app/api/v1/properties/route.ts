@@ -1,6 +1,7 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createPropertySchema } from "@/lib/validation";
@@ -25,11 +26,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * Create a property (owners only). The insert runs as the service role:
+ * the creator has no access to a property that does not exist yet, so a
+ * user-scoped insert could never read its own row back. The owner is made
+ * a member of the new property in the same request.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole(request, ROLES.ADMIN);
+    const auth = await requireRole(request, ROLES.OWNER);
     if (!auth.authenticated) return auth.error!;
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const body = await request.json();
 
     const validation = validateBody(createPropertySchema, body);
@@ -48,7 +55,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    if (auth.staffId && data?.id && data.id !== auth.propertyId) {
+      const { error: memberError } = await supabase
+        .from("staff_properties")
+        .insert({ staff_id: auth.staffId, property_id: data.id });
+      if (memberError) {
+        return NextResponse.json({ error: "Property created, but adding you as a member failed" }, { status: 500 });
+      }
+    }
+
     await logAudit(supabase, {
+      user_id: auth.userId,
+      user_email: auth.email,
+      metadata: { property_id: data?.id },
       action: "property.create",
       category: "settings",
       resource_type: "property",

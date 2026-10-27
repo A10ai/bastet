@@ -807,8 +807,15 @@ export async function emitEvent(
       .select("id, results")
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
+    let eventId = (existing?.id as string | undefined) ?? "";
+    if (!eventId) {
+      // Another user's event is hidden by RLS (00033); the id alone comes
+      // from a property-scoped lookup (00036), without its payload or results.
+      const { data: id } = await supabase.rpc("system_event_id_by_key", { p_key: idempotencyKey });
+      eventId = typeof id === "string" ? id : "";
+    }
     logger.info({ type, idempotencyKey }, "[EventBus] Duplicate event ignored");
-    return { event_id: (existing?.id as string) || "", results: (existing?.results as HandlerResult[]) || [], duplicate: true };
+    return { event_id: eventId, results: (existing?.results as HandlerResult[]) || [], duplicate: true };
   }
 
   if (insertError || !inserted) {

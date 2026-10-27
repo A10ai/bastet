@@ -83,15 +83,18 @@ async function runAudit(gate: OkGate, body: z.infer<typeof bodySchema>) {
     closes.push({ property_id: property.id, ...(data as Record<string, unknown>) });
   }
 
-  await logAudit(admin, {
-    user_id: gate.auth?.userId ?? "system",
-    user_email: gate.auth?.email ?? "cron@hospitai.uk",
-    action: "night_audit.run",
-    category: "system",
-    resource_type: "daily_close",
-    description: `Night audit closed ${closes.length} propert${closes.length === 1 ? "y" : "ies"}`,
-    metadata: { actor: gate.actor, business_date: body.business_date ?? "previous" },
-  });
+  // One row per property, so each property's admins see their own close
+  for (const close of closes as { property_id: string }[]) {
+    await logAudit(admin, {
+      user_id: gate.auth?.userId ?? "system",
+      user_email: gate.auth?.email ?? "cron@hospitai.uk",
+      action: "night_audit.run",
+      category: "system",
+      resource_type: "daily_close",
+      description: "Night audit closed the business day",
+      metadata: { actor: gate.actor, business_date: body.business_date ?? "previous", property_id: close.property_id },
+    });
+  }
 
   return NextResponse.json({ data: { closes } });
 }

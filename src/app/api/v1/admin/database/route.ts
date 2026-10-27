@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function audit(supabase: Db, auth: AuthContext, action: string, table: string, id: string | undefined, data?: Record<string, unknown>) {
+async function audit(supabase: Db, auth: AuthContext, propertyId: string, action: string, table: string, id: string | undefined, data?: Record<string, unknown>) {
   await logAudit(supabase, {
     user_id: auth.userId,
     user_email: auth.email,
@@ -201,6 +201,8 @@ async function audit(supabase: Db, auth: AuthContext, action: string, table: str
     resource_id: id,
     description: `Admin console ${action} on ${table}`,
     new_data: data,
+    // Service-role insert: the property cannot be inferred from the session
+    metadata: { property_id: propertyId },
   });
 }
 
@@ -232,7 +234,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       return handleDbError(error, "admin-db-insert");
     }
-    await audit(supabase, auth, "insert", table, (data as { id?: string } | null)?.id, clean.data);
+    await audit(supabase, auth, propertyId, "insert", table, (data as { id?: string } | null)?.id, clean.data);
     return NextResponse.json({ data: redact(data as Record<string, unknown>) }, { status: 201 });
   } catch {
     return NextResponse.json(
@@ -273,7 +275,7 @@ export async function PUT(request: NextRequest) {
     if (error) {
       return handleDbError(error, "admin-db-update");
     }
-    await audit(supabase, auth, "update", table, id, clean.data);
+    await audit(supabase, auth, propertyId, "update", table, id, clean.data);
     return NextResponse.json({ data: redact(data as Record<string, unknown>) });
   } catch {
     return NextResponse.json(
@@ -305,7 +307,7 @@ export async function DELETE(request: NextRequest) {
     if (error) {
       return handleDbError(error, "admin-db-delete");
     }
-    await audit(supabase, auth, "delete", table, id);
+    await audit(supabase, auth, propertyId, "delete", table, id);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(

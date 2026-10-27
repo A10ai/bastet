@@ -67,5 +67,7 @@ describe("other schemas", () => {
   });
   it("posTicketSchema rejects fractional quantities like 0.001", () => {
     expect(posTicketSchema.safeParse({ outlet_id: uuid, room_number: "101", items: [{ name: "Water", unit_price_gbp: 2, quantity: 0.001 }] }).success).toBe(false);
+    expect(posTicketSchema.safeParse({ outlet_id: uuid, room_number: "101", items: [{ name: "Water", unit_price_gbp: 2, quantity: 1.5 }] }).success).toBe(false);
+    expect(posTicketSchema.safeParse({ outlet_id: uuid, room_number: "101", items: [{ name: "Water", unit_price_gbp: 2, quantity: 2 }] }).success).toBe(true);
   });
 });

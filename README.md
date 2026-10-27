@@ -28,7 +28,7 @@ Required environment variables are validated at server start by `src/lib/env.ts`
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00035` (October 2026 audit, grade-A programme and deep test) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00036` (October 2026 audit, grade-A programme and deep test) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -46,8 +46,9 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00033_tenant_isolation.sql`: active staff only; tenant checks and role floors on every policy; `property_id` on notifications, system events and audit log; channel credentials server-only; no self-granted property membership; `search_path` pinned on SECURITY DEFINER functions; no TRUNCATE for app roles
 - `00034_ledger_integrity.sql`: ledger tables written only through functions that check property and role; invoice payments post to the folio; issued invoices cannot be reverted or deleted; night audit only for ended days; POS ticket idempotency; one open checkout clean per unit and day
 - `00035_booking_channel_owner_update.sql`: owners can edit booking channel name, commission and active flag (never `api_connection`); booking and invoice numbering is staff-only
+- `00036_review_fixes.sql`: room nights split the booked total exactly, so a prepaid stay closes at 0.00 (and a rate plan discount applies once); departed stays are not charged by the night audit; only managers check out with an unpaid balance; ledger actors are the signed-in staff member; refunds update the current folio invoice; write policies for staff (admins, below their own role), properties (admins, own property), currency rates (owners) and pricing decisions; duplicates merged so the protection indexes always exist
 
-Re-running an older migration after `00033`/`00034` reinstates superseded definitions; re-run `00033` to `00035` afterwards. `npm run test:db` applies every migration to a throwaway PostgreSQL (server binaries required, `PG_BIN` to override) and runs the RLS and ledger regression tests in `tests/db/`.
+Re-running an older migration after `00033`/`00034` reinstates superseded definitions; re-run `00033` to `00036` afterwards. `npm run test:db` applies every migration to a throwaway PostgreSQL (server binaries required, `PG_BIN` to override) and runs the RLS and ledger regression tests in `tests/db/`.
 
 ## Authorisation model
 

@@ -12,6 +12,8 @@
 --     gdpr_requests, guest_consent, workflows, apartment_images, marketplace
 --     and shuttle tables, daily_closes) leaked across properties
 --   * booking_channels.api_connection readable by every signed-in user
+--   (workflows created by the service role without a property stayed
+--   visible to every property until the app passed one; see 00036)
 --   * SECURITY DEFINER helpers had no search_path; TRUNCATE granted to app roles
 --
 -- This file and 00034 are the authoritative definitions of every policy and

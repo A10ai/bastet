@@ -22,6 +22,8 @@
 --
 -- Fixes, all reproduced on 00001-00032:
 --   * staff could insert 'payment' lines and check a guest out unpaid
+--     (the checkout_booking unpaid override still accepted any front-desk
+--     caller; fixed in 00036)
 --   * an issued invoice could be flipped back to draft and edited, or deleted
 --   * paying a folio-issued invoice did not reach the folio, so checkout
 --     demanded the money a second time
@@ -39,6 +41,7 @@
 --     inventing free-text prices
 --   * checking out one booking posted room charges for every in-house stay
 --   * quote_stay rounded each night of a weekly rate (7 x 142.86 = 1000.02)
+--     (room nights still posted the rounded rate; 00036 splits the total)
 --
 -- Idempotent; see the note at the top of 00033 about re-running older files.
 -- ============================================================

@@ -88,6 +88,9 @@ describe("/api/v1/admin/users (admin of property A)", () => {
     const ok = await post({ ...base, role: "receptionist" });
     expect(ok.status).toBe(201);
     expect(db.staff.find((s) => s.email === "e@x.com")).toMatchObject({ role: "receptionist", property_id: A });
+    // Service-role audit rows name the property so its admins can see them (00036)
+    const auditRow = (db.audit_log || []).find((r) => r.action === "admin.user.create");
+    expect(auditRow?.metadata).toMatchObject({ property_id: A });
   });
 
   it("DELETE cannot deactivate another property's staff or yourself", async () => {
@@ -175,6 +178,8 @@ describe("/api/v1/cron/night-audit", () => {
     const res = await GET(req("/api/v1/cron/night-audit", { headers: { authorization: "Bearer s3cr3t-value-0123456789" } }));
     expect(res.status).toBe(200);
     expect(rpcCalls.map((c) => c.p_property_id).sort()).toEqual([A, B].sort());
+    const audits = (db.audit_log || []).filter((r) => r.action === "night_audit.run");
+    expect(audits.map((r) => (r.metadata as { property_id: string }).property_id).sort()).toEqual([A, B].sort());
   });
 
   it("GET ?status=1 with the cron secret only reports", async () => {

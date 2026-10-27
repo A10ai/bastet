@@ -126,6 +126,19 @@ describe("event-bus", () => {
     expect(r).toEqual({ event_id: "", results: [], duplicate: true });
   });
 
+  it("returns the stable id of a hidden duplicate from the property-scoped lookup", async () => {
+    const { emitEvent } = await import("@/lib/event-bus");
+    const db = seedDb();
+    db.system_events = [];
+    const sb = createFakeSupabase(db, {
+      errors: { system_events: { message: "duplicate key", code: "23505", op: "insert" } },
+      rpc: { system_event_id_by_key: (args) => (args.p_key === `booking.checked_out:${db.bookings[1].id}` ? "evt-original" : null) },
+    });
+    const r = await emitEvent("booking.checked_out", "bookings", { booking_id: db.bookings[1].id, apartment_id: db.bookings[1].apartment_id }, sb);
+    expect(r).toEqual({ event_id: "evt-original", results: [], duplicate: true });
+    expect(sb.calls).toContain("rpc:system_event_id_by_key");
+  });
+
   it("runs every registered handler type without throwing", async () => {
     const { emitEvent, getRegisteredEventTypes } = await import("@/lib/event-bus");
     const db = seedDb();

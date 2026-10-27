@@ -35,9 +35,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/** Manual rate (owners: one table serves every property; RLS 00036). */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole(request, ROLES.MANAGEMENT);
+    const auth = await requireRole(request, ROLES.OWNER);
     if (!auth.authenticated) return auth.error!;
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
