@@ -130,7 +130,7 @@ export default function UserManagementPage() {
       });
       const json = await res.json();
       if (json.error) {
-        showToast(json.error, "error");
+        showToast(typeof json.error === "string" ? json.error : json.error.message || "Request failed", "error");
         return;
       }
       showToast("User created successfully");
@@ -165,7 +165,7 @@ export default function UserManagementPage() {
       });
       const json = await res.json();
       if (json.error) {
-        showToast(json.error, "error");
+        showToast(typeof json.error === "string" ? json.error : json.error.message || "Request failed", "error");
         return;
       }
       showToast("User updated");
@@ -185,7 +185,7 @@ export default function UserManagementPage() {
         });
         const json = await res.json();
         if (json.error) {
-          showToast(json.error, "error");
+          showToast(typeof json.error === "string" ? json.error : json.error.message || "Request failed", "error");
           return;
         }
         showToast("User disabled");
@@ -203,7 +203,7 @@ export default function UserManagementPage() {
         });
         const json = await res.json();
         if (json.error) {
-          showToast(json.error, "error");
+          showToast(typeof json.error === "string" ? json.error : json.error.message || "Request failed", "error");
           return;
         }
         showToast("User re-enabled");

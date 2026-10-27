@@ -10,6 +10,8 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
+const GUEST_REQUEST_PREFIX = "Guest (online check-in): ";
+
 /**
  * POST /api/v1/portal/:token/precheckin
  *
@@ -19,9 +21,10 @@ export const dynamic = "force-dynamic";
  * form answers for staff to confirm; they do not overwrite the guest record.
  */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ token: string }> }) {
-  const limit = await rateLimit(`portal-precheckin:${getClientIp(request)}`, { windowMs: 15 * 60 * 1000, max: 20 });
-  if (!limit.allowed) return rateLimitResponse(limit, "Too many requests");
   const { token } = await ctx.params;
+  const ip = getClientIp(request);
+  const limit = await rateLimit(ip !== "unknown" ? `portal-precheckin:${ip}` : `portal-precheckin-link:${token.slice(0, 64)}`, { windowMs: 15 * 60 * 1000, max: 20 });
+  if (!limit.allowed) return rateLimitResponse(limit, "Too many requests");
   try {
     const admin = createAdminClient();
     const link = await resolvePortalToken(admin, token);
@@ -40,14 +43,26 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ token:
     }
 
     const now = new Date().toISOString();
-    const requests = [booking.special_requests, input.special_requests ? `Guest (online check-in): ${input.special_requests}` : null].filter(Boolean).join("\n");
+    // Resubmitting replaces the guest's earlier line instead of appending
+    // another one, so the field cannot be grown without limit.
+    const staffLines = String(booking.special_requests || "")
+      .split("\n")
+      .filter((line) => line && !line.startsWith(GUEST_REQUEST_PREFIX));
+    const requests = [...staffLines, input.special_requests ? `${GUEST_REQUEST_PREFIX}${input.special_requests}` : null].filter(Boolean).join("\n");
+    // The guest may correct the party size downwards; a larger party changes
+    // the price and the room's occupancy, so it is kept in the answers for
+    // the front desk to confirm instead of being written to the booking.
+    const bookedTotal = (booking.adults ?? 1) + (booking.children ?? 0);
+    const adults = input.adults ?? booking.adults;
+    const children = input.children ?? booking.children ?? 0;
+    const partyChangeRequested = adults + children > bookedTotal;
     const { error } = await admin
       .from("bookings")
       .update({
-        precheckin: { ...input, submitted_at: now },
+        precheckin: { ...input, submitted_at: now, party_change_requested: partyChangeRequested },
         precheckin_completed_at: now,
-        adults: input.adults ?? booking.adults,
-        children: input.children ?? booking.children,
+        adults: partyChangeRequested ? booking.adults : adults,
+        children: partyChangeRequested ? booking.children : children,
         special_requests: requests || null,
       })
       .eq("id", booking.id);
@@ -57,9 +72,11 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ token:
     }
 
     const apt = booking.apartment as unknown as { number: string } | null;
+    // Service-role client: scope the broadcast to this booking's property.
     await createNotification(admin, {
+      property_id: booking.property_id,
       title: `Online check-in: ${booking.reference}`,
-      message: `${apt?.number ? `Room ${apt.number}, ` : ""}arriving ${input.arrival_time || "time not given"}${input.special_requests ? ` · ${input.special_requests.slice(0, 80)}` : ""}`,
+      message: `${apt?.number ? `Room ${apt.number}, ` : ""}arriving ${input.arrival_time || "time not given"}${partyChangeRequested ? ` · party change requested (${adults} adults, ${children} children)` : ""}${input.special_requests ? ` · ${input.special_requests.slice(0, 80)}` : ""}`,
       type: "info",
       category: "booking",
       link: `/dashboard/bookings/${booking.id}`,

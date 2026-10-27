@@ -6,10 +6,14 @@ VAT and tourism levy to every in-house folio, marks no-shows, advances
 idempotent per `(property_id, business_date)`: running it twice for the same
 date is a no-op.
 
-It runs from Vercel Cron at 03:00 UTC via `POST /api/v1/cron/night-audit`
-(bearer `CRON_SECRET`), which calls the database function
+It runs from Vercel Cron at 03:00 UTC. Vercel Cron sends `GET
+/api/v1/cron/night-audit` with bearer `CRON_SECRET`, and a GET carrying the
+secret runs the audit (`?status=1` only reports); `POST` with the same bearer
+does the same for other schedulers. Either calls the database function
 `run_night_audit(p_property_id, p_business_date)` for every active property.
-Admins can trigger the same route from a signed-in session.
+Until October 2026 the GET only reported status, so the scheduled audit never
+ran on Vercel. Admins can trigger the route from a signed-in session, but only
+for properties they belong to, and only for a business date before today.
 
 ## It did not run
 

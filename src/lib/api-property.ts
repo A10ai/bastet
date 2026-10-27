@@ -73,6 +73,20 @@ export async function getActivePropertyId(request: NextRequest): Promise<string 
 }
 
 /**
+ * Every property a staff member may act on: their home property plus any
+ * explicit staff_properties membership rows. Used by service-role routes
+ * (no RLS) to scope what an admin can see or change.
+ */
+export async function listAccessiblePropertyIds(staffId: string, homePropertyId: string | undefined): Promise<string[]> {
+  const ids = new Set<string>();
+  if (homePropertyId) ids.add(homePropertyId);
+  const admin = createAdminClient();
+  const { data } = await admin.from("staff_properties").select("property_id").eq("staff_id", staffId);
+  for (const row of (data || []) as { property_id: string }[]) ids.add(row.property_id);
+  return Array.from(ids);
+}
+
+/**
  * Get the authenticated user's staff record.
  * Returns staff data including role, property_id, and user ID.
  */

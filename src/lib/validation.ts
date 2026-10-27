@@ -184,7 +184,8 @@ export const updateStaffSchema = z.object({
   last_name: z.string().min(1).max(50).optional(),
   email: z.string().email().optional(),
   phone: z.string().max(30).optional().nullable(),
-  role: z.enum(["owner", "admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]).optional(),
+  // No "owner": nobody is promoted to owner through the API (see canManageRole).
+  role: z.enum(["admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]).optional(),
   department: z.string().max(100).optional().nullable(),
   is_active: z.boolean().optional(),
   language: z.string().max(10).optional(),
@@ -675,3 +676,20 @@ export const posTicketSchema = z
   })
   .refine((v) => v.booking_id || v.room_number, { message: "booking_id or room_number is required", path: ["room_number"] });
 export const voidPosTicketSchema = z.object({ reason: z.string().min(3).max(500) });
+
+// ---------------------------------------------------------------------------
+// Admin user management (POST /api/v1/admin/users)
+// ---------------------------------------------------------------------------
+export const adminCreateUserSchema = z.object({
+  first_name: z.string().min(1, "First name is required").max(50),
+  last_name: z.string().min(1, "Last name is required").max(50),
+  email: z.string().email("Valid email is required").max(255),
+  password: z.string().min(12, "Password must be at least 12 characters").max(128)
+    .regex(/[A-Z]/, "Must contain an uppercase letter")
+    .regex(/[a-z]/, "Must contain a lowercase letter")
+    .regex(/[0-9]/, "Must contain a number"),
+  phone: z.string().max(30).optional().nullable(),
+  // No "owner": see canManageRole in src/lib/api-auth.ts.
+  role: z.enum(["admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]),
+  department: z.string().max(100).optional().nullable(),
+}).strict();

@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
     const today = format(now, "yyyy-MM-dd");
-    const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd");
-    const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd");
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
     const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
     // ── 1. Occupancy ──────────────────────────────────────────────────

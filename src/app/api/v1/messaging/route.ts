@@ -63,15 +63,12 @@ function today() {
 }
 
 function tomorrow() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  // UTC arithmetic to match today() (local setDate + toISOString drifted around DST).
+  return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 }
 
 function sevenDaysAgo() {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return d.toISOString();
+  return new Date(Date.now() - 7 * 86_400_000).toISOString();
 }
 
 // ---------------------------------------------------------------------------

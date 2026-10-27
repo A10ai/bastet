@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
@@ -9,6 +10,7 @@ export async function createServerSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: sessionCookieOptions(),
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -10,7 +11,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = safeRedirectPath(searchParams.get("redirect"));
   const [step, setStep] = useState<"password" | "mfa">(searchParams.get("step") === "mfa" ? "mfa" : "password");
   const [code, setCode] = useState("");
 

@@ -1,7 +1,8 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireRole, ROLES } from "@/lib/api-auth";
+import { requireRole, ROLES, canManageRole } from "@/lib/api-auth";
+import { getActivePropertyId, listAccessiblePropertyIds } from "@/lib/api-property";
 import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createStaffSchema } from "@/lib/validation";
@@ -68,16 +69,17 @@ export async function POST(request: NextRequest) {
       hire_date,
     } = validated;
 
-    // Get default property if not provided
-    let resolvedPropertyId = property_id || undefined;
-    if (!resolvedPropertyId) {
-      const { data: prop } = await supabase
-        .from("properties")
-        .select("id")
-        .limit(1)
-        .single();
-      resolvedPropertyId = prop?.id;
+    if (!canManageRole(auth.role, role)) {
+      return NextResponse.json({ error: "You can only create accounts with a role below your own" }, { status: 403 });
     }
+    // The caller's active property; another property only with a membership.
+    const activePropertyId = await getActivePropertyId(request);
+    if (!activePropertyId) return NextResponse.json({ error: "No property access" }, { status: 403 });
+    if (property_id && property_id !== activePropertyId) {
+      const allowed = await listAccessiblePropertyIds(auth.staffId!, auth.propertyId);
+      if (!allowed.includes(property_id)) return NextResponse.json({ error: "No access to that property" }, { status: 403 });
+    }
+    const resolvedPropertyId = property_id || activePropertyId;
 
     const { data, error } = await supabase
       .from("staff")

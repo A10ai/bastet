@@ -2,6 +2,8 @@ import { defineConfig } from "vitest/config";
 import { resolve } from "path";
 
 export default defineConfig({
+  // tsconfig keeps JSX as-is for Next; tests that render pages need it compiled.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "jsdom",
     globals: true,
