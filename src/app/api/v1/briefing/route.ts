@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { getActivePropertyId } from "@/lib/api-property";
-import { format, startOfWeek } from "date-fns";
+import { addDays, businessDate, dayOfWeek, DEFAULT_PROPERTY_TIMEZONE, monthEnd as monthEndOf, monthStart as monthStartOf } from "@/lib/business-date";
 import { calculateHealthScore } from "@/lib/ai-engine";
 
 interface BriefingItem {
@@ -25,7 +25,10 @@ interface TopAction {
 }
 
 function getGreeting(): string {
-  const hour = new Date().getHours();
+  // The hotel's local hour, not the server's
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: DEFAULT_PROPERTY_TIMEZONE, hour: "2-digit", hourCycle: "h23" }).format(new Date())
+  );
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
@@ -55,11 +58,11 @@ export async function GET(request: NextRequest) {
       if (propData?.name) propertyName = propData.name;
     }
 
-    const now = new Date();
-    const today = format(now, "yyyy-MM-dd");
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
-    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
-    const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    // Property business date (Africa/Cairo) and calendar-safe boundaries
+    const today = businessDate();
+    const monthStart = monthStartOf(today);
+    const monthEnd = monthEndOf(today);
+    const weekStart = addDays(today, -((dayOfWeek(today) + 6) % 7)); // Monday
 
     // ── 1. Occupancy ──────────────────────────────────────────────────
     let apartments: { id: string; status: string }[] = [];

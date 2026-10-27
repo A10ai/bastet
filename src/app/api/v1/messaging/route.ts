@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { getActivePropertyId } from "@/lib/api-property";
+import { addDays, businessDate } from "@/lib/business-date";
 import { validateBody, formatZodErrors, messageSchema } from "@/lib/validation";
 
 // ---------------------------------------------------------------------------
@@ -59,12 +60,12 @@ function getMessageTemplates(propertyName: string) {
 // ---------------------------------------------------------------------------
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  // The property's business date, not the server's UTC date
+  return businessDate();
 }
 
 function tomorrow() {
-  // UTC arithmetic to match today() (local setDate + toISOString drifted around DST).
-  return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  return addDays(businessDate(), 1);
 }
 
 function sevenDaysAgo() {

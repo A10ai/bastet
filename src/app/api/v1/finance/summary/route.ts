@@ -2,6 +2,7 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { businessDate, daysBetween, monthEnd as monthEndOf, monthStart as monthStartOf } from "@/lib/business-date";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,15 +10,14 @@ export async function GET(request: NextRequest) {
     if (!auth.authenticated) return auth.error!;
     const supabase = await createServerSupabaseClient();
 
-    // Get current month boundaries
-    // UTC calendar arithmetic throughout: mixing local getters with
-    // toISOString() shifted every boundary by a day on non-UTC servers.
-    const now = new Date();
-    const Y = now.getUTCFullYear();
-    const M = now.getUTCMonth();
+    // Current month of the property's business date (Africa/Cairo), with
+    // UTC calendar arithmetic so the boundaries don't depend on the server TZ
+    const todayDate = businessDate();
+    const Y = Number(todayDate.slice(0, 4));
+    const M = Number(todayDate.slice(5, 7)) - 1;
     const utcDay = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
-    const monthStart = utcDay(Y, M, 1);
-    const monthEnd = utcDay(Y, M + 1, 0);
+    const monthStart = monthStartOf(todayDate);
+    const monthEnd = monthEndOf(todayDate);
 
     // Revenue by STAY date: each occupied night counts on the night it happens
     // (migration 00026 revenue_by_stay_date), not on the booking's check-in month.
@@ -353,10 +353,8 @@ export async function GET(request: NextRequest) {
         .select("total_gbp, due_date, status")
         .in("status", ["sent", "partially_paid", "overdue"]);
 
-      const today = new Date();
       for (const inv of outstandingInvoicesList || []) {
-        const due = new Date(inv.due_date);
-        const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+        const diffDays = daysBetween(String(inv.due_date), todayDate);
         const amount = Number(inv.total_gbp) || 0;
 
         if (diffDays <= 0) {

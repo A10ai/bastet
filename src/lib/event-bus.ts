@@ -158,7 +158,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("id, number")
+    .select("id, number, property_id")
     .eq("id", apartment_id)
     .single();
 
@@ -185,6 +185,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   if (occupancy >= 85) {
     await emitEvent("occupancy.threshold_crossed", "event_bus", {
       occupancy_percent: occupancy,
+      property_id: apt?.property_id ?? null,
       direction: "above",
       threshold: 85,
     }, supabase);
@@ -200,6 +201,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   } else if (occupancy < 50) {
     await emitEvent("occupancy.threshold_crossed", "event_bus", {
       occupancy_percent: occupancy,
+      property_id: apt?.property_id ?? null,
       direction: "below",
       threshold: 50,
     }, supabase);
@@ -605,13 +607,14 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
   const unitLabel = apt?.number || apartment_id;
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Checkout: Unit ${unitLabel}`,
     message: `Unit ${unitLabel} checked out — cleaning dispatched`,
     type: "info",
@@ -632,7 +635,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
@@ -654,6 +657,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   }
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Check-in: ${guestName} in Unit ${unitLabel}`,
     message: `${guestName} has checked into Unit ${unitLabel}`,
     type: "success",
@@ -663,6 +667,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   if (isVip) {
     await createNotification(supabase, {
+      property_id: apt?.property_id ?? null,
       title: `VIP Alert: ${guestName} checked in`,
       message: `VIP guest ${guestName} has checked into Unit ${unitLabel}. Ensure premium service.`,
       type: "warning",
@@ -685,16 +690,19 @@ registerHandler("maintenance.created", async (event, supabase) => {
   if (priority !== "urgent" && priority !== "emergency") return [];
 
   let unitLabel = "Unknown";
+  let propertyId: string | null = null;
   if (apartment_id) {
     const { data: apt } = await supabase
       .from("apartments")
-      .select("number")
+      .select("number, property_id")
       .eq("id", apartment_id)
       .single();
     unitLabel = apt?.number || apartment_id;
+    propertyId = apt?.property_id ?? null;
   }
 
   await createNotification(supabase, {
+    property_id: propertyId,
     title: `Urgent: ${title || "Maintenance Issue"} in Unit ${unitLabel}`,
     message: `Urgent maintenance request created for Unit ${unitLabel}: ${title || "Unknown issue"}. Immediate attention required.`,
     type: "error",
@@ -712,13 +720,14 @@ registerHandler("housekeeping.completed", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
   const unitLabel = apt?.number || apartment_id;
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Room ready: Unit ${unitLabel}`,
     message: `Unit ${unitLabel} cleaning completed — now available`,
     type: "success",
@@ -741,6 +750,7 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
   const thresholdVal = threshold || (direction === "above" ? 85 : 50);
 
   await createNotification(supabase, {
+    property_id: (event.payload as { property_id?: string }).property_id ?? null,
     title: `Occupancy ${dirLabel} ${thresholdVal}%`,
     message: `Occupancy is now at ${occupancy_percent}% (${dirLabel} ${thresholdVal}% threshold) — pricing review needed`,
     type: "warning",

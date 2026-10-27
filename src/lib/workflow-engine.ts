@@ -149,6 +149,7 @@ export async function createWorkflow(
   // Notify staff about workflows that need approval
   if (initialStatus === "awaiting_approval") {
     await createNotification(supabase, {
+      property_id: input.property_id || null,
       title: `Workflow awaiting approval: ${input.title}`,
       message: `A ${input.priority || "normal"} priority workflow from ${input.source} requires your approval. ${steps.length} step${steps.length > 1 ? "s" : ""} planned.`,
       type: "warning",
@@ -334,7 +335,7 @@ export async function executeNextStep(
   let success = false;
 
   try {
-    result = await executeStepAction(supabase, step);
+    result = await executeStepAction(supabase, step, workflow.property_id);
     success = true;
   } catch (err) {
     result = {
@@ -407,6 +408,7 @@ export async function executeNextStep(
   // If workflow completed, send notification
   if (allDone && success) {
     await createNotification(supabase, {
+      property_id: workflow.property_id,
       title: `Workflow completed: ${workflow.title}`,
       message: `All ${workflow.total_steps} steps executed successfully.`,
       type: "success",
@@ -426,6 +428,7 @@ export async function executeNextStep(
   // If next step needs approval, notify
   if (nextStatus === "awaiting_approval") {
     await createNotification(supabase, {
+      property_id: workflow.property_id,
       title: `Approval needed: Step ${nextStep + 1} of "${workflow.title}"`,
       message: `Step "${steps[nextStep].title}" requires your approval before execution.`,
       type: "warning",
@@ -443,7 +446,8 @@ export async function executeNextStep(
 
 async function executeStepAction(
   supabase: SupabaseClient,
-  step: WorkflowStep
+  step: WorkflowStep,
+  propertyId: string | null
 ): Promise<Record<string, unknown>> {
   const params = step.action_params;
 
@@ -607,6 +611,7 @@ async function executeStepAction(
       }
 
       await createNotification(supabase, {
+        property_id: propertyId,
         title,
         message,
         type: (type as "info" | "success" | "warning" | "error") || "info",

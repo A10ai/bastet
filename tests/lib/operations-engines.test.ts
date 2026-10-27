@@ -88,6 +88,21 @@ describe("event-bus", () => {
     expect(Array.isArray(result.results)).toBe(true);
   });
 
+  it("scopes event broadcasts to the apartment's property", async () => {
+    const { emitEvent } = await import("@/lib/event-bus");
+    const db = seedDb();
+    const otherProperty = "22222222-2222-4222-8222-222222222222";
+    db.staff.push({ id: "77777777-7777-4777-8777-777777777799", property_id: otherProperty, auth_user_id: "user-x", first_name: "Other", last_name: "Hotel", email: "x@test.local", role: "manager", is_active: true });
+    db.staff_properties = [];
+    db.notifications = [];
+    const sb = createFakeSupabase(db);
+    const booking = db.bookings[0];
+    await emitEvent("booking.checked_out", "bookings", { booking_id: booking.id, apartment_id: booking.apartment_id }, sb, { idempotencyKey: null });
+    const recipients = new Set((db.notifications as { staff_id: string }[]).map((n) => n.staff_id));
+    expect(recipients.size).toBeGreaterThan(0);
+    expect(recipients.has("77777777-7777-4777-8777-777777777799")).toBe(false);
+  });
+
   it("derives an idempotency key and treats a repeat as a duplicate", async () => {
     const { emitEvent } = await import("@/lib/event-bus");
     const db = seedDb();
