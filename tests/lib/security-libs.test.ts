@@ -66,6 +66,10 @@ describe("api-error and rpc-error", () => {
     expect(rpcErrorResponse({ message: "PROPERTY_FORBIDDEN" }, "t").status).toBe(403);
     expect(rpcErrorResponse({ message: "STALE_STAY: stay ended" }, "t").status).toBe(409);
     expect(rpcErrorResponse({ message: "BUSINESS_DATE_OPEN: 2026-10-27 has not ended" }, "t").status).toBe(409);
+    // direct-write guards (00036)
+    expect(rpcErrorResponse({ message: "BOOKING_IMMUTABLE: total_amount_gbp cannot be changed directly" }, "t").status).toBe(409);
+    expect(rpcErrorResponse({ message: "PRICE_MISMATCH: the stay is quoted at 200.00" }, "t").status).toBe(409);
+    expect(rpcErrorResponse({ message: "ROOMS_BLOCKED: dates cannot change while rooms are blocked" }, "t").status).toBe(409);
     // any <ENTITY>_NOT_FOUND, including ones not listed explicitly
     const nf = rpcErrorResponse({ message: "GUEST_NOT_FOUND" }, "t");
     expect(nf.status).toBe(404);

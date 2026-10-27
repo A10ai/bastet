@@ -67,7 +67,8 @@ ROLLBACK;
 -- Standalone invoices: payment, full refund marks the invoice refunded.
 BEGIN; SELECT tst.as_user('recA');
 SELECT tst.mk('c2000000-0000-0000-0000-000000000001', '103', 'confirmed', 10, 12);
-SELECT tst.allowed('receptionist raises invoice', $$insert into invoices(id, property_id, booking_id, invoice_number, status, subtotal_gbp, total_gbp, due_date) values ('c2000000-0000-0000-0008-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 'INV-C2', 'sent', 100, 100, current_date + 7)$$);
+SELECT tst.allowed('receptionist raises invoice', $$insert into invoices(id, property_id, booking_id, invoice_number, status, subtotal_gbp, total_gbp, due_date, line_items, tax_rate_percent) values ('c2000000-0000-0000-0008-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 'INV-C2', 'draft', 100, 100, current_date + 7, '[{"description":"Transfer","quantity":1,"unit_price_gbp":100}]', 0)$$);
+SELECT tst.allowed('receptionist sends it', $$update invoices set status = 'sent', sent_at = now() where id = 'c2000000-0000-0000-0008-000000000001'$$);
 SELECT tst.raises('sub-penny payment', $$select record_invoice_payment('c2000000-0000-0000-0008-000000000001', 0.001, 'cash')$$, 'INVALID_AMOUNT');
 SELECT tst.raises('fraction of a penny', $$select record_invoice_payment('c2000000-0000-0000-0008-000000000001', 10.005, 'cash')$$, 'INVALID_AMOUNT');
 SELECT tst.raises('NaN', $$select record_invoice_payment('c2000000-0000-0000-0008-000000000001', 'NaN', 'cash')$$, 'INVALID_AMOUNT');

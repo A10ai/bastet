@@ -56,7 +56,8 @@ BEGIN;
 UPDATE apartment_types SET base_weekly_rate_gbp = 1000 WHERE id = 'aaaaaaaa-0000-0000-0002-000000000001';
 INSERT INTO rate_plans (id, property_id, code, name, pricing_mode, adjustment, is_active)
 VALUES ('e4000000-0000-0000-0000-0000000000aa', 'aaaaaaaa-0000-0000-0000-000000000001', 'NR10', 'Non-refundable', 'percent_off', 10, true);
-SELECT tst.as_user('recA');
+-- Fixture stays inserted as the owner (confirmed, and c at a hand-made
+-- price); the receptionist then checks in, prepays and checks out.
 -- (a) weekly rate 1000 over 7 nights; (b) the same with a 10% plan; (c) 40.30 x 7 less a 5% length-of-stay discount; (d) 33.33 x 3
 SELECT tst.allowed('book a', $$insert into bookings(id,property_id,apartment_id,guest_id,channel_id,reference,status,check_in,check_out,rate_per_night_gbp,discount_percentage,total_amount_gbp)
   select 'e4000000-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0001-000000000101','aaaaaaaa-0000-0000-0004-000000000001','cccccccc-0000-0000-0000-000000000001','E4A','confirmed',current_date,current_date+7,
@@ -68,6 +69,7 @@ SELECT tst.allowed('book b', $$insert into bookings(id,property_id,apartment_id,
     from (select quote_stay('aaaaaaaa-0000-0000-0002-000000000001', current_date, current_date+7, 'e4000000-0000-0000-0000-0000000000aa') q) s$$);
 SELECT tst.allowed('book c', $$insert into bookings(id,property_id,apartment_id,guest_id,channel_id,reference,status,check_in,check_out,rate_per_night_gbp,discount_percentage,total_amount_gbp)
   values ('e4000000-0000-0000-0000-000000000003','aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0001-000000000103','aaaaaaaa-0000-0000-0004-000000000001','cccccccc-0000-0000-0000-000000000001','E4C','confirmed',current_date,current_date+7,40.30,5,268.00)$$);
+SELECT tst.as_user('recA');
 SELECT tst.eq('quote a total', (SELECT total_amount_gbp::text FROM bookings WHERE id = 'e4000000-0000-0000-0000-000000000001'), '1000.00');
 SELECT tst.eq('quote b total', (SELECT total_amount_gbp::text FROM bookings WHERE id = 'e4000000-0000-0000-0000-000000000002'), '900.00');
 SELECT tst.ok('check in a', $$select checkin_booking('e4000000-0000-0000-0000-000000000001')$$);

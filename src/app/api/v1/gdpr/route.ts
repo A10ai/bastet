@@ -293,7 +293,9 @@ async function executeErasure(requestId: string) {
   const guestId = gdprRequest.guest_id;
 
   // Anonymize guest record (keep the row for financial/audit trail, but strip PII)
-  await supabase
+  // Column names as in the guests table: "address" and "postal_code" do not
+  // exist, so the update used to fail and leave the guest's PII in place.
+  const { error: anonymiseError } = await supabase
     .from("guests")
     .update({
       first_name: "[REDACTED]",
@@ -301,14 +303,17 @@ async function executeErasure(requestId: string) {
       email: `redacted_${guestId.substring(0, 8)}@erasure.hospitai.uk`,
       phone: null,
       passport_number: null,
+      date_of_birth: null,
       nationality: null,
-      address: null,
+      address_line1: null,
+      address_line2: null,
       city: null,
-      postal_code: null,
+      postcode: null,
       notes: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", guestId);
+  if (anonymiseError) return handleDbError(anonymiseError, "gdpr.anonymise_guest");
 
   // Delete guest preferences
   await supabase.from("guest_preferences").delete().eq("guest_id", guestId);

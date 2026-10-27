@@ -36,6 +36,10 @@ const STATUS_BY_CODE: Record<string, number> = {
   ROLE_FORBIDDEN: 403,
   STALE_STAY: 409,
   BUSINESS_DATE_OPEN: 409,
+  // direct-write guards (00036)
+  BOOKING_IMMUTABLE: 409,
+  PRICE_MISMATCH: 409,
+  ROOMS_BLOCKED: 409,
   // rate plans (00027)
   TYPE_NOT_FOUND: 404,
   RATE_PLAN_NOT_FOUND: 404,

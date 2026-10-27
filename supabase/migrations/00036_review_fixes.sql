@@ -25,6 +25,20 @@
 --     had no write policies, so the user-scoped routes that write them
 --     always failed under RLS
 --
+-- and from the second review (round 5):
+--   * bookings, invoices, guests and groups were writable by front-desk
+--     staff through PostgREST, so a receptionist could check a guest out
+--     unpaid with UPDATE bookings SET status = 'checked_out', rewrite a
+--     stay's total mid-stay, mark an invoice paid, or award loyalty points;
+--     direct writes are now limited to what the app does (section 8)
+--   * the properties write policy let admins zero VAT and the tourism levy
+--     and rewind the business date; only the settings columns are granted
+--   * the duplicate-clean merge deleted tasks with notes, photos or an
+--     assignee; only untouched copies are deleted now
+--   * revenue_by_stay_date counted nights after an early departure
+--   * a staff member moved to another property kept the old home
+--     membership
+--
 -- Idempotent. Re-running 00033 or 00034 after this file reinstates their
 -- versions of the objects redefined here: re-run 00033 onwards in order.
 -- ============================================================
@@ -114,14 +128,17 @@ BEGIN
 END $$;
 REVOKE EXECUTE ON FUNCTION post_room_charges(UUID, DATE, TEXT, UUID) FROM PUBLIC, anon, authenticated, service_role;
 
--- Revenue by stay date uses the same per-night amount as the folio.
+-- Revenue by stay date uses the same per-night amount as the folio, and the
+-- same early-departure rule as post_room_charges: nights after the guest
+-- left are not revenue.
 CREATE OR REPLACE FUNCTION revenue_by_stay_date(p_property_id UUID, p_from DATE, p_to DATE)
 RETURNS TABLE (stay_date DATE, room_nights INT, room_revenue_gbp NUMERIC, rooms_available INT)
 LANGUAGE sql STABLE
 SET search_path = public, pg_temp
 AS $$
   WITH days AS (SELECT generate_series(p_from, p_to, '1 day')::date AS d),
-  rooms AS (SELECT COUNT(*)::int AS n FROM apartments WHERE property_id = p_property_id AND status <> 'out_of_service')
+  rooms AS (SELECT COUNT(*)::int AS n FROM apartments WHERE property_id = p_property_id AND status <> 'out_of_service'),
+  prop AS (SELECT COALESCE(timezone, 'UTC') AS tz FROM properties WHERE id = p_property_id)
   SELECT d.d,
          COUNT(b.id)::int,
          ROUND(COALESCE(SUM(booking_night_net(b, d.d)), 0), 2),
@@ -129,6 +146,9 @@ AS $$
     FROM days d
     LEFT JOIN bookings b ON b.property_id = p_property_id AND b.status IN ('confirmed','checked_in','checked_out')
          AND b.check_in <= d.d AND b.check_out > d.d
+         AND NOT (b.status = 'checked_out'
+                  AND (b.checked_out_at IS NULL
+                       OR (b.checked_out_at AT TIME ZONE COALESCE((SELECT tz FROM prop), 'UTC'))::date <= d.d))
    GROUP BY d.d ORDER BY d.d;
 $$;
 
@@ -329,36 +349,40 @@ GRANT EXECUTE ON FUNCTION system_event_id_by_key(TEXT) TO authenticated, service
 -- ------------------------------------------------------------
 -- 6. Duplicate protection always in place: merge duplicates, then index
 -- ------------------------------------------------------------
--- Open checkout cleans: keep the most advanced per unit and day (started,
--- then assigned, then oldest). Untouched copies go; a copy someone already
--- started is closed as a duplicate (there is no cancelled status).
-WITH ranked AS (
-  SELECT id, started_at,
-         row_number() OVER (PARTITION BY apartment_id, scheduled_date
-                            ORDER BY (started_at IS NOT NULL) DESC, (status = 'in_progress') DESC,
-                                     (assigned_to IS NOT NULL) DESC, created_at, id) AS rn,
-         first_value(id) OVER (PARTITION BY apartment_id, scheduled_date
-                               ORDER BY (started_at IS NOT NULL) DESC, (status = 'in_progress') DESC,
-                                        (assigned_to IS NOT NULL) DESC, created_at, id) AS keeper
-    FROM housekeeping_tasks
-   WHERE type = 'checkout_clean' AND status NOT IN ('completed', 'verified')
-)
-DELETE FROM housekeeping_tasks h USING ranked r
- WHERE h.id = r.id AND r.rn > 1 AND r.started_at IS NULL;
-WITH ranked AS (
-  SELECT id,
-         row_number() OVER (PARTITION BY apartment_id, scheduled_date
-                            ORDER BY (status = 'in_progress') DESC, started_at, created_at, id) AS rn,
-         first_value(id) OVER (PARTITION BY apartment_id, scheduled_date
-                               ORDER BY (status = 'in_progress') DESC, started_at, created_at, id) AS keeper
-    FROM housekeeping_tasks
-   WHERE type = 'checkout_clean' AND status NOT IN ('completed', 'verified')
-)
+-- Open checkout cleans: keep the copy with the most work in it per unit and
+-- day (in progress, started, issue found, notes / photos / checklist,
+-- assigned, then oldest). Only pristine copies are deleted: pending,
+-- unassigned, never started, with no notes, photos or checklist. Any other
+-- copy is closed as a duplicate (there is no cancelled status) and keeps
+-- its notes and photos, with its former status recorded in the note.
+CREATE OR REPLACE FUNCTION pg_temp.hk_has_work(h housekeeping_tasks) RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+  SELECT h.notes IS NOT NULL
+      OR COALESCE(array_length(h.photo_before, 1), 0) > 0
+      OR COALESCE(array_length(h.photo_after, 1), 0) > 0
+      OR COALESCE(h.checklist, '[]'::jsonb) <> '[]'::jsonb;
+$$;
+CREATE OR REPLACE FUNCTION pg_temp.hk_pristine(h housekeeping_tasks) RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+  SELECT h.status = 'pending' AND h.assigned_to IS NULL AND h.started_at IS NULL AND NOT pg_temp.hk_has_work(h);
+$$;
+CREATE TEMP VIEW hk_dupes AS
+  SELECT h.id, h.status, pg_temp.hk_pristine(h) AS pristine,
+         row_number() OVER w AS rn,
+         first_value(h.id) OVER w AS keeper
+    FROM housekeeping_tasks h
+   WHERE h.type = 'checkout_clean' AND h.status NOT IN ('completed', 'verified')
+  WINDOW w AS (PARTITION BY h.apartment_id, h.scheduled_date
+               ORDER BY (h.status = 'in_progress') DESC, (h.started_at IS NOT NULL) DESC,
+                        (h.status = 'issue_found') DESC, pg_temp.hk_has_work(h) DESC,
+                        (h.assigned_to IS NOT NULL) DESC, h.created_at, h.id);
+DELETE FROM housekeeping_tasks h USING hk_dupes r
+ WHERE h.id = r.id AND r.rn > 1 AND r.pristine;
 UPDATE housekeeping_tasks h
    SET status = 'completed', completed_at = COALESCE(h.completed_at, NOW()),
-       notes = concat_ws(E'\n', h.notes, format('Closed by migration 00036: duplicate of checkout clean %s', r.keeper))
-  FROM ranked r
+       notes = concat_ws(E'\n', h.notes,
+                         format('Closed by migration 00036 (was %s): duplicate of checkout clean %s', r.status, r.keeper))
+  FROM hk_dupes r
  WHERE h.id = r.id AND r.rn > 1;
+DROP VIEW hk_dupes;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_housekeeping_open_checkout_clean ON housekeeping_tasks (apartment_id, scheduled_date, type)
   WHERE type = 'checkout_clean' AND status NOT IN ('completed', 'verified');
 
@@ -433,6 +457,36 @@ DROP POLICY IF EXISTS properties_admin_update ON properties;
 CREATE POLICY properties_admin_update ON properties FOR UPDATE TO authenticated
   USING (role_at_least(90) AND can_access_property(id))
   WITH CHECK (role_at_least(90) AND can_access_property(id));
+-- ...and only the settings PUT /api/v1/properties edits. VAT, the tourism
+-- levy and the business date drive what every stay is charged: they are
+-- set by the server (night audit, service role), never through the API.
+REVOKE UPDATE ON properties FROM anon, authenticated;
+GRANT UPDATE (name, slug, address, city, country, timezone, default_currency, reporting_currency,
+              star_rating, total_apartments, status, phone, email, website, updated_at)
+  ON properties TO authenticated;
+
+-- A staff member who moves to another home property loses the automatic
+-- membership of the old one (rows with granted_by set were granted
+-- explicitly and stay). SECURITY DEFINER: it only mirrors a staff change
+-- that already passed the staff policies.
+CREATE OR REPLACE FUNCTION staff_home_membership()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.property_id IS NOT NULL AND OLD.property_id IS DISTINCT FROM NEW.property_id THEN
+    DELETE FROM staff_properties
+     WHERE staff_id = NEW.id AND property_id = OLD.property_id AND granted_by IS NULL;
+  END IF;
+  IF NEW.property_id IS NOT NULL THEN
+    INSERT INTO staff_properties (staff_id, property_id)
+    VALUES (NEW.id, NEW.property_id)
+    ON CONFLICT DO NOTHING;
+  END IF;
+  RETURN NEW;
+END $$;
 
 -- currency_rates: one table for every property; owners record manual rates
 -- (the FX refresh runs as the service role).
@@ -445,3 +499,273 @@ CREATE POLICY currency_rates_owner_insert ON currency_rates FOR INSERT TO authen
 DROP POLICY IF EXISTS pricing_decisions_admin_insert ON pricing_decisions;
 CREATE POLICY pricing_decisions_admin_insert ON pricing_decisions FOR INSERT TO authenticated
   WITH CHECK (role_at_least(90) AND can_access_property(property_id));
+
+-- ------------------------------------------------------------
+-- 8. Direct writes cannot skip the state machines and money rules
+-- ------------------------------------------------------------
+-- RLS lets front-desk staff write bookings, invoices, guests and groups
+-- (the user-scoped routes need that), so with only the table policies a
+-- receptionist calling Supabase REST directly could check a guest out,
+-- rewrite a stay's price, mark an invoice paid or award loyalty points.
+-- These guards allow exactly what the app does with the user client;
+-- everything else goes through the SECURITY DEFINER functions, inside
+-- which current_user is the function owner and the guards stand aside.
+-- (is_trusted_caller() is not used here: it is false inside those
+-- functions too, because the 'role' setting stays 'authenticated'.)
+CREATE OR REPLACE FUNCTION is_direct_client_write()
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT current_user IN ('authenticated', 'anon');
+$$;
+
+-- bookings: created pending at the quoted price (POST /bookings, or
+-- add_group_rooms for a group); afterwards only confirmation,
+-- cancellation and the PATCH fields (party size, requests, notes,
+-- currency). Check-in, check-out, no-shows, prices, dates and rooms change
+-- only through the booking functions.
+CREATE OR REPLACE FUNCTION bookings_guard_direct_writes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_apt apartments%ROWTYPE;
+  v_code TEXT;
+  v_quote JSONB;
+  v_group_status TEXT;
+  v_group_property UUID;
+  v_changed TEXT[];
+BEGIN
+  IF NOT is_direct_client_write() THEN RETURN COALESCE(NEW, OLD); END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'BOOKING_IMMUTABLE: a booking is cancelled, never deleted' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    SELECT * INTO v_apt FROM apartments WHERE id = NEW.apartment_id;
+    IF NOT FOUND OR v_apt.property_id IS DISTINCT FROM NEW.property_id THEN
+      RAISE EXCEPTION 'PROPERTY_FORBIDDEN: the apartment does not belong to this property' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.guest_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM guests WHERE id = NEW.guest_id AND property_id = NEW.property_id) THEN
+      RAISE EXCEPTION 'PROPERTY_FORBIDDEN: the guest does not belong to this property' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.group_id IS NOT NULL THEN
+      SELECT status, property_id INTO v_group_status, v_group_property FROM booking_groups WHERE id = NEW.group_id;
+      IF v_group_property IS DISTINCT FROM NEW.property_id THEN
+        RAISE EXCEPTION 'GROUP_NOT_FOUND: group % not found', NEW.group_id USING ERRCODE = 'P0002';
+      END IF;
+    END IF;
+    IF NOT (NEW.status = 'pending' OR (NEW.status = 'confirmed' AND COALESCE(v_group_status, '') = 'confirmed')) THEN
+      RAISE EXCEPTION 'INVALID_STATUS: a new booking starts pending' USING ERRCODE = 'P0001';
+    END IF;
+    IF NEW.checked_in_at IS NOT NULL OR NEW.checked_out_at IS NOT NULL OR NEW.cancelled_at IS NOT NULL
+       OR NEW.precheckin IS NOT NULL OR NEW.precheckin_completed_at IS NOT NULL THEN
+      RAISE EXCEPTION 'INVALID_STATUS: a new booking has not been checked in, out or cancelled' USING ERRCODE = 'P0001';
+    END IF;
+    SELECT code INTO v_code FROM booking_channels WHERE id = NEW.channel_id;
+    v_quote := quote_stay(v_apt.apartment_type_id, NEW.check_in, NEW.check_out, NEW.rate_plan_id, v_code);
+    IF NEW.total_amount_gbp IS DISTINCT FROM (v_quote->>'total_gbp')::numeric
+       OR NEW.rate_per_night_gbp IS DISTINCT FROM (v_quote->>'rate_per_night_gbp')::numeric THEN
+      RAISE EXCEPTION 'PRICE_MISMATCH: the stay is quoted at % (% per night)',
+        v_quote->>'total_gbp', v_quote->>'rate_per_night_gbp' USING ERRCODE = 'P0001';
+    END IF;
+    NEW.discount_percentage := COALESCE((v_quote->>'discount_percentage')::numeric, 0);
+    NEW.rate_plan_id := NULLIF(v_quote->'rate_plan'->>'id', '')::uuid;
+    NEW.rate_plan_snapshot := v_quote->'rate_plan';
+    RETURN NEW;
+  END IF;
+
+  -- UPDATE
+  IF NEW.status IS DISTINCT FROM OLD.status
+     AND NOT ((OLD.status = 'pending' AND NEW.status IN ('confirmed', 'cancelled'))
+              OR (OLD.status = 'confirmed' AND NEW.status = 'cancelled')) THEN
+    RAISE EXCEPTION 'INVALID_STATUS: a booking cannot go from % to % here', OLD.status, NEW.status USING ERRCODE = 'P0001';
+  END IF;
+  -- (nights is generated, and not yet computed in a BEFORE trigger)
+  SELECT array_agg(n.key ORDER BY n.key) INTO v_changed
+    FROM jsonb_each(to_jsonb(NEW)) n
+   WHERE n.value IS DISTINCT FROM (to_jsonb(OLD) -> n.key)
+     AND n.key NOT IN ('nights', 'updated_at', 'status', 'cancelled_at', 'cancellation_reason', 'adults', 'children',
+                       'special_requests', 'internal_notes', 'guest_currency', 'total_amount_guest_currency');
+  IF v_changed IS NOT NULL THEN
+    RAISE EXCEPTION 'BOOKING_IMMUTABLE: % cannot be changed directly; use check-in, check-out or a new booking',
+      array_to_string(v_changed, ', ') USING ERRCODE = 'P0001';
+  END IF;
+  IF (NEW.cancelled_at IS DISTINCT FROM OLD.cancelled_at OR NEW.cancellation_reason IS DISTINCT FROM OLD.cancellation_reason)
+     AND NOT (NEW.status = 'cancelled' AND OLD.status <> 'cancelled') THEN
+    RAISE EXCEPTION 'INVALID_STATUS: the cancellation is recorded when the booking is cancelled' USING ERRCODE = 'P0001';
+  END IF;
+  IF OLD.status IN ('checked_out', 'cancelled', 'no_show')
+     AND (NEW.adults IS DISTINCT FROM OLD.adults OR NEW.children IS DISTINCT FROM OLD.children) THEN
+    RAISE EXCEPTION 'BOOKING_IMMUTABLE: the party of a % booking is final', OLD.status USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_bookings_direct_guard ON bookings;
+CREATE TRIGGER trg_bookings_direct_guard BEFORE INSERT OR UPDATE OR DELETE ON bookings
+  FOR EACH ROW EXECUTE FUNCTION bookings_guard_direct_writes();
+
+-- invoices: a direct invoice is created as a draft whose totals are what
+-- its lines add up to (each line rounded, VAT on the rounded subtotal, as
+-- src/lib/finance-engine.ts calculateInvoiceTotals); afterwards only
+-- draft -> sent and draft -> cancelled. Paid / partially paid / overdue /
+-- refunded come from the payment functions. The VAT rate is stored so a
+-- draft whose lines are edited is re-totalled at the same rate.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_rate_percent NUMERIC(5,2)
+  CHECK (tax_rate_percent IS NULL OR (tax_rate_percent >= 0 AND tax_rate_percent <= 100));
+UPDATE invoices i
+   SET tax_rate_percent = CASE
+         WHEN i.subtotal_gbp > 0 THEN LEAST(100, GREATEST(0, ROUND(i.tax_amount_gbp * 100 / i.subtotal_gbp, 2)))
+         ELSE COALESCE((SELECT p.vat_rate_percent FROM properties p WHERE p.id = i.property_id), 0) END
+ WHERE i.tax_rate_percent IS NULL;
+
+CREATE OR REPLACE FUNCTION invoices_guard_direct_writes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_items JSONB;
+  v_subtotal NUMERIC;
+  v_bad INT;
+BEGIN
+  IF NOT is_direct_client_write() THEN RETURN COALESCE(NEW, OLD); END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;  -- only drafts; trg_invoices_frozen_delete
+
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status <> 'draft' OR NEW.sent_at IS NOT NULL OR NEW.paid_at IS NOT NULL THEN
+      RAISE EXCEPTION 'INVALID_STATUS: an invoice starts as a draft' USING ERRCODE = 'P0001';
+    END IF;
+    IF NEW.booking_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM bookings WHERE id = NEW.booking_id AND property_id = NEW.property_id) THEN
+      RAISE EXCEPTION 'PROPERTY_FORBIDDEN: the booking does not belong to this property' USING ERRCODE = '42501';
+    END IF;
+    NEW.discount_amount_gbp := 0;
+    NEW.tax_rate_percent := COALESCE(NEW.tax_rate_percent,
+                                     (SELECT vat_rate_percent FROM properties WHERE id = NEW.property_id), 0);
+  ELSE
+    IF NEW.status IS DISTINCT FROM OLD.status
+       AND NOT (OLD.status = 'draft' AND NEW.status IN ('sent', 'cancelled')) THEN
+      IF OLD.status <> 'draft' THEN
+        RAISE EXCEPTION 'INVOICE_IMMUTABLE: an issued invoice cannot go from % to % here; payments set its status',
+          OLD.status, NEW.status USING ERRCODE = 'P0001';
+      END IF;
+      RAISE EXCEPTION 'INVALID_STATUS: a draft invoice is sent or cancelled; payments set the rest' USING ERRCODE = 'P0001';
+    END IF;
+    IF NEW.paid_at IS DISTINCT FROM OLD.paid_at
+       OR (NEW.sent_at IS DISTINCT FROM OLD.sent_at AND NOT (OLD.status = 'draft' AND NEW.status = 'sent'))
+       OR NEW.property_id IS DISTINCT FROM OLD.property_id OR NEW.booking_id IS DISTINCT FROM OLD.booking_id
+       OR NEW.invoice_number IS DISTINCT FROM OLD.invoice_number
+       OR NEW.discount_amount_gbp IS DISTINCT FROM OLD.discount_amount_gbp
+       OR (OLD.status <> 'draft' AND NEW.tax_rate_percent IS DISTINCT FROM OLD.tax_rate_percent) THEN
+      RAISE EXCEPTION 'INVOICE_IMMUTABLE: that field is set by the server' USING ERRCODE = 'P0001';
+    END IF;
+    IF OLD.status <> 'draft' THEN RETURN NEW; END IF;  -- money fields frozen by trg_invoices_frozen
+  END IF;
+
+  IF NEW.guest_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM guests WHERE id = NEW.guest_id AND property_id = NEW.property_id) THEN
+    RAISE EXCEPTION 'PROPERTY_FORBIDDEN: the guest does not belong to this property' USING ERRCODE = '42501';
+  END IF;
+
+  -- Re-total the draft from its lines
+  IF jsonb_typeof(COALESCE(NEW.line_items, '[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'INVALID_AMOUNT: line_items must be a list' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT COUNT(*) FILTER (WHERE jsonb_typeof(e->'quantity') <> 'number' OR jsonb_typeof(e->'unit_price_gbp') <> 'number'
+                            OR (e->>'quantity')::numeric <= 0 OR (e->>'unit_price_gbp')::numeric < 0)
+    INTO v_bad
+    FROM jsonb_array_elements(COALESCE(NEW.line_items, '[]'::jsonb)) e;
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'INVALID_AMOUNT: every line needs a positive quantity and a unit price of at least 0' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT COALESCE(jsonb_agg(e || jsonb_build_object('total_gbp',
+                    ROUND((e->>'quantity')::numeric * (e->>'unit_price_gbp')::numeric, 2)) ORDER BY o), '[]'::jsonb),
+         COALESCE(SUM(ROUND((e->>'quantity')::numeric * (e->>'unit_price_gbp')::numeric, 2)), 0)
+    INTO v_items, v_subtotal
+    FROM jsonb_array_elements(COALESCE(NEW.line_items, '[]'::jsonb)) WITH ORDINALITY AS t(e, o);
+  NEW.line_items := v_items;
+  NEW.subtotal_gbp := v_subtotal;
+  NEW.tax_amount_gbp := ROUND(v_subtotal * COALESCE(NEW.tax_rate_percent, 0) / 100, 2);
+  NEW.total_gbp := NEW.subtotal_gbp + NEW.tax_amount_gbp - COALESCE(NEW.discount_amount_gbp, 0);
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_invoices_direct_guard ON invoices;
+CREATE TRIGGER trg_invoices_direct_guard BEFORE INSERT OR UPDATE OR DELETE ON invoices
+  FOR EACH ROW EXECUTE FUNCTION invoices_guard_direct_writes();
+
+-- guests: loyalty and stay statistics are earned at check-out, a guest's
+-- login is linked by the server, and a guest stays with their property.
+CREATE OR REPLACE FUNCTION guests_guard_direct_writes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT is_direct_client_write() THEN RETURN NEW; END IF;
+  IF TG_OP = 'INSERT' THEN
+    NEW.loyalty_tier := 'bronze';
+    NEW.loyalty_points := 0;
+    NEW.total_stays := 0;
+    NEW.total_nights := 0;
+    NEW.total_spend_gbp := 0;
+    NEW.auth_user_id := NULL;
+    RETURN NEW;
+  END IF;
+  IF NEW.loyalty_tier IS DISTINCT FROM OLD.loyalty_tier OR NEW.loyalty_points IS DISTINCT FROM OLD.loyalty_points
+     OR NEW.total_stays IS DISTINCT FROM OLD.total_stays OR NEW.total_nights IS DISTINCT FROM OLD.total_nights
+     OR NEW.total_spend_gbp IS DISTINCT FROM OLD.total_spend_gbp
+     OR NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id OR NEW.property_id IS DISTINCT FROM OLD.property_id THEN
+    RAISE EXCEPTION 'ROLE_FORBIDDEN: loyalty, stay totals, login and property are maintained by the server' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_guests_direct_guard ON guests;
+CREATE TRIGGER trg_guests_direct_guard BEFORE INSERT OR UPDATE ON guests
+  FOR EACH ROW EXECUTE FUNCTION guests_guard_direct_writes();
+
+-- booking_groups: dates are fixed while rooms are blocked (as PATCH
+-- /groups/[id] enforces), a group is cancelled through cancel_group()
+-- (which cancels its rooms first), and a group with bookings stays.
+CREATE OR REPLACE FUNCTION booking_groups_guard_direct_writes()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT is_direct_client_write() THEN RETURN COALESCE(NEW, OLD); END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF EXISTS (SELECT 1 FROM bookings WHERE group_id = OLD.id) THEN
+      RAISE EXCEPTION 'ROOMS_BLOCKED: a group with bookings is cancelled, not deleted' USING ERRCODE = 'P0001';
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status NOT IN ('tentative', 'confirmed') THEN
+      RAISE EXCEPTION 'INVALID_STATUS: a new group is tentative or confirmed' USING ERRCODE = 'P0001';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF NEW.property_id IS DISTINCT FROM OLD.property_id THEN
+    RAISE EXCEPTION 'PROPERTY_FORBIDDEN: a group stays with its property' USING ERRCODE = '42501';
+  END IF;
+  IF (NEW.check_in IS DISTINCT FROM OLD.check_in OR NEW.check_out IS DISTINCT FROM OLD.check_out)
+     AND EXISTS (SELECT 1 FROM bookings WHERE group_id = OLD.id AND status NOT IN ('cancelled', 'no_show')) THEN
+    RAISE EXCEPTION 'ROOMS_BLOCKED: dates cannot change while rooms are blocked' USING ERRCODE = 'P0001';
+  END IF;
+  IF OLD.status = 'cancelled' AND NEW.status IS DISTINCT FROM OLD.status THEN
+    RAISE EXCEPTION 'INVALID_STATUS: a cancelled group stays cancelled' USING ERRCODE = 'P0001';
+  END IF;
+  IF NEW.status = 'cancelled' AND OLD.status <> 'cancelled'
+     AND EXISTS (SELECT 1 FROM bookings WHERE group_id = OLD.id AND status IN ('pending', 'confirmed')) THEN
+    RAISE EXCEPTION 'INVALID_STATUS: cancel a group with cancel_group(), which cancels its rooms' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_booking_groups_direct_guard ON booking_groups;
+CREATE TRIGGER trg_booking_groups_direct_guard BEFORE INSERT OR UPDATE OR DELETE ON booking_groups
+  FOR EACH ROW EXECUTE FUNCTION booking_groups_guard_direct_writes();

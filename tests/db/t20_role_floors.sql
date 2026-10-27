@@ -40,7 +40,7 @@ RESET ROLE;
 SELECT tst.as_user('recA');
 SELECT tst.allowed('receptionist edits booking notes', $$update bookings set internal_notes = 'rec'$$);
 SELECT tst.allowed('receptionist edits draft invoice', $$update invoices set notes = 'n'$$);
-SELECT tst.eq('receptionist books a stay', tst.mk('b0000000-0000-0000-0000-000000000002', '102', 'confirmed', 5, 7), 'OK rows=1');
+SELECT tst.eq('receptionist books a stay', tst.book('b0000000-0000-0000-0000-000000000002', '102', 5, 7), 'OK rows=1');
 SELECT tst.denied('receptionist deletes draft invoice', $$delete from invoices$$);
 SELECT tst.denied('receptionist inserts expense', $$insert into expenses(property_id, category, description, amount_egp, expense_date) values ('aaaaaaaa-0000-0000-0000-000000000001', 'other', 'x', 1, current_date)$$);
 RESET ROLE;

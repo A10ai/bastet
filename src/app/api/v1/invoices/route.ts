@@ -138,6 +138,8 @@ export async function POST(request: NextRequest) {
         guest_currency,
         fx_rate_used: fxRate,
         line_items: processedItems,
+        // Stored so the database re-totals edited drafts at the same rate (00036)
+        tax_rate_percent: taxRatePercent,
         due_date,
         notes: notes || null,
       })
