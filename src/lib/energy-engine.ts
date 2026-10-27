@@ -12,6 +12,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { businessDate } from "./business-date";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -571,7 +572,7 @@ export async function getEnergyRecommendations(
   }
 
   // 3. Pre-cool arriving rooms recommendation
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessDate();
   const { data: todayArrivals } = await supabase
     .from("bookings")
     .select("id, apartment_id, apartments(number)")

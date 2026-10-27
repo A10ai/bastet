@@ -12,6 +12,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addDays, businessDate, daysBetween, dayOfWeek } from "./business-date";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,19 +104,6 @@ interface DailyRecord {
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-function toDateStr(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000);
-}
-
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
-}
 
 function mean(arr: number[]): number {
   if (arr.length === 0) return 0;
@@ -175,7 +163,7 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
   }
 
   // Determine date range: from earliest check_in to today
-  const today = toDateStr(new Date());
+  const today = businessDate();
   const allCheckIns = bookings.map((b) => b.check_in).sort();
   const startDate = allCheckIns[0];
   const totalDays = daysBetween(startDate, today);
@@ -215,7 +203,6 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
   const records: DailyRecord[] = [];
   for (let i = 0; i <= totalDays; i++) {
     const d = addDays(startDate, i);
-    const dateObj = new Date(d);
     const occupied = dailyOccupied.get(d)?.size || 0;
     const rates = dailyRates.get(d) || [];
     const avgRate = rates.length > 0 ? mean(rates) : 0;
@@ -224,7 +211,7 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
     records.push({
       date: d,
       day_index: i,
-      dow: dateObj.getDay(),
+      dow: dayOfWeek(d),
       occupied,
       total: totalApartments,
       occupancy_pct: (occupied / totalApartments) * 100,
@@ -242,7 +229,7 @@ async function loadHistoricalData(supabase: SupabaseClient): Promise<{
 
 export async function trainModel(supabase: SupabaseClient): Promise<TrainedModel> {
   const { records, totalApartments } = await loadHistoricalData(supabase);
-  const today = toDateStr(new Date());
+  const today = businessDate();
 
   if (records.length < 3) {
     // Not enough data: return a "naive" model
@@ -373,8 +360,7 @@ export function predict(
   confirmedForDate: number = 0,
   recentMomentum: number = 0,
 ): Prediction {
-  const date = new Date(dateStr);
-  const dow = date.getDay();
+  const dow = dayOfWeek(dateStr);
   const dayIndex =
     daysBetween(model.training_start_date, dateStr);
   const daysFromTraining = daysBetween(model.training_date, dateStr);
@@ -460,7 +446,7 @@ export async function forecast30Days(supabase: SupabaseClient): Promise<Forecast
   const model = await trainModel(supabase);
 
   // Get confirmed future bookings to use as floor
-  const today = toDateStr(new Date());
+  const today = businessDate();
   const endDate = addDays(today, 30);
 
   const { data: futureBookings } = await supabase

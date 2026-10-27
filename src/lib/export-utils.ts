@@ -1,5 +1,7 @@
 // ─── CSV Export Utilities ─────────────────────────────────────────────
 
+import { csvCell } from "./csv";
+
 /**
  * Convert an array of flat objects to CSV string and trigger browser download.
  */
@@ -7,20 +9,11 @@ export function toCSV(data: Record<string, unknown>[], filename: string): void {
   if (data.length === 0) return;
 
   const headers = Object.keys(data[0]);
-  const csvRows: string[] = [headers.join(",")];
+  const csvRows: string[] = [headers.map(csvCell).join(",")];
 
   for (const row of data) {
-    const values = headers.map((h) => {
-      const val = row[h];
-      if (val === null || val === undefined) return "";
-      const str = String(val);
-      // Escape quotes and wrap in quotes if contains comma, quote, or newline
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    });
-    csvRows.push(values.join(","));
+    // csvCell quotes and neutralises formula-leading text (CSV injection)
+    csvRows.push(headers.map((h) => csvCell(row[h])).join(","));
   }
 
   const csvContent = csvRows.join("\n");

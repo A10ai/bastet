@@ -10,7 +10,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { format, subDays } from "date-fns";
+import { addDays, businessDate } from "./business-date";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,7 +46,8 @@ export interface AutomationDefinition {
 // ---------------------------------------------------------------------------
 
 const now = () => new Date().toISOString();
-const todayStr = () => format(new Date(), "yyyy-MM-dd");
+/** The property's business date (Africa/Cairo), not the server's UTC date. */
+const todayStr = () => businessDate();
 
 /** Supabase embedded joins can return an array or a single object depending on
  *  the relationship type. This helper safely extracts the first item. */
@@ -67,7 +68,10 @@ function first<T>(val: T | T[] | null | undefined): T | null {
  *   - does nothing unless AUTO_PRICING_ENABLED=true,
  *   - adjusts each apartment type at most once per business day,
  *   - never drifts more than ±AUTO_PRICING_MAX_DRIFT from the first rate
- *     recorded in the last 30 days of pricing_decisions.
+ *     ever recorded in pricing_decisions for the type (a rolling window
+ *     would let the limit reset and rates compound without bound),
+ *   - changes nothing when it cannot record the decision (no property row),
+ *     since the record is what enforces the daily cooldown.
  */
 const AUTO_PRICING_ENABLED = process.env.AUTO_PRICING_ENABLED === "true";
 const AUTO_PRICING_MAX_DRIFT = 0.3;
@@ -100,8 +104,8 @@ async function runAutoPricing(
   ).length;
   const occupancy = Math.round((occupied / total) * 100);
 
-  // Only act when crossing thresholds
-  if (occupancy < 85 && occupancy >= 50) {
+  // Only act when crossing thresholds; 50% and 85% themselves are normal
+  if (occupancy <= 85 && occupancy >= 50) {
     results.push({
       action: "pricing_check",
       description: `Occupancy at ${occupancy}% — within normal band (50-85%). No rate adjustment needed.`,
@@ -123,11 +127,19 @@ async function runAutoPricing(
     .limit(1)
     .single();
 
-  const since = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  if (!prop) {
+    results.push({
+      action: "pricing_skipped",
+      description: "No property record to log pricing decisions against; rates were not changed.",
+      impact: "No change",
+      timestamp: now(),
+    });
+    return results;
+  }
+
   const { data: recentDecisions } = await supabase
     .from("pricing_decisions")
     .select("apartment_type_id, decision_date, base_rate_gbp, created_at")
-    .gte("decision_date", since)
     .order("created_at", { ascending: true });
 
   const { data: types } = await supabase
@@ -184,7 +196,7 @@ async function runAutoPricing(
         timestamp: now(),
       });
 
-      if (prop) {
+      {
         await supabase.from("pricing_decisions").insert({
           property_id: prop.id,
           apartment_type_id: aptType.id,
@@ -342,6 +354,8 @@ async function runAutoHousekeeping(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const booking of sorted as Record<string, any>[]) {
     if (alreadyScheduled.has(booking.apartment_id)) continue;
+    // Two checkouts from one apartment on one day need one clean, not two
+    alreadyScheduled.add(booking.apartment_id);
 
     const apt = first<{ id: string; number: string; property_id: string }>(
       booking.apartment
@@ -419,7 +433,7 @@ async function runMaintenancePattern(
   supabase: SupabaseClient
 ): Promise<AutomationResult[]> {
   const results: AutomationResult[] = [];
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const thirtyDaysAgo = addDays(todayStr(), -30);
 
   const { data: requests } = await supabase
     .from("maintenance_requests")
@@ -692,10 +706,7 @@ async function runEnergyStandby(
 
   // Check which available units have no arrival scheduled today or tomorrow
   const td = todayStr();
-  const tomorrowDate = format(
-    new Date(Date.now() + 86_400_000),
-    "yyyy-MM-dd"
-  );
+  const tomorrowDate = addDays(td, 1);
 
   const { data: upcomingArrivals } = await supabase
     .from("bookings")

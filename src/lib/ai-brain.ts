@@ -19,6 +19,7 @@ import { createNotification } from "@/lib/notifications";
 import { logAudit, logAuditBatch } from "@/lib/audit";
 import { createWorkflowFromBrainDecision } from "@/lib/workflow-engine";
 import { anonymizeSnapshot } from "@/lib/pii-anonymizer";
+import { addDays, businessDate } from "@/lib/business-date";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -221,8 +222,9 @@ export async function updateBrainConfig(
 // ---------------------------------------------------------------------------
 
 async function gatherDataSnapshot(supabase: SupabaseClient): Promise<DataSnapshot> {
-  const today = new Date().toISOString().split("T")[0];
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+  // The property's business date, not the server's UTC date
+  const today = businessDate();
+  const weekAgo = addDays(today, -7);
   const monthStart = `${today.slice(0, 7)}-01`;
 
   // Run all queries in parallel for speed
@@ -431,6 +433,23 @@ interface ClaudeDecisionRaw {
 interface ClaudeResponse {
   decisions: ClaudeDecisionRaw[];
   summary: string;
+}
+
+/**
+ * The only events a model decision may emit on auto-execute. The prompt lists
+ * them, but model output is untrusted (the snapshot can carry text that steers
+ * it), so anything else is dropped rather than emitted.
+ */
+export const BRAIN_EMITTABLE_EVENTS: readonly EventType[] = [
+  "occupancy.threshold_crossed",
+  "energy.waste_detected",
+  "pricing.rate_changed",
+  "guest.vip_arriving",
+  "maintenance.created",
+] as EventType[];
+
+function allowedEventType(t: unknown): EventType | null {
+  return typeof t === "string" && (BRAIN_EMITTABLE_EVENTS as readonly string[]).includes(t) ? (t as EventType) : null;
 }
 
 async function callClaudeAPI(snapshot: DataSnapshot): Promise<ClaudeResponse | null> {
@@ -710,8 +729,8 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
       executed: shouldAutoExecute,
       approved: shouldAutoExecute ? true : null,
       mode,
-      event_type: raw.event_type || null,
-      event_payload: raw.event_payload || {},
+      event_type: allowedEventType(raw.event_type),
+      event_payload: raw.event_payload && typeof raw.event_payload === "object" ? raw.event_payload : {},
       data_snapshot: snapshot as unknown as Record<string, unknown>,
       summary: analysisResult!.summary,
     };
@@ -726,18 +745,20 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
     if (batchErr || !insertedRows) {
       logger.error({ err: batchErr?.message }, "[AI Brain] Batch insert failed");
     } else {
-      // Emit events for auto-executable decisions and build storedDecisions
+      // Emit events for auto-executed decisions and build storedDecisions.
+      // Everything is read from the inserted row itself, so nothing relies on
+      // the database returning rows in insert order.
       const emitPromises: Promise<unknown>[] = [];
-      for (let i = 0; i < insertedRows.length; i++) {
-        const inserted = insertedRows[i];
-        const raw = analysisResult.decisions[i];
+      for (const inserted of insertedRows) {
+        const eventType = allowedEventType(inserted.event_type);
+        const eventPayload = (inserted.event_payload || {}) as Record<string, unknown>;
 
-        if (mode === "autonomous" && raw.auto_executable && raw.confidence >= 75 && raw.event_type) {
+        if (mode === "autonomous" && inserted.executed && eventType) {
           emitPromises.push(
             emitEvent(
-              raw.event_type as EventType,
+              eventType,
               "ai_brain",
-              raw.event_payload || {},
+              eventPayload,
               supabase
             ).catch((err) => {
               logger.error({ err }, "[AI Brain] Failed to emit event on auto-execute");
@@ -756,8 +777,8 @@ export async function runBrainCycle(supabase: SupabaseClient): Promise<BrainCycl
           executed: inserted.executed || false,
           approved: inserted.approved,
           created_at: inserted.created_at,
-          event_type: raw.event_type as EventType | undefined,
-          event_payload: raw.event_payload,
+          event_type: eventType ?? undefined,
+          event_payload: eventPayload,
         });
       }
       await Promise.all(emitPromises);

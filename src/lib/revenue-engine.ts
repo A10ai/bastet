@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHANNEL_COMMISSIONS, LENGTH_OF_STAY_DISCOUNTS } from "@/lib/constants";
 import { commissionFraction } from "@/lib/utils";
+import { addDays, businessDate, daysBetween, monthStart } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +45,8 @@ export interface ChannelMixItem {
 
 export interface ChannelMixResult {
   channels: ChannelMixItem[];
+  /** Calendar days the revenue figures cover; annual estimates scale by 365 / period_days. */
+  period_days: number;
   ai_recommendation: {
     summary: string;
     actions: string[];
@@ -138,9 +141,7 @@ export interface RevenueData {
 // ---------------------------------------------------------------------------
 
 function nightsBetween(checkIn: string, checkOut: string): number {
-  const a = new Date(checkIn);
-  const b = new Date(checkOut);
-  return Math.max(1, Math.round((b.getTime() - a.getTime()) / 86_400_000));
+  return Math.max(1, daysBetween(checkIn, checkOut));
 }
 
 function getCommissionRate(channelCode: string, dbRate?: number | null): number {
@@ -149,12 +150,20 @@ function getCommissionRate(channelCode: string, dbRate?: number | null): number 
   return CHANNEL_COMMISSIONS[code] ?? 0;
 }
 
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-function daysInMonth(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+/**
+ * Calendar days covered by a set of stays (earliest check-in to latest
+ * check-out), at least 1. Used as the capacity period for occupancy and
+ * RevPAR so revenue and capacity always describe the same span.
+ */
+function staySpanDays(rows: { check_in: string; check_out: string }[]): number {
+  if (rows.length === 0) return 1;
+  let first = rows[0].check_in;
+  let last = rows[0].check_out;
+  for (const r of rows) {
+    if (r.check_in < first) first = r.check_in;
+    if (r.check_out > last) last = r.check_out;
+  }
+  return Math.max(1, daysBetween(first, last));
 }
 
 // ---------------------------------------------------------------------------
@@ -187,12 +196,10 @@ export async function getRevenueOverview(
   const rows = bookings || [];
   const totalApartments = (apartments || []).length || 1;
 
-  const now = new Date();
-  const thisMonthStart = startOfMonth(now);
-  const lastMonthStart = startOfMonth(
-    new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  );
-  const lastMonthEnd = new Date(thisMonthStart.getTime() - 1);
+  // Month boundaries are the property's calendar months
+  const today = businessDate();
+  const thisMonthStart = monthStart(today);
+  const lastMonthStart = monthStart(today, -1);
 
   let totalRevenue = 0;
   let revenueThisMonth = 0;
@@ -207,9 +214,9 @@ export async function getRevenueOverview(
     totalRevenue += revenue;
     totalRoomNights += nights;
 
-    const checkIn = new Date(b.check_in);
+    const checkIn = String(b.check_in).slice(0, 10);
     if (checkIn >= thisMonthStart) revenueThisMonth += revenue;
-    if (checkIn >= lastMonthStart && checkIn <= lastMonthEnd) revenueLastMonth += revenue;
+    if (checkIn >= lastMonthStart && checkIn < thisMonthStart) revenueLastMonth += revenue;
 
     const ch = channelMap.get(b.channel_id);
     const commRate = ch ? getCommissionRate(ch.code, ch.commission_rate) : 0;
@@ -221,7 +228,8 @@ export async function getRevenueOverview(
   }
 
   const adr = totalRoomNights > 0 ? totalRevenue / totalRoomNights : 0;
-  const periodDays = daysInMonth(now);
+  // Revenue and capacity over the same span (the stays' date range)
+  const periodDays = staySpanDays(rows);
   const revpar = totalRevenue / (totalApartments * periodDays);
   const avgLOS = rows.length > 0
     ? rows.reduce((s, b) => s + nightsBetween(b.check_in, b.check_out), 0) / rows.length
@@ -290,6 +298,10 @@ export async function getChannelMix(
     }
   }
 
+  // Revenue is all history, so annualise by the span it covers (not x12)
+  const periodDays = staySpanDays(bookings || []);
+  const annualFactor = 365 / periodDays;
+
   const items: ChannelMixItem[] = [];
   for (const [, v] of Array.from(agg)) {
     const commCost = v.revenue * v.commRate;
@@ -323,7 +335,7 @@ export async function getChannelMix(
   for (const hc of highCommChannels) {
     if (hc.percentage_of_revenue > 20) {
       const shiftPct = Math.min(10, hc.percentage_of_revenue - 15);
-      const savings = (hc.revenue_gbp * (shiftPct / 100)) * hc.commission_rate * 12;
+      const savings = (hc.revenue_gbp * (shiftPct / 100)) * hc.commission_rate * annualFactor;
       estSavings += savings;
       actions.push(
         `Reduce ${hc.channel_name} allocation by ${Math.round(shiftPct)}%, shift to direct bookings — save ~\u00a3${Math.round(savings).toLocaleString()}/yr`
@@ -343,6 +355,7 @@ export async function getChannelMix(
 
   return {
     channels: items,
+    period_days: periodDays,
     ai_recommendation: {
       summary:
         totalComm > 0
@@ -397,6 +410,9 @@ export async function getChannelOptimization(
   if (directIdx >= 0) {
     optimal[directIdx].percentage += targetDirect;
     optimal[directIdx].percentage = Math.round(optimal[directIdx].percentage * 10) / 10;
+  } else if (targetDirect > 0) {
+    // No direct channel yet: the shifted share still has to go somewhere
+    optimal.push({ channel: "Direct", percentage: Math.round(targetDirect * 10) / 10 });
   }
 
   // Savings from shifting to 0-commission direct
@@ -406,7 +422,7 @@ export async function getChannelOptimization(
       .reduce((s, c) => s + c.commission_rate, 0) /
       Math.max(1, mix.channels.filter((c) => c.commission_rate > 0).length) || 0.15;
   const shiftedRevenue = totalRevenue * (targetDirect / 100);
-  const annualSavings = shiftedRevenue * avgOTAComm * 12;
+  const annualSavings = shiftedRevenue * avgOTAComm * (365 / Math.max(1, mix.period_days));
 
   return {
     current_mix: current,
@@ -468,8 +484,8 @@ export async function getRatePerformance(
     agg.set(typeId, existing);
   }
 
-  const now = new Date();
-  const periodDays = daysInMonth(now);
+  // Capacity over the same span the booked nights come from
+  const periodDays = staySpanDays(bookings || []);
   const results: RatePerformanceItem[] = [];
 
   for (const [typeId, info] of Array.from(typeMap)) {
@@ -482,8 +498,10 @@ export async function getRatePerformance(
     const avgActualRate = stats.totalNights > 0
       ? stats.totalRate / stats.totalNights
       : 0;
-    const rateEfficiency = info.base_weekly_rate_gbp > 0
-      ? avgActualRate / info.base_weekly_rate_gbp
+    // Nightly actual vs nightly base (the base is stored as a weekly rate)
+    const baseNightly = info.base_weekly_rate_gbp / 7;
+    const rateEfficiency = baseNightly > 0
+      ? avgActualRate / baseNightly
       : 0;
     const revpau = totalAvailableNights > 0
       ? stats.totalRevenue / totalAvailableNights
@@ -651,10 +669,11 @@ export function getWhatIfSimulation(
     ? ((projectedRevenue - currentRevenue) / currentRevenue) * 100
     : 0;
 
-  // Break-even: find occupancy where new rate * occ = current rate * current occ
-  const breakEvenOccupancy = currentRate > 0
+  // Break-even: find occupancy where new rate * occ = current rate * current occ.
+  // A zero new rate never breaks even; report the 100% ceiling, not Infinity.
+  const breakEvenOccupancy = currentRate > 0 && newRate > 0
     ? (currentRate * currentOccupancy) / newRate
-    : currentOccupancy;
+    : currentRate > 0 ? 100 : currentOccupancy;
 
   let recommendation: "increase" | "decrease" | "hold";
   let reasoning: string;
@@ -694,24 +713,24 @@ export function getWhatIfSimulation(
 export async function getRevenueForecasting(
   supabase: SupabaseClient
 ): Promise<RevenueForecast> {
-  const now = new Date();
-  const thirtyDaysOut = new Date(now.getTime() + 30 * 86_400_000);
+  const today = businessDate();
+  const thirtyDaysOut = addDays(today, 30);
 
   // Get confirmed future bookings
   const { data: futureBookings } = await supabase
     .from("bookings")
     .select("id, total_amount_gbp, rate_per_night_gbp, check_in, check_out, status")
     .in("status", ["confirmed", "checked_in"])
-    .gte("check_out", now.toISOString().slice(0, 10))
-    .lte("check_in", thirtyDaysOut.toISOString().slice(0, 10));
+    .gte("check_out", today)
+    .lte("check_in", thirtyDaysOut);
 
   // Get historical bookings from last 90 days for pattern extraction
-  const ninetyDaysAgo = new Date(now.getTime() - 90 * 86_400_000);
+  const ninetyDaysAgo = addDays(today, -90);
   const { data: historicalBookings } = await supabase
     .from("bookings")
     .select("id, total_amount_gbp, rate_per_night_gbp, check_in, check_out, status")
     .in("status", ["checked_in", "checked_out"])
-    .gte("check_in", ninetyDaysAgo.toISOString().slice(0, 10));
+    .gte("check_in", ninetyDaysAgo);
 
 
 
@@ -721,10 +740,8 @@ export async function getRevenueForecasting(
   for (const b of histRows) {
     const nights = nightsBetween(b.check_in, b.check_out);
     const dailyRev = (b.total_amount_gbp || 0) / nights;
-    const start = new Date(b.check_in);
     for (let i = 0; i < nights; i++) {
-      const d = new Date(start.getTime() + i * 86_400_000);
-      const key = d.toISOString().slice(0, 10);
+      const key = addDays(b.check_in, i);
       dailyRevenueMap.set(key, (dailyRevenueMap.get(key) || 0) + dailyRev);
     }
   }
@@ -745,11 +762,9 @@ export async function getRevenueForecasting(
   for (const b of futureBookings || []) {
     const nights = nightsBetween(b.check_in, b.check_out);
     const dailyRev = (b.total_amount_gbp || 0) / nights;
-    const start = new Date(b.check_in);
     for (let i = 0; i < nights; i++) {
-      const d = new Date(start.getTime() + i * 86_400_000);
-      const key = d.toISOString().slice(0, 10);
-      if (d >= now && d <= thirtyDaysOut) {
+      const key = addDays(b.check_in, i);
+      if (key >= today && key <= thirtyDaysOut) {
         confirmedDaily.set(key, (confirmedDaily.get(key) || 0) + dailyRev);
       }
     }
@@ -764,8 +779,7 @@ export async function getRevenueForecasting(
   let totalConfirmed = 0;
 
   for (let i = 0; i < 30; i++) {
-    const d = new Date(now.getTime() + (i + 1) * 86_400_000);
-    const key = d.toISOString().slice(0, 10);
+    const key = addDays(today, i + 1);
     const confirmed = confirmedDaily.get(key) || 0;
 
     // For unbooked capacity, estimate additional revenue from future bookings

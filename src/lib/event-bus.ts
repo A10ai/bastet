@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { addDays, businessDate } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -117,15 +118,14 @@ registerHandler("booking.checked_out", async (event, supabase) => {
   }
 
   // 3. Check if no arrival due within 48hrs — flag for energy standby
-  const cutoff = new Date();
-  cutoff.setHours(cutoff.getHours() + 48);
+  const cutoff = addDays(businessDate(), 2);
 
   const { data: upcomingBookings } = await supabase
     .from("bookings")
     .select("id")
     .eq("apartment_id", apartment_id)
     .in("status", ["confirmed", "pending"])
-    .lte("check_in", cutoff.toISOString().split("T")[0])
+    .lte("check_in", cutoff)
     .limit(1);
 
   if (!upcomingBookings || upcomingBookings.length === 0) {
@@ -271,7 +271,7 @@ registerHandler("booking.confirmed", async (event, supabase) => {
     check_in_date?: string;
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessDate();
   const isArrivalToday = check_in_date === today;
 
   if (isArrivalToday && apartment_id) {
@@ -390,7 +390,7 @@ registerHandler("housekeeping.completed", async (event, supabase) => {
   });
 
   // 2. Check for arrivals today
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessDate();
   const { data: todayBookings } = await supabase
     .from("bookings")
     .select("id, guest_id")

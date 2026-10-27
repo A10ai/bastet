@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHANNEL_COMMISSIONS } from "@/lib/constants";
+import { addDays, daysBetween as calendarDaysBetween, eachDate, nightsInRange } from "@/lib/business-date";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -87,22 +88,29 @@ function round2(n: number): number {
 
 const floorLabelFn = (floor: number) => floor === 0 ? 'Ground' : `Floor ${floor}`;
 
+/** Inclusive number of days in [from, to], at least 1. */
 function daysBetween(from: string, to: string): number {
-  const a = new Date(from);
-  const b = new Date(to);
-  return Math.max(1, Math.ceil((b.getTime() - a.getTime()) / 86400000) + 1);
+  return Math.max(1, calendarDaysBetween(from, to) + 1);
 }
 
 function previousPeriod(from: string, to: string): { from: string; to: string } {
   const days = daysBetween(from, to);
-  const prevTo = new Date(from);
-  prevTo.setDate(prevTo.getDate() - 1);
-  const prevFrom = new Date(prevTo);
-  prevFrom.setDate(prevFrom.getDate() - days + 1);
-  return {
-    from: prevFrom.toISOString().split("T")[0],
-    to: prevTo.toISOString().split("T")[0],
-  };
+  const prevTo = addDays(from, -1);
+  return { from: addDays(prevTo, -(days - 1)), to: prevTo };
+}
+
+type StayRevenue = { check_in?: string | null; check_out?: string | null; nights?: number | null; total_amount_gbp?: number | null };
+
+/**
+ * The share of a booking's total earned on stay nights inside [from, to].
+ * A stay spanning two months is split between them instead of counted in both.
+ */
+function revenueInRange(b: StayRevenue, from: string, to: string): number {
+  const total = b.total_amount_gbp || 0;
+  if (!b.check_in || !b.check_out) return total;
+  const nights = b.nights || calendarDaysBetween(b.check_in, b.check_out);
+  if (nights <= 0) return 0;
+  return (total * nightsInRange(b.check_in, b.check_out, from, to)) / nights;
 }
 
 // ─── Occupancy Report ────────────────────────────────────────────────
@@ -132,12 +140,7 @@ export async function getOccupancyReport(
   const daily: OccupancyReport["daily"] = [];
 
   // Build date strings once
-  const dateStrings: string[] = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(dateFrom);
-    d.setDate(d.getDate() + i);
-    dateStrings.push(d.toISOString().split("T")[0]);
-  }
+  const dateStrings = eachDate(dateFrom, addDays(dateFrom, days - 1));
 
   // Precompute: for each date, which apartment IDs are occupied
   const occupiedByDate = new Map<string, Set<string>>();
@@ -264,10 +267,7 @@ export async function getOccupancyReport(
 
   const prevDays = daysBetween(prev.from, prev.to);
   let prevOccTotal = 0;
-  for (let i = 0; i < prevDays; i++) {
-    const d = new Date(prev.from);
-    d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split("T")[0];
+  for (const dateStr of eachDate(prev.from, addDays(prev.from, prevDays - 1))) {
     const occupied = (prevBookings || []).filter(
       (b) => b.check_in <= dateStr && b.check_out > dateStr
     ).length;
@@ -306,11 +306,16 @@ export async function getRevenueReport(
     .select("id, reference, apartment_id, guest_id, check_in, check_out, total_amount_gbp, channel, nights, guests(first_name, last_name), apartments(number)")
     .in("status", ["confirmed", "checked_in", "checked_out"])
     .lte("check_in", dateTo)
-    .gte("check_out", dateFrom)
+    .gt("check_out", dateFrom)
     .order("total_amount_gbp", { ascending: false });
 
-  const totalRevenue = (bookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
-  const totalNights = (bookings || []).reduce((s, b) => s + (b.nights || 0), 0);
+  // Revenue and nights are attributed per stay night inside the range
+  const inRange = (b: StayRevenue) => revenueInRange(b, dateFrom, dateTo);
+  const totalRevenue = (bookings || []).reduce((s, b) => s + inRange(b), 0);
+  const totalNights = (bookings || []).reduce(
+    (s, b) => s + (b.check_in && b.check_out ? nightsInRange(b.check_in, b.check_out, dateFrom, dateTo) : b.nights || 0),
+    0
+  );
   const adr = totalNights > 0 ? round2(totalRevenue / totalNights) : 0;
   const days = daysBetween(dateFrom, dateTo);
   const revpar = totalApartments * days > 0 ? round2(totalRevenue / (totalApartments * days)) : 0;
@@ -321,7 +326,7 @@ export async function getRevenueReport(
     const apt = (apartments || []).find((a) => a.id === b.apartment_id);
     const typeName = ((apt?.apartment_types as unknown as Record<string, unknown> | null)?.name as string) || "Unknown";
     const entry = typeRevMap.get(typeName) || { revenue: 0, bookings: 0 };
-    entry.revenue += b.total_amount_gbp || 0;
+    entry.revenue += inRange(b);
     entry.bookings++;
     typeRevMap.set(typeName, entry);
   }
@@ -336,7 +341,7 @@ export async function getRevenueReport(
   for (const b of bookings || []) {
     const ch = b.channel || "direct";
     const entry = channelMap.get(ch) || { revenue: 0, bookings: 0 };
-    entry.revenue += b.total_amount_gbp || 0;
+    entry.revenue += inRange(b);
     entry.bookings++;
     channelMap.set(ch, entry);
   }
@@ -353,11 +358,19 @@ export async function getRevenueReport(
     };
   });
 
-  // Daily revenue
+  // Daily revenue, keyed by stay date (each night earns total / nights)
   const dailyMap = new Map<string, number>();
   for (const b of bookings || []) {
-    const date = (b.check_in || "").split("T")[0];
-    dailyMap.set(date, (dailyMap.get(date) || 0) + (b.total_amount_gbp || 0));
+    if (!b.check_in || !b.check_out) continue;
+    const nights = b.nights || calendarDaysBetween(b.check_in, b.check_out);
+    if (nights <= 0) continue;
+    const perNight = (b.total_amount_gbp || 0) / nights;
+    const checkIn = b.check_in.slice(0, 10);
+    const first = checkIn > dateFrom ? checkIn : dateFrom;
+    const lastNight = addDays(b.check_out, -1);
+    const last = lastNight < dateTo ? lastNight : dateTo;
+    if (first > last) continue;
+    for (const date of eachDate(first, last)) dailyMap.set(date, (dailyMap.get(date) || 0) + perNight);
   }
   const dailyRevenue = Array.from(dailyMap.entries())
     .map(([date, revenue]) => ({ date, revenue: round2(revenue) }))
@@ -376,12 +389,12 @@ export async function getRevenueReport(
   const prev = previousPeriod(dateFrom, dateTo);
   const { data: prevBookings } = await supabase
     .from("bookings")
-    .select("total_amount_gbp")
+    .select("total_amount_gbp, check_in, check_out, nights")
     .in("status", ["confirmed", "checked_in", "checked_out"])
     .lte("check_in", prev.to)
-    .gte("check_out", prev.from);
+    .gt("check_out", prev.from);
 
-  const prevRevenue = (prevBookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
+  const prevRevenue = (prevBookings || []).reduce((s, b) => s + revenueInRange(b, prev.from, prev.to), 0);
 
   return {
     total_revenue: round2(totalRevenue),
@@ -657,12 +670,12 @@ export async function getFinancialSummary(
   // Revenue from bookings (overlapping: active during period)
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("total_amount_gbp, channel")
+    .select("total_amount_gbp, channel, check_in, check_out, nights")
     .in("status", ["confirmed", "checked_in", "checked_out"])
     .lte("check_in", dateTo)
-    .gte("check_out", dateFrom);
+    .gt("check_out", dateFrom);
 
-  const totalRevenue = (bookings || []).reduce((s, b) => s + (b.total_amount_gbp || 0), 0);
+  const totalRevenue = (bookings || []).reduce((s, b) => s + revenueInRange(b, dateFrom, dateTo), 0);
 
   // Expenses
   const { data: expenses } = await supabase
@@ -679,7 +692,7 @@ export async function getFinancialSummary(
   const channelRevMap = new Map<string, number>();
   for (const b of bookings || []) {
     const ch = b.channel || "direct";
-    channelRevMap.set(ch, (channelRevMap.get(ch) || 0) + (b.total_amount_gbp || 0));
+    channelRevMap.set(ch, (channelRevMap.get(ch) || 0) + revenueInRange(b, dateFrom, dateTo));
   }
   const revenueBreakdown = Array.from(channelRevMap.entries())
     .map(([source, amount]) => ({ source, amount: round2(amount) }))
