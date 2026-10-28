@@ -28,7 +28,9 @@ SELECT tst.eq('post ticket T1', tst.val($$select post_pos_ticket('e0000000-0000-
 SELECT tst.eq('replayed T1 is not charged again', tst.val($$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"item_id":"e0000000-0000-0000-000e-000000000001","quantity":2}]', 'T1')->>'duplicate'$$), 'true');
 SELECT tst.eq('one ticket T1', tst.n($$select 1 from pos_tickets where ticket_reference = 'T1'$$)::text, '1');
 SELECT tst.raises('fractional quantity', $$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"item_id":"e0000000-0000-0000-000e-000000000001","quantity":0.001}]')$$, 'INVALID_AMOUNT');
-SELECT tst.raises('receptionist free-text price', $$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"name":"Champagne","unit_price_gbp":0.01,"tax_rate_percent":0}]')$$, 'ROLE_FORBIDDEN');
+SELECT tst.raises('receptionist free-text sub-penny price', $$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"name":"Champagne","unit_price_gbp":0.001,"tax_rate_percent":0}]')$$, 'INVALID_AMOUNT');
+SELECT tst.raises('receptionist free-text zero price', $$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"name":"Champagne","unit_price_gbp":0}]')$$, 'INVALID_AMOUNT');
+SELECT tst.eq('receptionist free-text line at the till', tst.val($$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"name":"Service","unit_price_gbp":1.5,"tax_rate_percent":0}]')->>'total_gbp'$$), '1.50');
 SELECT tst.raises('insert ticket directly', $$insert into pos_tickets(property_id, outlet_id, booking_id, folio_id, items, subtotal_gbp, tax_gbp, total_gbp, business_date) select property_id, 'e0000000-0000-0000-000c-000000000001', booking_id, id, '[]', 0, 0, 0, current_date from folios$$, 'permission denied');
 SELECT tst.raises('mark ticket voided directly', $$update pos_tickets set status = 'voided'$$, 'permission denied');
 SELECT tst.raises('receptionist voids ticket', $$select void_pos_ticket(id, 'mistake') from pos_tickets where ticket_reference = 'T1'$$, 'ROLE_FORBIDDEN');
@@ -40,7 +42,7 @@ SELECT tst.raises('negative VAT on free text', $$select post_pos_ticket('e000000
 SELECT tst.eq('manager free text', tst.val($$select post_pos_ticket('e0000000-0000-0000-000c-000000000001', 'e0000000-0000-0000-0000-000000000001', '[{"name":"Spa","unit_price_gbp":30}]')->>'total_gbp'$$), '34.20');
 SELECT tst.eq('manager voids T1', tst.val($$select void_pos_ticket(id, 'mistake')->>'lines_voided' from pos_tickets where ticket_reference = 'T1'$$), '1');
 SELECT tst.raises('void twice', $$select void_pos_ticket(id, 'mistake') from pos_tickets where ticket_reference = 'T1'$$, 'ALREADY_VOIDED');
-SELECT tst.eq('folio after void: minibar 5.70 + spa 34.20', tst.val($$select folio_balance(id) from folios where booking_id = 'e0000000-0000-0000-0000-000000000001'$$), '39.90');
+SELECT tst.eq('folio after void: minibar 5.70 + service 1.50 + spa 34.20', tst.val($$select folio_balance(id) from folios where booking_id = 'e0000000-0000-0000-0000-000000000001'$$), '41.40');
 ROLLBACK;
 
 -- Quotes: a weekly rate sums exactly over seven nights.

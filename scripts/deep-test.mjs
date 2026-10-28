@@ -902,12 +902,13 @@ async function main() {
   };
   await safe("pages", () => pageTests(owner.ctx, ids));
   if (MODE === "full") await safe("mfa", () => mfaTests(ACCOUNTS.manager));
-  // Last: brute-force protection is per account (5 per 15 min). The owner has
-  // used two attempts so far; three more wrong passwords are allowed, the sixth
+  // Last: brute-force protection counts FAILED attempts per account (5 per
+  // 15 min); successful sign-ins never count, so a correct password is not
+  // locked out by earlier logins. Five wrong passwords are allowed, the sixth
   // attempt is refused, and the housekeeping account is unaffected.
   if (ACCOUNTS.owner) {
     let last = null;
-    for (let i = 0; i < 4; i++) last = await login(ACCOUNTS.owner.email, "wrong-password");
+    for (let i = 0; i < 6; i++) last = await login(ACCOUNTS.owner.email, "wrong-password");
     if (last && last.status !== 429) {
       // Without a shared limiter (Upstash) each serverless instance counts on
       // its own, so the lockout cannot be observed from outside. The health

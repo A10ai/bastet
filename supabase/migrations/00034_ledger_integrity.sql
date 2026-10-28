@@ -7,7 +7,7 @@
 -- property and role themselves (require_staff, 00033):
 --
 --   open_folio                30 (housekeeping opens a folio for minibar)
---   post_pos_ticket           30 (free-text items: 70)
+--   post_pos_ticket           30 (free-text items: 50)
 --   post_folio_charge         50
 --   record_folio_payment      50
 --   record_invoice_payment    50
@@ -900,14 +900,17 @@ BEGIN
       v_name := v_item.name; v_price := v_item.unit_price_gbp;
       v_rate := COALESCE(v_item.tax_rate_percent, v_o.default_tax_rate_percent);
     ELSE
-      IF NOT (is_trusted_caller() OR role_at_least(70)) THEN
-        RAISE EXCEPTION 'ROLE_FORBIDDEN: only managers can post items that are not on the menu' USING ERRCODE = '42501';
+      -- Free-text lines are a front-desk charge (same floor as post_folio_charge);
+      -- housekeeping posting minibar items is limited to the catalogue.
+      IF NOT (is_trusted_caller() OR role_at_least(50)) THEN
+        RAISE EXCEPTION 'ROLE_FORBIDDEN: only front desk staff can post items that are not on the menu' USING ERRCODE = '42501';
       END IF;
       v_name := NULLIF(trim(it->>'name'), '');
       v_price := (it->>'unit_price_gbp')::numeric;
       v_rate := COALESCE((it->>'tax_rate_percent')::numeric, v_o.default_tax_rate_percent);
       IF v_name IS NULL OR v_price IS NULL THEN RAISE EXCEPTION 'INVALID_INPUT: free-text items need a name and a price'; END IF;
-      IF v_price <= 0 THEN RAISE EXCEPTION 'INVALID_AMOUNT: price must be positive'; END IF;
+      IF v_price <= 0 OR v_price <> ROUND(v_price, 2) THEN RAISE EXCEPTION 'INVALID_AMOUNT: price must be positive whole pence'; END IF;
+      IF v_rate < 0 OR v_rate > 100 THEN RAISE EXCEPTION 'INVALID_AMOUNT: tax rate must be between 0 and 100'; END IF;
     END IF;
     v_res := post_folio_charge_unchecked(v_folio, v_type, v_o.name || ': ' || v_name, v_qty, v_price, v_rate, p_posted_by_name);
     v_lines := v_lines || (v_res->'line'->>'id')::uuid;

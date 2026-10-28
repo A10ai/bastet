@@ -58,6 +58,9 @@ describe("api-error and rpc-error", () => {
     expect(r3.status).toBe(500);
     expect(JSON.stringify(await r3.json())).not.toMatch(/secret_table/);
     expect(rpcErrorResponse({ message: "LEDGER_IMMUTABLE: nope" }, "t").status).toBe(409);
+    const r4 = rpcErrorResponse({ message: 'invalid input syntax for type uuid: "undefined"', code: "22P02" }, "t");
+    expect(r4.status).toBe(400);
+    expect((await r4.json()).error.code).toBe("INVALID_INPUT");
   });
 
   it("maps the 00033/00034 codes and database permission errors", async () => {

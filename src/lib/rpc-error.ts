@@ -89,6 +89,13 @@ export function rpcErrorResponse(
       { status: 403 }
     );
   }
+  // invalid_text_representation: a malformed id or value (e.g. "undefined" as a uuid)
+  if (error?.code === "22P02") {
+    return NextResponse.json(
+      { error: { code: "INVALID_INPUT", message: "Invalid identifier or value" } },
+      { status: 400 }
+    );
+  }
   // Exclusion constraint from 00020: two active bookings overlap
   if (error?.code === "23P01" || /bookings_no_overlap/.test(message)) {
     return NextResponse.json(
