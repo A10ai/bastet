@@ -18,7 +18,7 @@ AI-native property management system for aparthotels and hotels. First deploymen
 ## Getting started
 
 ```bash
-nvm use                      # Node 20 (see .nvmrc)
+nvm use                      # Node 22 (see .nvmrc)
 npm ci
 cp .env.example .env.local   # fill in Supabase keys
 npm run dev                  # http://localhost:3000
