@@ -91,8 +91,12 @@ async function upstashLimit(key: string, options: RateLimitOptions): Promise<Rat
       signal: AbortSignal.timeout(1500),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { result: number }[];
-    const count = Number(data?.[0]?.result ?? 0);
+    const data = (await res.json()) as { result?: number; error?: string }[];
+    // A per-command error (wrong type, OOM, ...) comes back with HTTP 200;
+    // reading it as a count of 0 would let every request through.
+    const first = data?.[0];
+    if (!first || first.error || typeof first.result !== "number") return null;
+    const count = first.result;
     const resetAt = (windowId + 1) * options.windowMs;
     return {
       allowed: count <= options.max,
@@ -135,12 +139,85 @@ export function rateLimitResponse(result: RateLimitResult, message = "Too many r
   });
 }
 
+// ---------------------------------------------------------------------------
+// Failure counters: checked before an action, incremented only when it fails.
+// Used for per-account login limits, so a stranger's wrong passwords cannot
+// lock the real user out (a counter incremented on every attempt could).
+// ---------------------------------------------------------------------------
+async function upstashCommand(command: string[]): Promise<number | null> {
+  try {
+    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([command]),
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { result?: unknown; error?: string }[];
+    const first = data?.[0];
+    if (!first || first.error) return null;
+    return first.result == null ? 0 : Number(first.result);
+  } catch {
+    return null;
+  }
+}
+
+/** True while `identifier` has fewer than `max` recorded failures in the window. */
+export async function failuresBelowLimit(identifier: string, options: RateLimitOptions): Promise<boolean> {
+  if (RATE_LIMIT_BACKEND === "upstash") {
+    const windowId = Math.floor(Date.now() / options.windowMs);
+    const n = await upstashCommand(["GET", `rlf:${identifier}:${windowId}`]);
+    if (n !== null) return n < options.max;
+  }
+  const entry = store.get(`fail:${identifier}`);
+  return !entry || entry.resetAt < Date.now() || entry.count < options.max;
+}
+
+/** Record one failure for `identifier`. */
+export async function recordFailure(identifier: string, options: RateLimitOptions): Promise<void> {
+  if (RATE_LIMIT_BACKEND === "upstash") {
+    const windowId = Math.floor(Date.now() / options.windowMs);
+    const key = `rlf:${identifier}:${windowId}`;
+    const n = await upstashCommand(["INCR", key]);
+    if (n !== null) {
+      await upstashCommand(["PEXPIRE", key, String(options.windowMs), "NX"]);
+      return;
+    }
+  }
+  const now = Date.now();
+  const key = `fail:${identifier}`;
+  const entry = store.get(key);
+  if (!entry || entry.resetAt < now) store.set(key, { count: 1, resetAt: now + options.windowMs });
+  else entry.count++;
+}
+
+/** Forget recorded failures (after a successful sign-in). */
+export async function clearFailures(identifier: string, options: RateLimitOptions): Promise<void> {
+  if (RATE_LIMIT_BACKEND === "upstash") {
+    const windowId = Math.floor(Date.now() / options.windowMs);
+    await upstashCommand(["DEL", `rlf:${identifier}:${windowId}`]);
+  }
+  store.delete(`fail:${identifier}`);
+}
+
 /**
- * Client IP. On Vercel the platform sets x-real-ip from the connection; a
- * client cannot spoof it. Behind other proxies, configure them to overwrite
- * x-forwarded-for rather than append to it.
+ * Whether X-Real-IP / X-Forwarded-For can be believed. On Vercel the
+ * platform sets them from the connection and a client cannot spoof them.
+ * Anywhere else they are whatever the client sent unless a reverse proxy in
+ * front overwrites them: set TRUST_PROXY_HEADERS=true only behind such a
+ * proxy. Without it every request is keyed "unknown", which makes the per-IP
+ * limits shared ceilings rather than per-client ones, but not bypassable.
  */
+function trustProxyHeaders(): boolean {
+  const flag = process.env.TRUST_PROXY_HEADERS;
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return !!process.env.VERCEL;
+}
+
+/** Client IP for rate-limit keys (see trustProxyHeaders). */
 export function getClientIp(request: Request): string {
+  if (!trustProxyHeaders()) return "unknown";
   const realIp = request.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
   const forwarded = request.headers.get("x-forwarded-for");
@@ -152,7 +229,8 @@ export function getClientIp(request: Request): string {
  * Rate limit presets.
  */
 export const RATE_LIMITS = {
-  LOGIN: { windowMs: 15 * 60 * 1000, max: 5 }, // 5 attempts per 15 min per account
+  LOGIN: { windowMs: 15 * 60 * 1000, max: 5 }, // 5 failed attempts per 15 min per account and network
+  LOGIN_ACCOUNT_GLOBAL: { windowMs: 15 * 60 * 1000, max: 50 }, // failed attempts per account from all networks
   LOGIN_PER_IP: { windowMs: 15 * 60 * 1000, max: 60 }, // ceiling per network address
   PASSWORD_RESET: { windowMs: 60 * 60 * 1000, max: 3 }, // 3 per hour
   API_DEFAULT: { windowMs: 60 * 1000, max: 100 }, // 100 per min

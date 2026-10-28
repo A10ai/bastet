@@ -18,17 +18,17 @@ AI-native property management system for aparthotels and hotels. First deploymen
 ## Getting started
 
 ```bash
-nvm use                      # Node 20 (see .nvmrc)
+nvm use                      # Node 22 (see .nvmrc)
 npm ci
 cp .env.example .env.local   # fill in Supabase keys
 npm run dev                  # http://localhost:3000
 ```
 
-Required environment variables are validated at server start by `src/lib/env.ts` (wired through `src/instrumentation.ts`). The server refuses to start with a readable list of what is missing.
+Required environment variables are validated at server start by `src/lib/env.ts` (wired through `src/instrumentation.ts`). Blank lines copied from `.env.example` count as unset. `next start` and Docker refuse to start with a readable list of what is missing or malformed; on Vercel, where there is no process to stop, every request fails with that list in the function logs.
 
 ## Database
 
-Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00031` (October 2026 audit and grade-A programme) must be applied to production before deploying the current branch:
+Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with the Supabase SQL editor or `supabase db push`. Migrations `00019` to `00036` (October 2026 audit, grade-A programme and deep test) must be applied to production before deploying the current branch:
 
 - `00019_security_hardening.sql`: `audit_log` table, tenant-scoped RLS, RLS on four previously open tables, `guests.property_id`
 - `00020_booking_integrity.sql`: exclusion constraint against double bookings, `checkin_booking`, `checkout_booking`, `record_invoice_payment` functions
@@ -42,6 +42,13 @@ Schema lives in `supabase/migrations/` (numbered, apply in order). Apply with th
 - `00030_pos.sql`: `pos_outlets`, `pos_items`, `pos_tickets`, `post_pos_ticket()` (outlet ticket to the in-house folio as charge and VAT lines), `void_pos_ticket()`
 - `00029_guest_portal.sql`: `booking_access_tokens` (hashed, expiring, revocable guest links), `bookings.precheckin` and `precheckin_completed_at`
 - `00028_group_bookings.sql`: `booking_groups`, `bookings.group_id`, `add_group_rooms()` (atomic room blocks), `group_statement()`, `record_group_payment()` (one payment allocated across room folios), `cancel_group()`
+- `00032_guests_property_backfill.sql`: attaches guests with no property to the single property (single-property databases) and makes `guests.property_id` NOT NULL when nothing violates it
+- `00033_tenant_isolation.sql`: active staff only; tenant checks and role floors on every policy; `property_id` on notifications, system events and audit log; channel credentials server-only; no self-granted property membership; `search_path` pinned on SECURITY DEFINER functions; no TRUNCATE for app roles
+- `00034_ledger_integrity.sql`: ledger tables written only through functions that check property and role; invoice payments post to the folio; issued invoices cannot be reverted or deleted; night audit only for ended days; POS ticket idempotency; one open checkout clean per unit and day
+- `00035_booking_channel_owner_update.sql`: owners can edit booking channel name, commission and active flag (never `api_connection`); booking and invoice numbering is staff-only
+- `00036_review_fixes.sql`: room nights split the booked total exactly, so a prepaid stay closes at 0.00 (and a rate plan discount applies once); departed stays are not charged by the night audit; only managers check out with an unpaid balance; ledger actors are the signed-in staff member; refunds update the current folio invoice; write policies for staff (admins, below their own role), properties (admins, own property), currency rates (owners) and pricing decisions; admins edit property settings but not VAT, levy or business date; direct REST writes cannot check guests in or out, change a stay's price, dates or room, mark invoices paid (draft totals are recomputed from their lines at the stored `invoices.tax_rate_percent`), award loyalty or cancel a group without its rooms; revenue by stay date stops at an early departure; duplicate cleans are merged (only untouched copies deleted) so the protection indexes always exist
+
+Re-running an older migration after `00033`/`00034` reinstates superseded definitions; re-run `00033` to `00036` afterwards. `npm run test:db` applies every migration to a throwaway PostgreSQL (server binaries required, `PG_BIN` to override) and runs the RLS and ledger regression tests in `tests/db/`.
 
 ## Authorisation model
 
@@ -57,11 +64,13 @@ Mutating requests also require the CSRF double-submit token (`GET /api/v1/csrf`,
 | `SUPABASE_JWT_SECRET` | Recommended | Verifies session tokens locally (`src/lib/jwt-verify.ts`) instead of one auth-server call per API request. Projects on asymmetric signing keys need nothing: the JWKS is used. Without either, routes fall back to `auth.getUser()`. |
 | `PII_ENCRYPTION_KEY_PREVIOUS` | During rotation | The key being retired; see `docs/runbooks/key-rotation.md`. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Production on Vercel | Shared rate limiting for login, password reset and AI endpoints. Without them the limiter is per-instance and the server logs a warning. |
+| `TRUST_PROXY_HEADERS` | Self-hosted behind a proxy | `true` when a reverse proxy in front overwrites `X-Forwarded-For`/`X-Real-IP`. On Vercel they are trusted automatically; elsewhere they are ignored, so per-IP limits cannot be dodged by rotating the header (per-account limits still apply). |
+| `SUPABASE_JWT_ISSUER` | Optional | Expected `iss` of access tokens when it is not `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1` on a `*.supabase.co` project. |
 | `MFA_ENFORCE` | Optional, default `true` | Owners and admins must enrol an authenticator app (Settings > Security) before using the system. Set `false` during rollout. |
 | `MFA_REQUIRED_ROLES` | Optional, default `owner,admin` | Roles that must enrol when `MFA_ENFORCE` is on. Every enrolled user, whatever their role, must verify the code each session. |
 | `AUTO_PRICING_ENABLED` | Optional, default off | Lets the pricing automation write rates (one change per type per day, ±30% drift limit). |
 | `SENTRY_DSN` | Recommended | Error reporting, initialised in `src/instrumentation.ts`. |
-| `CRON_SECRET` | Production | Bearer token sent to `/api/v1/cron/*` by Vercel Cron (night audit 03:00 UTC, automations 05:00 UTC, FX rates 06:15 UTC) and by the GitHub Actions scheduler in `.github/workflows/automations-cron.yml`, which calls the automations route every 15 minutes because Vercel's Hobby plan only allows daily crons. Admins can also trigger these by hand. |
+| `CRON_SECRET` | Production | Bearer token sent to `/api/v1/cron/*` by Vercel Cron (night audit 03:00 UTC, automations 05:00 UTC, FX rates 06:15 UTC) and by the GitHub Actions scheduler in `.github/workflows/automations-cron.yml`, which calls the automations route every 15 minutes because Vercel's Hobby plan only allows daily crons. Vercel Cron sends GET: a GET with the secret runs the job (`?status=1` only reports), POST does the same for other schedulers. Admins can also trigger these by hand, scoped to their own properties. |
 | `SCHEDULER_INTERVAL_MINUTES` | Optional, default `15` | How often the automations route is expected to run; the health check reports `scheduler` degraded after twice this interval (minimum 60 min). Set `1440` on an environment that relies on the daily Vercel cron alone. |
 | `ANTHROPIC_MODEL` | Optional, default `claude-sonnet-5-5` | Claude model for the AI brain and chat (`src/lib/ai-model.ts`). |
 | `OPEN_EXCHANGE_RATES_APP_ID` | Optional | Exchange-rate provider; without it ECB reference rates (frankfurter.app) are used. |
@@ -78,6 +87,7 @@ Content-Security-Policy is generated per request in `src/middleware.ts` with a n
 | `npm test` | Vitest unit tests |
 | `npm run test:coverage` | Unit tests with v8 coverage |
 | `npm run test:e2e` | Playwright smoke tests and authenticated journeys (`E2E_EMAIL`/`E2E_PASSWORD`) |
+| `npm run test:db` | Migrations, row-level security and ledger tests against a throwaway PostgreSQL |
 | `node scripts/deep-test.mjs` | End-to-end API battery against a running server (see `docs/STAGING.md`) |
 | `npm run test:load` | Load test: 50 virtual users on dashboard, availability, bookings and a booking write path |
 | `npm run drill:backup` | Backup and restore drill against the local Supabase stack |

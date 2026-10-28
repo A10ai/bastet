@@ -1,10 +1,28 @@
 import "server-only";
 import { z } from "zod";
+import { daysBetween, isValidCalendarDate } from "./business-date";
 
 /**
  * Zod validation schemas for all API request bodies and query params.
  * Used to validate input before processing — reject early, reject loudly.
  */
+
+// ── Shared field types ──────────────────────────────────────────────────
+
+/** A real calendar date in YYYY-MM-DD form (2026-02-31 and 2026-13-01 are rejected). */
+const calendarDate = (message = "Date must be a real YYYY-MM-DD date") =>
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").refine(isValidCalendarDate, message);
+
+/** True when a number has at most two decimal places (whole pence). */
+const isWholePence = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
+
+/** A money amount in GBP: finite, non-negative, whole pence, below a sanity ceiling. */
+const MAX_MONEY_GBP = 10_000_000;
+const money = () =>
+  z.number().finite().min(0).max(MAX_MONEY_GBP).refine(isWholePence, "Amount must be in whole pence (at most 2 decimals)");
+
+/** Report ranges are capped so a typo cannot loop over centuries of days. */
+export const MAX_REPORT_RANGE_DAYS = 731;
 
 // ── Auth ────────────────────────────────────────────────────────────────
 
@@ -41,8 +59,8 @@ export const createBookingSchema = z.object({
   channel_id: z.string().uuid().optional().nullable(),
   /** Rate plan used to price the stay; the property's default plan when omitted. */
   rate_plan_id: z.string().uuid().optional().nullable(),
-  check_in: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  check_out: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  check_in: calendarDate(),
+  check_out: calendarDate(),
   adults: z.number().int().min(1).max(20).default(1),
   children: z.number().int().min(0).max(20).default(0),
   infants: z.number().int().min(0).max(10).optional().default(0),
@@ -50,7 +68,7 @@ export const createBookingSchema = z.object({
   special_requests: z.string().max(2000).optional().nullable(),
   internal_notes: z.string().max(2000).optional().nullable(),
   property_id: z.string().uuid().optional(),
-});
+}).refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });
 
 export const updateBookingSchema = z.object({
   /**
@@ -184,7 +202,8 @@ export const updateStaffSchema = z.object({
   last_name: z.string().min(1).max(50).optional(),
   email: z.string().email().optional(),
   phone: z.string().max(30).optional().nullable(),
-  role: z.enum(["owner", "admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]).optional(),
+  // No "owner": nobody is promoted to owner through the API (see canManageRole).
+  role: z.enum(["admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]).optional(),
   department: z.string().max(100).optional().nullable(),
   is_active: z.boolean().optional(),
   language: z.string().max(10).optional(),
@@ -218,13 +237,13 @@ export const createMaintenanceRequestSchema = z.object({
 
 // ── Expenses ──────────────────────────────────────────────────────────────
 
-export const createExpenseSchema = z.object({
+const expenseBase = z.object({
   category: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
-  amount: z.number().min(0).optional(),
-  amount_egp: z.number().min(0).optional(),
+  amount: money().optional(),
+  amount_egp: z.number().finite().min(0).max(1_000_000_000).optional(),
   currency: z.string().length(3).default("GBP"),
-  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  expense_date: calendarDate(),
   vendor: z.string().max(200).optional().nullable(),
   receipt_url: z.string().url().optional().nullable(),
   invoice_reference: z.string().max(200).optional().nullable(),
@@ -232,16 +251,28 @@ export const createExpenseSchema = z.object({
   recurring_frequency: z.string().max(50).optional().nullable(),
   is_r_and_d: z.boolean().optional().default(false),
   approved_by: z.string().uuid().optional().nullable(),
-  amount_gbp: z.number().min(0).optional().nullable(),
+  amount_gbp: money().optional().nullable(),
 });
+
+/** An expense must carry an amount in at least one of its amount fields. */
+export const createExpenseSchema = expenseBase.refine(
+  (v) => v.amount !== undefined || v.amount_egp !== undefined || (v.amount_gbp !== undefined && v.amount_gbp !== null),
+  { message: "An amount is required (amount, amount_egp or amount_gbp)", path: ["amount"] }
+);
+export const updateExpenseSchema = expenseBase.partial();
 
 // ── Reports ────────────────────────────────────────────────────────────────
 
 export const reportQuerySchema = z.object({
   type: z.enum(["occupancy", "revenue", "executive", "energy", "ai_decisions", "guests", "housekeeping", "maintenance"]),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
+  from: calendarDate(),
+  to: calendarDate(),
+})
+  .refine((v) => v.to >= v.from, { message: "to must be on or after from", path: ["to"] })
+  .refine((v) => daysBetween(v.from, v.to) <= MAX_REPORT_RANGE_DAYS, {
+    message: `Report range cannot exceed ${MAX_REPORT_RANGE_DAYS} days`,
+    path: ["to"],
+  });
 
 // ── Messaging ─────────────────────────────────────────────────────────────
 
@@ -267,7 +298,6 @@ export const updateBookingChannelSchema = z.object({
   /** Percent, 0-100 (e.g. 15 for Booking.com). */
   commission_rate: z.number().min(0).max(100).optional(),
   is_active: z.boolean().optional(),
-  channel_type: z.string().max(30).optional(),
 }).strict();
 
 export const assignSchema = z.object({
@@ -303,10 +333,14 @@ export const guestPreferencesSchema = z.object({
 
 // ── Staff schedule ──────────────────────────────────────────────────────────
 
+const shiftTime = (field: string) =>
+  z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, `${field} must be HH:MM`);
+
 export const staffScheduleSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  shift_start: z.string().min(1, "shift_start is required"),
-  shift_end: z.string().min(1, "shift_end is required"),
+  date: calendarDate(),
+  // Overnight shifts (end earlier than start) are allowed; only the format is checked
+  shift_start: shiftTime("shift_start"),
+  shift_end: shiftTime("shift_end"),
   shift_type: z.enum(["regular", "overtime", "on_call", "holiday"]).optional().default("regular"),
   notes: z.string().max(2000).optional().nullable(),
 }).strict();
@@ -337,28 +371,27 @@ export const resolveSchema = z.object({
 
 // ── Invoices ────────────────────────────────────────────────────────────────
 
+const invoiceLineItem = z.object({
+  description: z.string().min(1).max(500),
+  // Fractional quantities (e.g. 1.5 hours) are allowed, but never zero or less
+  quantity: z.number().finite().positive().max(10_000),
+  unit_price_gbp: money(),
+});
+
 export const createInvoiceSchema = z.object({
   booking_id: z.string().uuid().optional().nullable(),
   guest_id: z.string().uuid().optional().nullable(),
-  line_items: z.array(z.object({
-    description: z.string().min(1).max(500),
-    quantity: z.number().min(0),
-    unit_price_gbp: z.number().min(0),
-  })).min(1, "At least one line item is required"),
+  line_items: z.array(invoiceLineItem).min(1, "At least one line item is required").max(500),
   guest_currency: z.string().length(3).default("GBP"),
-  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be YYYY-MM-DD"),
+  due_date: calendarDate("Due date must be a real YYYY-MM-DD date"),
   notes: z.string().max(2000).optional().nullable(),
   /** Percent (0-100). Omit to use the property VAT rate. */
   tax_rate: z.number().min(0).max(100).optional(),
 }).strict();
 
 export const updateInvoiceSchema = z.object({
-  line_items: z.array(z.object({
-    description: z.string().min(1).max(500),
-    quantity: z.number().min(0),
-    unit_price_gbp: z.number().min(0),
-  })).optional(),
-  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  line_items: z.array(invoiceLineItem).max(500).optional(),
+  due_date: calendarDate().optional(),
   notes: z.string().max(2000).optional().nullable(),
   guest_id: z.string().uuid().optional().nullable(),
   status: z.enum(["cancelled"]).optional(),
@@ -369,8 +402,8 @@ export const sendInvoiceSchema = z.object({
 }).strict();
 
 export const paymentSchema = z.object({
-  amount_gbp: z.number().min(0.01, "amount_gbp is required"),
-  amount_original: z.number().min(0).optional(),
+  amount_gbp: money().refine((v) => v >= 0.01, "amount_gbp is required"),
+  amount_original: z.number().finite().min(0).max(1_000_000_000).optional(),
   currency: z.string().length(3).default("GBP"),
   fx_rate: z.number().positive().optional().nullable(),
   method: z.string().min(1, "method is required"),
@@ -454,9 +487,10 @@ export const predictionSchema = z.object({
 }).strict();
 
 export const revenueAnalysisSchema = z.object({
-  current_rate: z.number().min(0),
-  new_rate: z.number().min(0),
-  occupancy: z.number().min(0).max(1),
+  current_rate: z.number().finite().min(0),
+  new_rate: z.number().finite().positive("new_rate must be above zero"),
+  /** Occupancy as a PERCENT (0-100), as the what-if UI sends it. */
+  occupancy: z.number().min(0).max(100),
   elasticity: z.number().optional().default(-0.5),
 }).strict();
 
@@ -515,6 +549,25 @@ export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown):
 }
 
 /**
+ * Validate a PATCH/PUT body and keep only the fields the caller sent.
+ *
+ * zod v4 still applies `.default()` values inside `.partial()` schemas, so a
+ * body of `{ status: "confirmed" }` would otherwise also "update" every
+ * defaulted field (e.g. reset a group's billing_mode to "individual").
+ */
+export function validatePatchBody<T>(schema: z.ZodSchema<T>, body: unknown):
+  { success: true; data: T } | { success: false; error: z.ZodError } {
+  const result = validateBody(schema, body);
+  if (!result.success || !body || typeof body !== "object" || Array.isArray(body)) return result;
+  if (!result.data || typeof result.data !== "object") return result;
+  const sent = new Set(Object.keys(body as Record<string, unknown>));
+  const data = Object.fromEntries(
+    Object.entries(result.data as Record<string, unknown>).filter(([k]) => sent.has(k))
+  ) as T;
+  return { success: true, data };
+}
+
+/**
  * Format Zod errors into a user-friendly string.
  */
 export function formatZodErrors(error: z.ZodError): string {
@@ -526,7 +579,7 @@ export function formatZodErrors(error: z.ZodError): string {
 // ---------------------------------------------------------------------------
 // Rate plans (migration 00027)
 // ---------------------------------------------------------------------------
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
+const isoDate = calendarDate();
 export const RATE_PLAN_PRICING_MODES = ["bar", "percent_off", "percent_markup", "fixed_nightly"] as const;
 export const CANCELLATION_POLICIES = ["flexible", "moderate", "strict", "non_refundable"] as const;
 
@@ -600,6 +653,23 @@ const groupRules = (v: { check_in?: string; check_out?: string; cutoff_date?: st
   if (v.cutoff_date && v.check_in && v.cutoff_date > v.check_in) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cutoff_date"], message: "cutoff_date must be on or before check_in" });
 };
 export const createGroupSchema = groupBase.superRefine(groupRules);
+
+/**
+ * Date rules for a PATCH that may change only one of check_in / check_out:
+ * checks the merged result against the stored group. Returns an error
+ * message, or null when the dates are consistent.
+ */
+export function groupDatesError(
+  stored: { check_in: string; check_out: string; cutoff_date?: string | null },
+  updates: { check_in?: string; check_out?: string; cutoff_date?: string | null }
+): string | null {
+  const checkIn = updates.check_in ?? stored.check_in;
+  const checkOut = updates.check_out ?? stored.check_out;
+  const cutoff = updates.cutoff_date !== undefined ? updates.cutoff_date : stored.cutoff_date;
+  if (checkOut <= checkIn) return "check_out must be after check_in";
+  if (cutoff && cutoff > checkIn) return "cutoff_date must be on or before check_in";
+  return null;
+}
 export const updateGroupSchema = groupBase.omit({ apartment_ids: true, adults: true, property_id: true }).extend({ status: z.enum(["tentative", "confirmed", "completed"]).optional() }).partial().superRefine(groupRules);
 export const addGroupRoomsSchema = z
   .object({
@@ -660,8 +730,10 @@ const posTicketItem = z
   .object({
     item_id: z.string().uuid().optional(),
     name: z.string().min(1).max(120).optional(),
-    quantity: z.number().positive().max(999).default(1),
-    unit_price_gbp: z.number().min(0).max(100000).optional(),
+    // Whole units, or at most two decimals for things sold by weight/measure
+    // Whole units, as post_pos_ticket (00034) requires
+    quantity: z.number().int("Quantity must be a whole number").min(1).max(999).default(1),
+    unit_price_gbp: money().refine((v) => v <= 100000, "Too large").optional(),
     tax_rate_percent: z.number().min(0).max(100).optional().nullable(),
   })
   .refine((v) => v.item_id || (v.name && v.unit_price_gbp !== undefined), { message: "Give an item_id or a name and a price", path: ["item_id"] });
@@ -675,3 +747,20 @@ export const posTicketSchema = z
   })
   .refine((v) => v.booking_id || v.room_number, { message: "booking_id or room_number is required", path: ["room_number"] });
 export const voidPosTicketSchema = z.object({ reason: z.string().min(3).max(500) });
+
+// ---------------------------------------------------------------------------
+// Admin user management (POST /api/v1/admin/users)
+// ---------------------------------------------------------------------------
+export const adminCreateUserSchema = z.object({
+  first_name: z.string().min(1, "First name is required").max(50),
+  last_name: z.string().min(1, "Last name is required").max(50),
+  email: z.string().email("Valid email is required").max(255),
+  password: z.string().min(12, "Password must be at least 12 characters").max(128)
+    .regex(/[A-Z]/, "Must contain an uppercase letter")
+    .regex(/[a-z]/, "Must contain a lowercase letter")
+    .regex(/[0-9]/, "Must contain a number"),
+  phone: z.string().max(30).optional().nullable(),
+  // No "owner": see canManageRole in src/lib/api-auth.ts.
+  role: z.enum(["admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]),
+  department: z.string().max(100).optional().nullable(),
+}).strict();

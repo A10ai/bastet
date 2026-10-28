@@ -82,6 +82,18 @@ describe("workflow-engine", () => {
     } as never, "supervised");
     expect(fromBrain === null || fromBrain?.id).toBeTruthy();
   });
+
+  it("files brain workflows under the analysed property", async () => {
+    const w = await import("@/lib/workflow-engine");
+    const db = seedDb();
+    db.workflows = [];
+    const sb = createFakeSupabase(db);
+    const wf = await w.createWorkflowFromBrainDecision(sb, {
+      id: "dec-2", category: "operations", action: "Check pool pump", reasoning: "energy spike", confidence: 70,
+    } as never, "supervised");
+    expect(wf).not.toBeNull();
+    expect((db.workflows as { property_id: string }[])[0].property_id).toBe(db.properties[0].id);
+  });
 });
 
 describe("ai-brain", () => {

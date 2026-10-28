@@ -10,10 +10,15 @@ export const FX_TARGETS = ["EGP", "EUR", "USD"] as const;
  * Uses Open Exchange Rates when OPEN_EXCHANGE_RATES_APP_ID is set, otherwise
  * the European Central Bank reference rates via frankfurter.app (no key).
  * Manual entry through POST /api/v1/currency-rates still works as an override.
+ *
+ * The ECB does not publish every currency (EGP among them), so a refresh can
+ * succeed for some targets only. Those not returned are listed in `missing`
+ * and logged: their stored rate was NOT updated and keeps its old fetched_at.
+ * When no OPEN_EXCHANGE_RATES_APP_ID is set, EGP must be maintained by hand.
  */
 export async function refreshFxRates(
   supabase: SupabaseClient
-): Promise<{ source: string; rates: Record<string, number>; stored: number } | { error: string }> {
+): Promise<{ source: string; rates: Record<string, number>; stored: number; missing: string[] } | { error: string }> {
   const appId = process.env.OPEN_EXCHANGE_RATES_APP_ID;
   let source: string;
   let rates: Record<string, number> = {};
@@ -45,7 +50,11 @@ export async function refreshFxRates(
     .filter(([, r]) => Number.isFinite(r) && r > 0)
     .map(([target, rate]) => ({ base_currency: "GBP", target_currency: target, rate, source, fetched_at: fetchedAt }));
   if (rows.length === 0) return { error: "Provider returned no rates" };
+  const missing = FX_TARGETS.filter((t) => !rows.some((r) => r.target_currency === t));
+  if (missing.length > 0) {
+    logger.warn({ source, missing }, "[fx] provider did not return every target; those rates were not updated");
+  }
   const { error } = await supabase.from("currency_rates").insert(rows);
   if (error) return { error: error.message };
-  return { source, rates, stored: rows.length };
+  return { source, rates, stored: rows.length, missing };
 }

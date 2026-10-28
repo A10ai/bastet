@@ -88,6 +88,21 @@ describe("event-bus", () => {
     expect(Array.isArray(result.results)).toBe(true);
   });
 
+  it("scopes event broadcasts to the apartment's property", async () => {
+    const { emitEvent } = await import("@/lib/event-bus");
+    const db = seedDb();
+    const otherProperty = "22222222-2222-4222-8222-222222222222";
+    db.staff.push({ id: "77777777-7777-4777-8777-777777777799", property_id: otherProperty, auth_user_id: "user-x", first_name: "Other", last_name: "Hotel", email: "x@test.local", role: "manager", is_active: true });
+    db.staff_properties = [];
+    db.notifications = [];
+    const sb = createFakeSupabase(db);
+    const booking = db.bookings[0];
+    await emitEvent("booking.checked_out", "bookings", { booking_id: booking.id, apartment_id: booking.apartment_id }, sb, { idempotencyKey: null });
+    const recipients = new Set((db.notifications as { staff_id: string }[]).map((n) => n.staff_id));
+    expect(recipients.size).toBeGreaterThan(0);
+    expect(recipients.has("77777777-7777-4777-8777-777777777799")).toBe(false);
+  });
+
   it("derives an idempotency key and treats a repeat as a duplicate", async () => {
     const { emitEvent } = await import("@/lib/event-bus");
     const db = seedDb();
@@ -100,6 +115,28 @@ describe("event-bus", () => {
     const second = await emitEvent("booking.checked_out", "bookings", payload, dupSb);
     expect(second.duplicate).toBe(true);
     expect(second.event_id).toBe(first.event_id);
+  });
+
+  it("treats a duplicate whose original row is invisible (another user's event, RLS) as already processed", async () => {
+    const { emitEvent } = await import("@/lib/event-bus");
+    const db = seedDb();
+    db.system_events = [];
+    const sb = createFakeSupabase(db, { errors: { system_events: { message: "duplicate key", code: "23505", op: "insert" } } });
+    const r = await emitEvent("booking.checked_out", "bookings", { booking_id: db.bookings[1].id, apartment_id: db.bookings[1].apartment_id }, sb);
+    expect(r).toEqual({ event_id: "", results: [], duplicate: true });
+  });
+
+  it("returns the stable id of a hidden duplicate from the property-scoped lookup", async () => {
+    const { emitEvent } = await import("@/lib/event-bus");
+    const db = seedDb();
+    db.system_events = [];
+    const sb = createFakeSupabase(db, {
+      errors: { system_events: { message: "duplicate key", code: "23505", op: "insert" } },
+      rpc: { system_event_id_by_key: (args) => (args.p_key === `booking.checked_out:${db.bookings[1].id}` ? "evt-original" : null) },
+    });
+    const r = await emitEvent("booking.checked_out", "bookings", { booking_id: db.bookings[1].id, apartment_id: db.bookings[1].apartment_id }, sb);
+    expect(r).toEqual({ event_id: "evt-original", results: [], duplicate: true });
+    expect(sb.calls).toContain("rpc:system_event_id_by_key");
   });
 
   it("runs every registered handler type without throwing", async () => {
@@ -187,5 +224,18 @@ describe("audit", () => {
     const db = seedDb();
     await logAudit(createFakeSupabase(db, { user: null }), { action: "cron", category: "system", description: "nightly" });
     expect(db.audit_log[0].user_id).toBe("system");
+  });
+
+  it("records the signed-in user even when an entry names someone else (00033 insert policy)", async () => {
+    const { logAudit, logAuditBatch } = await import("@/lib/audit");
+    const db = seedDb();
+    const sb = createFakeSupabase(db, { user: { id: "user-2", email: "manager@test.local" } });
+    await logAudit(sb, { user_id: "user-1", action: "x", category: "system", description: "forged" });
+    await logAuditBatch(sb, [{ user_id: "system", action: "y", category: "system", description: "batch" }]);
+    expect(db.audit_log.map((r) => r.user_id)).toEqual(["user-2", "user-2"]);
+    // Without a session (service role) the entry may name the actor
+    const svc = createFakeSupabase(db, { user: null });
+    await logAudit(svc, { user_id: "cron-job", action: "z", category: "system", description: "svc" });
+    expect(db.audit_log[2].user_id).toBe("cron-job");
   });
 });

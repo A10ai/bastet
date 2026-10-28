@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { rpcErrorResponse } from "@/lib/rpc-error";
+import { businessDate, monthEnd, monthStart } from "@/lib/business-date";
 
 /**
  * GET /api/v1/finance/revenue?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -15,9 +16,10 @@ export async function GET(request: NextRequest) {
   const auth = await requireRole(request, ROLES.MANAGEMENT);
   if (!auth.authenticated) return auth.error!;
   const sp = request.nextUrl.searchParams;
-  const today = new Date();
-  const from = sp.get("from") || new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const to = sp.get("to") || new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  // Default: the current month of the property's business date
+  const today = businessDate();
+  const from = sp.get("from") || monthStart(today);
+  const to = sp.get("to") || monthEnd(today);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
     return NextResponse.json({ error: "from and to must be YYYY-MM-DD with from <= to" }, { status: 400 });
   }

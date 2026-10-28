@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { addDays, businessDate } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -117,15 +118,14 @@ registerHandler("booking.checked_out", async (event, supabase) => {
   }
 
   // 3. Check if no arrival due within 48hrs — flag for energy standby
-  const cutoff = new Date();
-  cutoff.setHours(cutoff.getHours() + 48);
+  const cutoff = addDays(businessDate(), 2);
 
   const { data: upcomingBookings } = await supabase
     .from("bookings")
     .select("id")
     .eq("apartment_id", apartment_id)
     .in("status", ["confirmed", "pending"])
-    .lte("check_in", cutoff.toISOString().split("T")[0])
+    .lte("check_in", cutoff)
     .limit(1);
 
   if (!upcomingBookings || upcomingBookings.length === 0) {
@@ -158,7 +158,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("id, number")
+    .select("id, number, property_id")
     .eq("id", apartment_id)
     .single();
 
@@ -185,6 +185,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   if (occupancy >= 85) {
     await emitEvent("occupancy.threshold_crossed", "event_bus", {
       occupancy_percent: occupancy,
+      property_id: apt?.property_id ?? null,
       direction: "above",
       threshold: 85,
     }, supabase);
@@ -200,6 +201,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   } else if (occupancy < 50) {
     await emitEvent("occupancy.threshold_crossed", "event_bus", {
       occupancy_percent: occupancy,
+      property_id: apt?.property_id ?? null,
       direction: "below",
       threshold: 50,
     }, supabase);
@@ -271,7 +273,7 @@ registerHandler("booking.confirmed", async (event, supabase) => {
     check_in_date?: string;
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessDate();
   const isArrivalToday = check_in_date === today;
 
   if (isArrivalToday && apartment_id) {
@@ -390,7 +392,7 @@ registerHandler("housekeeping.completed", async (event, supabase) => {
   });
 
   // 2. Check for arrivals today
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessDate();
   const { data: todayBookings } = await supabase
     .from("bookings")
     .select("id, guest_id")
@@ -605,13 +607,14 @@ registerHandler("booking.checked_out", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
   const unitLabel = apt?.number || apartment_id;
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Checkout: Unit ${unitLabel}`,
     message: `Unit ${unitLabel} checked out — cleaning dispatched`,
     type: "info",
@@ -632,7 +635,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
@@ -654,6 +657,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
   }
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Check-in: ${guestName} in Unit ${unitLabel}`,
     message: `${guestName} has checked into Unit ${unitLabel}`,
     type: "success",
@@ -663,6 +667,7 @@ registerHandler("booking.checked_in", async (event, supabase) => {
 
   if (isVip) {
     await createNotification(supabase, {
+      property_id: apt?.property_id ?? null,
       title: `VIP Alert: ${guestName} checked in`,
       message: `VIP guest ${guestName} has checked into Unit ${unitLabel}. Ensure premium service.`,
       type: "warning",
@@ -685,16 +690,19 @@ registerHandler("maintenance.created", async (event, supabase) => {
   if (priority !== "urgent" && priority !== "emergency") return [];
 
   let unitLabel = "Unknown";
+  let propertyId: string | null = null;
   if (apartment_id) {
     const { data: apt } = await supabase
       .from("apartments")
-      .select("number")
+      .select("number, property_id")
       .eq("id", apartment_id)
       .single();
     unitLabel = apt?.number || apartment_id;
+    propertyId = apt?.property_id ?? null;
   }
 
   await createNotification(supabase, {
+    property_id: propertyId,
     title: `Urgent: ${title || "Maintenance Issue"} in Unit ${unitLabel}`,
     message: `Urgent maintenance request created for Unit ${unitLabel}: ${title || "Unknown issue"}. Immediate attention required.`,
     type: "error",
@@ -712,13 +720,14 @@ registerHandler("housekeeping.completed", async (event, supabase) => {
 
   const { data: apt } = await supabase
     .from("apartments")
-    .select("number")
+    .select("number, property_id")
     .eq("id", apartment_id)
     .single();
 
   const unitLabel = apt?.number || apartment_id;
 
   await createNotification(supabase, {
+    property_id: apt?.property_id ?? null,
     title: `Room ready: Unit ${unitLabel}`,
     message: `Unit ${unitLabel} cleaning completed — now available`,
     type: "success",
@@ -741,6 +750,7 @@ registerHandler("occupancy.threshold_crossed", async (event, supabase) => {
   const thresholdVal = threshold || (direction === "above" ? 85 : 50);
 
   await createNotification(supabase, {
+    property_id: (event.payload as { property_id?: string }).property_id ?? null,
     title: `Occupancy ${dirLabel} ${thresholdVal}%`,
     message: `Occupancy is now at ${occupancy_percent}% (${dirLabel} ${thresholdVal}% threshold) — pricing review needed`,
     type: "warning",
@@ -797,8 +807,15 @@ export async function emitEvent(
       .select("id, results")
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
+    let eventId = (existing?.id as string | undefined) ?? "";
+    if (!eventId) {
+      // Another user's event is hidden by RLS (00033); the id alone comes
+      // from a property-scoped lookup (00036), without its payload or results.
+      const { data: id } = await supabase.rpc("system_event_id_by_key", { p_key: idempotencyKey });
+      eventId = typeof id === "string" ? id : "";
+    }
     logger.info({ type, idempotencyKey }, "[EventBus] Duplicate event ignored");
-    return { event_id: (existing?.id as string) || "", results: (existing?.results as HandlerResult[]) || [], duplicate: true };
+    return { event_id: eventId, results: (existing?.results as HandlerResult[]) || [], duplicate: true };
   }
 
   if (insertError || !inserted) {

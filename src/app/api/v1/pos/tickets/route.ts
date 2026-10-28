@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
       p_posted_by_name: auth.email ?? "pos",
     });
     if (error) return rpcErrorResponse(error, "post_pos_ticket");
+    // A retried ticket reference returns the original ticket (00034); it was
+    // charged and audited the first time.
+    if (data?.duplicate) return NextResponse.json({ data }, { status: 200 });
     await logAudit(supabase, {
       user_id: auth.userId,
       user_email: auth.email,

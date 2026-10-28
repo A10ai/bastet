@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 // server-only is mocked via vitest config alias
 import { rateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
@@ -73,6 +73,22 @@ describe("rateLimit", () => {
 });
 
 describe("getClientIp", () => {
+  // Proxy headers are only believed on Vercel or with TRUST_PROXY_HEADERS=true.
+  beforeEach(() => {
+    process.env.TRUST_PROXY_HEADERS = "true";
+  });
+  afterEach(() => {
+    delete process.env.TRUST_PROXY_HEADERS;
+  });
+
+  it("ignores spoofable proxy headers unless they are trusted", async () => {
+    delete process.env.TRUST_PROXY_HEADERS;
+    const req = new Request("https://example.com", {
+      headers: { "x-forwarded-for": "6.6.6.6", "x-real-ip": "6.6.6.7" },
+    });
+    expect(getClientIp(req)).toBe("unknown");
+  });
+
   it("extracts IP from x-forwarded-for header", async () => {
     const req = new Request("https://example.com", {
       headers: { "x-forwarded-for": "192.168.1.1, 10.0.0.1" },

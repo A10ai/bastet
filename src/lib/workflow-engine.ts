@@ -12,6 +12,8 @@ import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import type { BrainDecision } from "@/lib/ai-brain";
 import { logger } from "@/lib/logger";
+import { isUniqueViolation } from "@/lib/db-errors";
+import { businessDate } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,6 +151,7 @@ export async function createWorkflow(
   // Notify staff about workflows that need approval
   if (initialStatus === "awaiting_approval") {
     await createNotification(supabase, {
+      property_id: input.property_id || null,
       title: `Workflow awaiting approval: ${input.title}`,
       message: `A ${input.priority || "normal"} priority workflow from ${input.source} requires your approval. ${steps.length} step${steps.length > 1 ? "s" : ""} planned.`,
       type: "warning",
@@ -334,7 +337,7 @@ export async function executeNextStep(
   let success = false;
 
   try {
-    result = await executeStepAction(supabase, step);
+    result = await executeStepAction(supabase, step, workflow.property_id);
     success = true;
   } catch (err) {
     result = {
@@ -407,6 +410,7 @@ export async function executeNextStep(
   // If workflow completed, send notification
   if (allDone && success) {
     await createNotification(supabase, {
+      property_id: workflow.property_id,
       title: `Workflow completed: ${workflow.title}`,
       message: `All ${workflow.total_steps} steps executed successfully.`,
       type: "success",
@@ -426,6 +430,7 @@ export async function executeNextStep(
   // If next step needs approval, notify
   if (nextStatus === "awaiting_approval") {
     await createNotification(supabase, {
+      property_id: workflow.property_id,
       title: `Approval needed: Step ${nextStep + 1} of "${workflow.title}"`,
       message: `Step "${steps[nextStep].title}" requires your approval before execution.`,
       type: "warning",
@@ -443,7 +448,8 @@ export async function executeNextStep(
 
 async function executeStepAction(
   supabase: SupabaseClient,
-  step: WorkflowStep
+  step: WorkflowStep,
+  propertyId: string | null
 ): Promise<Record<string, unknown>> {
   const params = step.action_params;
 
@@ -497,6 +503,7 @@ async function executeStepAction(
 
       if (!apt) throw new Error("Apartment not found");
 
+      const taskDate = scheduled_date || businessDate();
       const { data: task, error } = await supabase
         .from("housekeeping_tasks")
         .insert({
@@ -505,16 +512,32 @@ async function executeStepAction(
           type: type || "checkout_clean",
           status: "pending",
           priority: priority || "normal",
-          scheduled_date: scheduled_date || new Date().toISOString().split("T")[0],
+          scheduled_date: taskDate,
           notes: notes || null,
         })
         .select("id")
         .single();
 
-      if (error) throw new Error(`Failed to create housekeeping task: ${error.message}`);
+      let taskId = task?.id as string | undefined;
+      if (isUniqueViolation(error)) {
+        // An open checkout clean for this unit and day already exists
+        // (uq_housekeeping_open_checkout_clean): reuse it.
+        const { data: existing } = await supabase
+          .from("housekeeping_tasks")
+          .select("id")
+          .eq("apartment_id", apartment_id)
+          .eq("scheduled_date", taskDate)
+          .eq("type", type || "checkout_clean")
+          .not("status", "in", "(completed,verified)")
+          .limit(1)
+          .maybeSingle();
+        taskId = existing?.id;
+      } else if (error) {
+        throw new Error(`Failed to create housekeeping task: ${error.message}`);
+      }
 
       return {
-        task_id: task?.id,
+        task_id: taskId,
         apartment: apt.number,
         type: type || "checkout_clean",
       };
@@ -607,6 +630,7 @@ async function executeStepAction(
       }
 
       await createNotification(supabase, {
+        property_id: propertyId,
         title,
         message,
         type: (type as "info" | "success" | "warning" | "error") || "info",
@@ -952,7 +976,18 @@ export async function createWorkflowFromBrainDecision(
   if (decision.confidence >= 95) priority = "urgent";
   if (decision.confidence < 60) priority = "low";
 
+  // The brain analyses the installation as one property (the first, as its
+  // snapshot and cycle summary do). Without a property the service-role
+  // insert would leave the workflow visible to every property's staff.
+  const { data: prop } = await supabase
+    .from("properties")
+    .select("id")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+
   const workflow = await createWorkflow(supabase, {
+    property_id: (prop as { id?: string } | null)?.id ?? undefined,
     title: decision.action,
     description: decision.reasoning,
     source: "ai_brain",

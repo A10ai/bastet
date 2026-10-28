@@ -14,6 +14,13 @@ import { logger } from "@/lib/logger";
 
 export interface NotificationInput {
   staff_id?: string | null;
+  /**
+   * Broadcast only to this property's staff (home property or a
+   * staff_properties membership). Required in practice whenever `supabase`
+   * is the service-role client: without RLS a broadcast would otherwise
+   * reach every active staff member of every property.
+   */
+  property_id?: string | null;
   title: string;
   message: string;
   type?: "info" | "success" | "warning" | "error" | "ai_decision";
@@ -59,7 +66,7 @@ export async function createNotification(
   supabase: SupabaseClient,
   input: NotificationInput
 ): Promise<number> {
-  const { staff_id, title, message, type = "info", category, link } = input;
+  const { staff_id, property_id, title, message, type = "info", category, link } = input;
   const base = { title, message, type, category: category || null, link: link || null };
 
   if (staff_id) {
@@ -71,14 +78,30 @@ export async function createNotification(
     return 1;
   }
 
-  // Broadcast: one row per active staff member
-  const { data: staffMembers, error: staffError } = await supabase
-    .from("staff")
-    .select("id")
-    .eq("is_active", true);
+  if (!property_id) {
+    // With the service-role client this reaches every property's staff, and
+    // under RLS (00033) a property-less row is visible to no one.
+    logger.warn({ title }, "[Notifications] Broadcast without property_id");
+  }
 
+  // Broadcast: one row per active staff member (of one property when given)
+  let staffQuery = supabase.from("staff").select("id").eq("is_active", true);
+  if (property_id) {
+    const { data: members } = await supabase.from("staff_properties").select("staff_id").eq("property_id", property_id);
+    const memberIds = ((members || []) as { staff_id: string }[]).map((m) => m.staff_id);
+    staffQuery = memberIds.length
+      ? staffQuery.or(`property_id.eq.${property_id},id.in.(${memberIds.join(",")})`)
+      : staffQuery.eq("property_id", property_id);
+  }
+  const { data: staffMembers, error: staffError } = await staffQuery;
+
+  if (property_id && !staffError && (!staffMembers || staffMembers.length === 0)) {
+    // A property-scoped broadcast must never fall back to a global row.
+    return 0;
+  }
   if (staffError || !staffMembers || staffMembers.length === 0) {
     logger.error({ err: staffError?.message }, "[Notifications] Failed to fetch staff for broadcast");
+    if (property_id) return 0;
     // Still create one with null staff_id as fallback
     const { error } = await supabase.from("notifications").insert({ staff_id: null, ...base });
     if (error) {

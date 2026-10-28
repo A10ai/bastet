@@ -254,3 +254,10 @@ export const EXPENSE_CATEGORIES = [
 
 /** Hotel departments used for budgets and the finance department-cost view. */
 export const DEPARTMENTS = ["Rooms", "Personnel", "Energy", "Property", "Sales & Marketing", "Administration", "Technology", "General"] as const;
+
+/**
+ * Columns of booking_channels that app roles may read. api_connection holds
+ * channel credentials and is not granted to anon/authenticated (00033), so a
+ * select("*") from a user-scoped client fails with "permission denied".
+ */
+export const BOOKING_CHANNEL_COLUMNS = "id, name, code, commission_rate, is_active, created_at, updated_at";

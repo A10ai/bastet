@@ -55,16 +55,14 @@ export function redactAuditData(
 }
 
 /**
- * Resolve the acting user from the request-scoped client. Falls back to
- * "system" only when there is genuinely no user (cron, service-role jobs).
+ * Resolve the acting user. With a request-scoped client the row must carry
+ * the signed-in user's own id: the audit_log insert policy (00033) requires
+ * user_id = auth.uid(), so an entry naming someone else (or "system") would
+ * be rejected, and the trail must not be forgeable anyway. Only a client with
+ * no user session (service role: cron, background jobs) may name the actor
+ * itself or fall back to "system".
  */
-async function resolveActor(
-  supabase: SupabaseClient,
-  entry: AuditEntry
-): Promise<{ user_id: string; user_email: string }> {
-  if (entry.user_id) {
-    return { user_id: entry.user_id, user_email: entry.user_email || "unknown" };
-  }
+async function sessionUser(supabase: SupabaseClient): Promise<{ user_id: string; user_email: string } | null> {
   try {
     // Prefer the locally verified token (no auth-server round trip per write).
     const session = (await supabase.auth.getSession?.())?.data?.session;
@@ -77,8 +75,22 @@ async function resolveActor(
     } = await supabase.auth.getUser();
     if (user) return { user_id: user.id, user_email: user.email || "unknown" };
   } catch {
-    // service-role client or no session: fall through
+    // service-role client or no session
   }
+  return null;
+}
+
+function actorFor(
+  session: { user_id: string; user_email: string } | null,
+  entry: AuditEntry
+): { user_id: string; user_email: string } {
+  if (session) {
+    if (entry.user_id && entry.user_id !== session.user_id) {
+      logger.warn({ action: entry.action }, "[Audit] Entry named another user; recorded as the signed-in user");
+    }
+    return { user_id: session.user_id, user_email: entry.user_email || session.user_email };
+  }
+  if (entry.user_id) return { user_id: entry.user_id, user_email: entry.user_email || "unknown" };
   return { user_id: "system", user_email: "system@hospitai.uk" };
 }
 
@@ -90,7 +102,7 @@ export async function logAudit(
   entry: AuditEntry
 ): Promise<void> {
   try {
-    const actor = await resolveActor(supabase, entry);
+    const actor = actorFor(await sessionUser(supabase), entry);
     const { error } = await supabase.from("audit_log").insert({
       ...actor,
       action: entry.action,
@@ -120,10 +132,9 @@ export async function logAuditBatch(
 ): Promise<void> {
   if (entries.length === 0) return;
   try {
-    const actor = await resolveActor(supabase, entries[0]);
+    const session = await sessionUser(supabase);
     const rows = entries.map((entry) => ({
-      user_id: entry.user_id || actor.user_id,
-      user_email: entry.user_email || actor.user_email,
+      ...actorFor(session, entry),
       action: entry.action,
       category: entry.category,
       resource_type: entry.resource_type,

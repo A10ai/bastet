@@ -71,3 +71,28 @@ describe("validation schemas", () => {
     }
   });
 });
+
+describe("validatePatchBody", () => {
+  it("keeps only the fields the caller sent (zod v4 applies defaults inside .partial())", async () => {
+    const { validatePatchBody, updateGroupSchema, createGuestSchema } = await import("@/lib/validation");
+    const group = validatePatchBody(updateGroupSchema, { status: "confirmed" });
+    expect(group.success && group.data).toEqual({ status: "confirmed" });
+    const guest = validatePatchBody(createGuestSchema.partial(), { notes: "late arrival" });
+    expect(guest.success && guest.data).toEqual({ notes: "late arrival" });
+  });
+
+  it("still rejects invalid fields", async () => {
+    const { validatePatchBody, updateGroupSchema } = await import("@/lib/validation");
+    expect(validatePatchBody(updateGroupSchema, { status: "nonsense" }).success).toBe(false);
+  });
+});
+
+describe("invoice totals match the database's numeric rounding", () => {
+  it("rounds true halves up and uses the stored 2-decimal tax rate", async () => {
+    const { lineTotalGbp, calculateInvoiceTotals } = await import("@/lib/finance-engine");
+    expect(lineTotalGbp(1.5, 0.15)).toBe(0.23);
+    expect(lineTotalGbp(3, 33.33)).toBe(99.99);
+    // 12.345% is stored as 12.35%: 100.00 * 12.35% = 12.35
+    expect(calculateInvoiceTotals([{ quantity: 1, unit_price_gbp: 100 }], 12.345)).toEqual({ subtotal_gbp: 100, tax_amount_gbp: 12.35, total_gbp: 112.35 });
+  });
+});

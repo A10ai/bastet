@@ -47,21 +47,46 @@ export function calculateInvoiceTotals(
   tax_amount_gbp: number;
   total_gbp: number;
 } {
-  const subtotal = lineItems.reduce(
-    (sum, item) => sum + item.quantity * item.unit_price_gbp,
-    0
-  );
   if (taxRatePercent < 0 || taxRatePercent > 100) {
     throw new RangeError(`taxRatePercent must be between 0 and 100, got ${taxRatePercent}`);
   }
-  const tax = subtotal * (taxRatePercent / 100);
-  const total = subtotal + tax;
+  // Whole pence throughout: each line is rounded as stored (lineTotalGbp), tax
+  // is charged on the rounded subtotal (as SQL post_folio_charge does), and
+  // total = subtotal + tax exactly.
+  const subtotalPence = lineItems.reduce(
+    (sum, item) => sum + Math.round(lineTotalGbp(item.quantity, item.unit_price_gbp) * 100),
+    0
+  );
+  // invoices.tax_rate_percent is NUMERIC(5,2); use the rate as stored
+  const storedRate = roundHalfUp2(taxRatePercent);
+  const taxPence = Math.round(Number(((subtotalPence * storedRate) / 100).toPrecision(12)));
 
   return {
-    subtotal_gbp: Math.round(subtotal * 100) / 100,
-    tax_amount_gbp: Math.round(tax * 100) / 100,
-    total_gbp: Math.round(total * 100) / 100,
+    subtotal_gbp: subtotalPence / 100,
+    tax_amount_gbp: taxPence / 100,
+    total_gbp: (subtotalPence + taxPence) / 100,
   };
+}
+
+/** A line item's total rounded to the penny; the value stored on the line. */
+export function lineTotalGbp(quantity: number, unitPriceGbp: number): number {
+  return roundHalfUp2(quantity * unitPriceGbp);
+}
+
+/**
+ * Round to 2 decimals the way PostgreSQL ROUND(numeric, 2) does. Float
+ * products such as 1.5 * 0.15 = 0.22499999999999998 are first snapped to 12
+ * significant digits so a true half (0.225) rounds up to 0.23, matching the
+ * totals the database recomputes for invoices.
+ */
+function roundHalfUp2(value: number): number {
+  const snapped = Number(value.toPrecision(12));
+  return Math.sign(snapped) * Math.round(Math.abs(snapped) * 100) / 100;
+}
+
+/** Compare money in whole pence so 100.10 + 200.20 equals 300.30. */
+export function toPence(amountGbp: number): number {
+  return Math.round(amountGbp * 100);
 }
 
 /**
@@ -71,8 +96,9 @@ export function getInvoicePaymentStatus(
   totalGbp: number,
   paymentsSum: number
 ): "paid" | "partially_paid" | "sent" {
-  if (paymentsSum >= totalGbp) return "paid";
-  if (paymentsSum > 0) return "partially_paid";
+  const paid = toPence(paymentsSum);
+  if (paid >= toPence(totalGbp)) return "paid";
+  if (paid > 0) return "partially_paid";
   return "sent";
 }
 

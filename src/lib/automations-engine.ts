@@ -10,7 +10,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { format, subDays } from "date-fns";
+import { addDays, businessDate } from "./business-date";
+import { isUniqueViolation } from "./db-errors";
+import { logger } from "./logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,7 +48,8 @@ export interface AutomationDefinition {
 // ---------------------------------------------------------------------------
 
 const now = () => new Date().toISOString();
-const todayStr = () => format(new Date(), "yyyy-MM-dd");
+/** The property's business date (Africa/Cairo), not the server's UTC date. */
+const todayStr = () => businessDate();
 
 /** Supabase embedded joins can return an array or a single object depending on
  *  the relationship type. This helper safely extracts the first item. */
@@ -67,7 +70,10 @@ function first<T>(val: T | T[] | null | undefined): T | null {
  *   - does nothing unless AUTO_PRICING_ENABLED=true,
  *   - adjusts each apartment type at most once per business day,
  *   - never drifts more than ±AUTO_PRICING_MAX_DRIFT from the first rate
- *     recorded in the last 30 days of pricing_decisions.
+ *     ever recorded in pricing_decisions for the type (a rolling window
+ *     would let the limit reset and rates compound without bound),
+ *   - changes nothing when it cannot record the decision (no property row),
+ *     since the record is what enforces the daily cooldown.
  */
 const AUTO_PRICING_ENABLED = process.env.AUTO_PRICING_ENABLED === "true";
 const AUTO_PRICING_MAX_DRIFT = 0.3;
@@ -100,8 +106,8 @@ async function runAutoPricing(
   ).length;
   const occupancy = Math.round((occupied / total) * 100);
 
-  // Only act when crossing thresholds
-  if (occupancy < 85 && occupancy >= 50) {
+  // Only act when crossing thresholds; 50% and 85% themselves are normal
+  if (occupancy <= 85 && occupancy >= 50) {
     results.push({
       action: "pricing_check",
       description: `Occupancy at ${occupancy}% — within normal band (50-85%). No rate adjustment needed.`,
@@ -123,16 +129,24 @@ async function runAutoPricing(
     .limit(1)
     .single();
 
-  const since = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  if (!prop) {
+    results.push({
+      action: "pricing_skipped",
+      description: "No property record to log pricing decisions against; rates were not changed.",
+      impact: "No change",
+      timestamp: now(),
+    });
+    return results;
+  }
+
   const { data: recentDecisions } = await supabase
     .from("pricing_decisions")
     .select("apartment_type_id, decision_date, base_rate_gbp, created_at")
-    .gte("decision_date", since)
     .order("created_at", { ascending: true });
 
   const { data: types } = await supabase
     .from("apartment_types")
-    .select("id, name, base_weekly_rate_gbp");
+    .select("id, name, base_weekly_rate_gbp, property_id");
 
   if (!types || types.length === 0) return results;
 
@@ -171,33 +185,51 @@ async function runAutoPricing(
       continue;
     }
 
+    // Record today's decision first: the unique index on (type, day) makes
+    // it the claim, so two concurrent runs cannot both change the rate, and
+    // a rate is never changed without the record the cooldown and drift cap
+    // read.
+    const { error: decisionError } = await supabase.from("pricing_decisions").insert({
+      property_id: (aptType as { property_id?: string }).property_id ?? prop.id,
+      apartment_type_id: aptType.id,
+      decision_date: todayStr(),
+      base_rate_gbp: currentRate,
+      recommended_rate_gbp: newRate,
+      applied_rate_gbp: newRate,
+      adjustment_reason: high ? "high_demand" : "low_demand",
+      demand_score: Math.round(occupancy) / 100,
+      was_accepted: true,
+    });
+    if (decisionError) {
+      if (isUniqueViolation(decisionError)) {
+        // 23505: another run already decided today's rate for this type
+        results.push({
+          action: "pricing_cooldown",
+          description: `${aptType.name}: already adjusted today. No change.`,
+          impact: "No change",
+          timestamp: now(),
+        });
+      } else {
+        logger.error({ err: decisionError.message, type: aptType.id }, "[Automations] Failed to record pricing decision; rate left unchanged");
+      }
+      continue;
+    }
+
     const { error } = await supabase
       .from("apartment_types")
       .update({ base_weekly_rate_gbp: newRate })
       .eq("id", aptType.id);
 
-    if (!error) {
-      results.push({
-        action: "rate_adjusted",
-        description: `${aptType.name}: weekly rate changed from £${currentRate} to £${newRate}/week. ${reason}.`,
-        impact: `£${Math.abs(newRate - currentRate)}/week ${newRate > currentRate ? "increase" : "decrease"} (reference £${reference}, limit ±${AUTO_PRICING_MAX_DRIFT * 100}%)`,
-        timestamp: now(),
-      });
-
-      if (prop) {
-        await supabase.from("pricing_decisions").insert({
-          property_id: prop.id,
-          apartment_type_id: aptType.id,
-          decision_date: todayStr(),
-          base_rate_gbp: currentRate,
-          recommended_rate_gbp: newRate,
-          applied_rate_gbp: newRate,
-          adjustment_reason: high ? "high_demand" : "low_demand",
-          demand_score: Math.round(occupancy) / 100,
-          was_accepted: true,
-        });
-      }
+    if (error) {
+      logger.error({ err: error.message, type: aptType.id }, "[Automations] Rate change failed after recording the decision");
+      continue;
     }
+    results.push({
+      action: "rate_adjusted",
+      description: `${aptType.name}: weekly rate changed from £${currentRate} to £${newRate}/week. ${reason}.`,
+      impact: `£${Math.abs(newRate - currentRate)}/week ${newRate > currentRate ? "increase" : "decrease"} (reference £${reference}, limit ±${AUTO_PRICING_MAX_DRIFT * 100}%)`,
+      timestamp: now(),
+    });
   }
 
   if (results.length === 0) {
@@ -342,6 +374,8 @@ async function runAutoHousekeeping(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const booking of sorted as Record<string, any>[]) {
     if (alreadyScheduled.has(booking.apartment_id)) continue;
+    // Two checkouts from one apartment on one day need one clean, not two
+    alreadyScheduled.add(booking.apartment_id);
 
     const apt = first<{ id: string; number: string; property_id: string }>(
       booking.apartment
@@ -368,6 +402,11 @@ async function runAutoHousekeeping(
       scheduled_date: td,
       notes: `Auto-created by Smart Automations. ${isVip ? "VIP room — priority clean." : ""} ${isArrivalDue ? "New arrival due today — urgent turnaround." : ""}`.trim(),
     });
+    // 23505: an open checkout clean for this unit today already exists
+    // (uq_housekeeping_open_checkout_clean), e.g. from a concurrent run
+    if (error && !isUniqueViolation(error)) {
+      logger.error({ err: error.message, apartment: booking.apartment_id }, "[Automations] Failed to create checkout clean");
+    }
 
     if (!error) {
       const staffMember = hkStaff?.find(
@@ -419,7 +458,7 @@ async function runMaintenancePattern(
   supabase: SupabaseClient
 ): Promise<AutomationResult[]> {
   const results: AutomationResult[] = [];
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const thirtyDaysAgo = addDays(todayStr(), -30);
 
   const { data: requests } = await supabase
     .from("maintenance_requests")
@@ -692,10 +731,7 @@ async function runEnergyStandby(
 
   // Check which available units have no arrival scheduled today or tomorrow
   const td = todayStr();
-  const tomorrowDate = format(
-    new Date(Date.now() + 86_400_000),
-    "yyyy-MM-dd"
-  );
+  const tomorrowDate = addDays(td, 1);
 
   const { data: upcomingArrivals } = await supabase
     .from("bookings")

@@ -6,7 +6,7 @@ import { getByIdHandler } from "@/lib/crud";
 import { encryptPii, revealGuestDocument } from "@/lib/pii-crypto";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
+import { validatePatchBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
 
 const getGuest = getByIdHandler({
   table: "guests",
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const validation = validateBody(createGuestSchema.partial(), body);
+    const validation = validatePatchBody(createGuestSchema.partial(), body);
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }

@@ -1,10 +1,10 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireRole, ROLES } from "@/lib/api-auth";
+import { requireRole, ROLES, canManageRole } from "@/lib/api-auth";
 import { getByIdHandler } from "@/lib/crud";
 import { logAudit } from "@/lib/audit";
-import { validateBody, formatZodErrors, updateStaffSchema } from "@/lib/validation";
+import { validatePatchBody, formatZodErrors, updateStaffSchema } from "@/lib/validation";
 
 export const GET = getByIdHandler({
   table: "staff",
@@ -20,11 +20,25 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const validation = validateBody(updateStaffSchema, body);
+    const validation = validatePatchBody(updateStaffSchema, body);
     if (!validation.success) {
       return NextResponse.json({ error: formatZodErrors(validation.error) }, { status: 400 });
     }
     const validated = validation.data;
+
+    // Same rules as /api/v1/admin/users: only accounts and roles below your own.
+    const { data: target } = await supabase.from("staff").select("id, role").eq("id", params.id).maybeSingle();
+    if (!target) return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
+    const self = target.id === auth.staffId;
+    if (self && (validated.role !== undefined || validated.is_active !== undefined)) {
+      return NextResponse.json({ error: "You cannot change your own role or active status" }, { status: 403 });
+    }
+    if (!self && !canManageRole(auth.role, target.role as string)) {
+      return NextResponse.json({ error: "You can only manage accounts with a role below your own" }, { status: 403 });
+    }
+    if (validated.role !== undefined && !canManageRole(auth.role, validated.role)) {
+      return NextResponse.json({ error: "You can only assign roles below your own" }, { status: 403 });
+    }
 
     const allowedFields = [
       "first_name",
