@@ -64,7 +64,7 @@ const STATUS_BY_CODE: Record<string, number> = {
   NOT_IN_HOUSE: 409,
   ITEM_NOT_FOUND: 404,
   TICKET_NOT_FOUND: 404,
-  // online booking (00034)
+  // online booking (00037)
   ONLINE_SALES_CLOSED: 503,
   TOO_SOON: 400,
   TOO_FAR: 400,
@@ -73,6 +73,9 @@ const STATUS_BY_CODE: Record<string, number> = {
   OCCUPANCY: 400,
   CHANNEL_NOT_FOUND: 500,
   NO_AVAILABILITY: 409,
+  // channel manager (00038)
+  MAPPING_NOT_FOUND: 422,
+  UNKNOWN_RESERVATION: 404,
 };
 
 export function rpcErrorResponse(

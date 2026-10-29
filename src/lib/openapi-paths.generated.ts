@@ -1708,6 +1708,264 @@ export const generatedPaths = {
       }
     }
   },
+  "/channels/{code}/push": {
+    "get": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "preview the ARI payload (manager and above) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "post": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "preview the ARI payload (manager and above) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/channels/{code}/reservations": {
+    "post": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "POST /channels/{code}/reservations",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/channels/connections/{id}/mappings": {
+    "get": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "(front desk and above) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "put": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "(front desk and above) (PUT)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/channels/connections/{id}": {
+    "delete": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "DELETE /channels/connections/{id}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "patch": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "PATCH /channels/connections/{id}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/channels/connections": {
+    "get": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "connections for the caller's property (front desk and above) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Bookings"
+      ],
+      "summary": "connections for the caller's property (front desk and above) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/channels": {
     "get": {
       "tags": [

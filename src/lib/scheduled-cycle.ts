@@ -4,6 +4,7 @@ import { runBrainCycle, getBrainConfig } from "@/lib/ai-brain";
 import { runAllAutomations } from "@/lib/automations-engine";
 import { trainModel } from "@/lib/prediction-model";
 import { expireOnlineHolds } from "@/lib/online-booking";
+import { pushAllConnections } from "@/lib/channel-manager";
 import { logger } from "@/lib/logger";
 
 export interface CycleResults {
@@ -11,6 +12,7 @@ export interface CycleResults {
   automations: unknown;
   predictions: unknown;
   online_holds: unknown;
+  channel_push: unknown;
   duration_ms: number;
   timestamp: string;
   error?: string;
@@ -28,6 +30,7 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
     automations: null,
     predictions: null,
     online_holds: null,
+    channel_push: null,
     duration_ms: 0,
     timestamp: new Date().toISOString(),
   };
@@ -78,6 +81,14 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
       results.online_holds = { expired: await expireOnlineHolds(supabase) };
     } catch (e) {
       results.online_holds = { error: e instanceof Error ? e.message : "Hold expiry failed" };
+    }
+
+    // Availability and rates to every active OTA connection.
+    try {
+      const pushes = await pushAllConnections(supabase);
+      results.channel_push = { connections: pushes.length, processed: pushes.filter((p) => p.status === "processed").length, failed: pushes.filter((p) => p.status === "failed").map((p) => ({ id: p.connection_id, error: p.error })) };
+    } catch (e) {
+      results.channel_push = { error: e instanceof Error ? e.message : "Channel push failed" };
     }
 
     results.duration_ms = Date.now() - startTime;

@@ -36,6 +36,12 @@ to a live provider; the demo screens that touch these areas carry the
 
 ## Channel manager (OTAs)
 
+> **Status (Sales module, slice 3):** built as a provider-agnostic connector:
+> `POST /api/v1/channels/:code/reservations` (HMAC-signed inbound events),
+> `channel_ari()` + `POST /api/v1/channels/:code/push` (outbound ARI),
+> connection and room-mapping management. See docs/CHANNEL-MANAGER.md. A
+> named provider needs only an adapter in `src/lib/channel-manager.ts`.
+
 | | |
 | --- | --- |
 | Seam | Inbound reservations become ordinary bookings through `POST /api/v1/bookings` semantics: priced by `quote_stay` with the channel's rate plan (plans carry `channel_codes`), `channel_id` set to the OTA, `rate_plan_snapshot` stored. Outbound availability is `GET /api/v1/availability` (the exclusion constraint is the source of truth) and rates are `rates` plus `rate_plans`. |

@@ -815,3 +815,45 @@ export const onlinePaymentIntentSchema = z.object({
 export const onlineCancelSchema = z.object({
   reason: z.string().trim().max(500).optional().nullable(),
 });
+
+
+// ---------------------------------------------------------------------------
+// Channel manager (migration 00035)
+// ---------------------------------------------------------------------------
+export const CHANNEL_PROVIDERS = ["generic", "siteminder", "cloudbeds", "booking_com", "expedia", "airbnb", "agoda", "ostrovok"] as const;
+
+export const createChannelConnectionSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  channel_code: z.string().min(1).max(30),
+  provider: z.enum(CHANNEL_PROVIDERS).default("generic"),
+  name: z.string().trim().min(2).max(80),
+  status: z.enum(["inactive", "active"]).default("inactive"),
+  hotel_code: z.string().trim().max(80).optional().nullable(),
+  /** Plain secret; stored encrypted, never returned. */
+  webhook_secret: z.string().min(16).max(200).optional().nullable(),
+  push_url: z.string().url().max(500).optional().nullable(),
+  push_auth_ref: z.string().regex(/^[A-Z][A-Z0-9_]{2,59}$/, "environment variable name").optional().nullable(),
+  push_days: z.number().int().min(1).max(730).default(365),
+  rate_plan_id: z.string().uuid().optional().nullable(),
+  markup_percent: z.number().min(-50).max(100).default(0),
+  settings: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const updateChannelConnectionSchema = createChannelConnectionSchema.omit({ channel_code: true, property_id: true }).partial().extend({
+  status: z.enum(["inactive", "active", "error"]).optional(),
+});
+
+export const channelMappingsSchema = z.object({
+  mappings: z.array(z.object({
+    apartment_type_id: z.string().uuid(),
+    external_room_id: z.string().trim().min(1).max(80),
+    external_rate_plan_id: z.string().trim().min(1).max(80).default("default"),
+    rate_plan_id: z.string().uuid().optional().nullable(),
+    is_active: z.boolean().default(true),
+  })).max(200),
+});
+
+export const channelPushSchema = z.object({
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+}).refine((v) => !v.from || !v.to || v.to > v.from, { message: "to must be after from", path: ["to"] });
