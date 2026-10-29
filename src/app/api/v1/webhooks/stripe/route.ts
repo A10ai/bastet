@@ -53,13 +53,14 @@ export async function POST(request: NextRequest) {
           logger.error({ err: error.message, booking: d.bookingId }, "[webhooks/stripe] confirm failed");
           // 500 makes Stripe retry; a booking that was cancelled meanwhile must not retry forever.
           if (/INVALID_STATUS|BOOKING_NOT_FOUND/.test(error.message)) {
-            await notifyFrontDesk(admin, { id: d.bookingId, reference: intent.metadata?.reference || d.bookingId, check_in: "", check_out: "", adults: 0, children: 0 }, "Payment received for a closed booking", `${d.amountOriginal} ${d.currency}, intent ${intent.id}: refund or re-open`);
+            const { data: closed } = await admin.from("bookings").select("property_id").eq("id", d.bookingId).maybeSingle();
+            await notifyFrontDesk(admin, { id: d.bookingId, property_id: closed?.property_id ?? null, reference: intent.metadata?.reference || d.bookingId, check_in: "", check_out: "", adults: 0, children: 0 }, "Payment received for a closed booking", `${d.amountOriginal} ${d.currency}, intent ${intent.id}: refund or re-open`);
             break;
           }
           return NextResponse.json({ error: "confirm failed" }, { status: 500 });
         }
         if (result && !result.duplicate) {
-          const { data: booking } = await admin.from("bookings").select("id, reference, check_in, check_out, adults, children").eq("id", d.bookingId).maybeSingle();
+          const { data: booking } = await admin.from("bookings").select("id, property_id, reference, check_in, check_out, adults, children").eq("id", d.bookingId).maybeSingle();
           await logAudit(admin, { action: "booking.confirm", category: "booking", resource_type: "booking", resource_id: d.bookingId, description: `Deposit ${d.amountGbp.toFixed(2)} GBP received via Stripe (${intent.id}); booking confirmed` });
           if (booking) await notifyFrontDesk(admin, booking as never, "Online booking confirmed", `deposit ${d.amountGbp.toFixed(2)} GBP`);
           await emitEvent("booking.confirmed", "online-booking", { booking_id: d.bookingId, reference: booking?.reference ?? null, deposit_gbp: d.amountGbp, payment_intent: intent.id }, admin, { idempotencyKey: `stripe:${intent.id}` }).catch(() => undefined);

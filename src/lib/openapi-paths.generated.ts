@@ -3663,7 +3663,7 @@ export const generatedPaths = {
       "tags": [
         "Core"
       ],
-      "summary": "GET /properties",
+      "summary": "Create a property (owners only). The insert runs as the service role: (GET)",
       "responses": {
         "200": {
           "description": "OK"
@@ -3680,7 +3680,7 @@ export const generatedPaths = {
       "tags": [
         "Core"
       ],
-      "summary": "POST /properties",
+      "summary": "Create a property (owners only). The insert runs as the service role: (POST)",
       "responses": {
         "200": {
           "description": "OK"
@@ -3700,7 +3700,7 @@ export const generatedPaths = {
       "tags": [
         "Core"
       ],
-      "summary": "PUT /properties",
+      "summary": "Create a property (owners only). The insert runs as the service role: (PUT)",
       "responses": {
         "200": {
           "description": "OK"

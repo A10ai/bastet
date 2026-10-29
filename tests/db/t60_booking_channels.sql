@@ -18,7 +18,8 @@ SELECT tst.eq('owner edit stored', (SELECT name || '/' || commission_rate || '/'
 SELECT tst.as_user('adminA');
 SELECT tst.denied('admin sets commission', $$update booking_channels set commission_rate = 99 where code = 'direct'$$);
 SELECT tst.raises('admin reads api_connection', $$select api_connection from booking_channels$$, 'permission denied');
-SELECT tst.eq('admin still lists channels', tst.n('select id, name, commission_rate from booking_channels')::text, '1');
+-- 00037 (online booking) seeds a 'web' channel next to 'direct'.
+SELECT tst.eq('admin still lists channels', tst.n('select id, name, commission_rate from booking_channels where code = ''direct''')::text, '1');
 RESET ROLE;
 
 SELECT tst.as_user('mgrA');

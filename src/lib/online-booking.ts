@@ -31,6 +31,8 @@ export interface SalesSettings {
   max_guests_per_booking: number;
   currencies: string[];
   terms_url: string | null;
+  concierge_enabled: boolean;
+  concierge_daily_message_cap: number;
 }
 
 export const DEFAULT_SALES_SETTINGS: Omit<SalesSettings, "property_id"> = {
@@ -44,6 +46,8 @@ export const DEFAULT_SALES_SETTINGS: Omit<SalesSettings, "property_id"> = {
   max_guests_per_booking: 8,
   currencies: ["GBP", "EUR", "USD", "EGP"],
   terms_url: null,
+  concierge_enabled: true,
+  concierge_daily_message_cap: 2000,
 };
 
 export interface PublicProperty {
@@ -124,6 +128,8 @@ export async function getSalesSettings(admin: SupabaseClient, propertyId: string
     max_guests_per_booking: Number(data.max_guests_per_booking),
     currencies: (data.currencies as string[] | null) ?? DEFAULT_SALES_SETTINGS.currencies,
     terms_url: (data.terms_url as string | null) ?? null,
+    concierge_enabled: data.concierge_enabled === undefined ? true : Boolean(data.concierge_enabled),
+    concierge_daily_message_cap: Number(data.concierge_daily_message_cap ?? 2000),
   };
 }
 
@@ -431,9 +437,10 @@ export async function confirmOnlineBooking(admin: SupabaseClient, args: { bookin
 }
 
 /** Tell the front desk about a new online booking (never throws). */
-export async function notifyFrontDesk(admin: SupabaseClient, booking: Pick<OnlineBookingRow, "id" | "reference" | "check_in" | "check_out" | "adults" | "children">, title: string, extra = "") {
+export async function notifyFrontDesk(admin: SupabaseClient, booking: Pick<OnlineBookingRow, "id" | "reference" | "check_in" | "check_out" | "adults" | "children"> & { property_id?: string | null }, title: string, extra = "") {
   try {
     await createNotification(admin, {
+      property_id: booking.property_id ?? null,
       title: `${title}: ${booking.reference}`,
       message: `${booking.check_in} to ${booking.check_out}, ${booking.adults} adult${booking.adults === 1 ? "" : "s"}${booking.children ? `, ${booking.children} child${booking.children === 1 ? "" : "ren"}` : ""}${extra ? ` · ${extra}` : ""}`,
       type: "info",
