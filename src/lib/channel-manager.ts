@@ -264,7 +264,7 @@ export async function processChannelEvent(admin: SupabaseClient, connection: Cha
       }
       const { error } = await admin.from("bookings").update({ status: "cancelled", cancelled_at: new Date().toISOString(), hold_expires_at: null, cancellation_reason: `Cancelled by ${connection.name} (${r.external_ref})` }).eq("id", existing.id);
       if (error) return finish({ status: "failed", action: "none", booking_id: existing.id as string, reference: existing.reference as string, error: error.message });
-      await notifyFrontDesk(admin, { id: existing.id as string, reference: existing.reference as string, check_in: r.check_in, check_out: r.check_out, adults: r.adults, children: r.children }, `${connection.name} cancellation`);
+      await notifyFrontDesk(admin, { id: existing.id as string, property_id: connection.property_id, reference: existing.reference as string, check_in: r.check_in, check_out: r.check_out, adults: r.adults, children: r.children }, `${connection.name} cancellation`);
       await emitEvent("booking.cancelled", "channel-manager", { booking_id: existing.id, reference: existing.reference, channel: connection.channel_code, external_ref: r.external_ref }, admin, { idempotencyKey: `channel:${connection.id}:${event.event_id}` }).catch(() => undefined);
       return finish({ status: "processed", action: "cancelled", booking_id: existing.id as string, reference: existing.reference as string, error: null });
     }
@@ -273,7 +273,7 @@ export async function processChannelEvent(admin: SupabaseClient, connection: Cha
       const { data, error } = await admin.rpc("modify_booking_stay", { p_booking_id: existing.id, p_check_in: r.check_in, p_check_out: r.check_out, p_adults: r.adults, p_children: r.children, p_total_gbp: totalGbp });
       if (error) return finish({ status: "failed", action: "none", booking_id: existing.id as string, reference: existing.reference as string, error: error.message });
       const moved = Boolean((data as { moved?: boolean })?.moved);
-      await notifyFrontDesk(admin, { id: existing.id as string, reference: existing.reference as string, check_in: r.check_in, check_out: r.check_out, adults: r.adults, children: r.children }, `${connection.name} modification${moved ? " (unit re-assigned)" : ""}`);
+      await notifyFrontDesk(admin, { id: existing.id as string, property_id: connection.property_id, reference: existing.reference as string, check_in: r.check_in, check_out: r.check_out, adults: r.adults, children: r.children }, `${connection.name} modification${moved ? " (unit re-assigned)" : ""}`);
       return finish({ status: "processed", action: "modified", booking_id: existing.id as string, reference: existing.reference as string, error: null });
     }
 
