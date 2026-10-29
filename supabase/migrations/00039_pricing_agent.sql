@@ -333,9 +333,16 @@ BEGIN
           round(v_r.recommended_rate_gbp * 7, 2), v_r.recommended_rate_gbp, v_min_stay, true, 10, 'agent')
   RETURNING id INTO v_rate_id;
 
+  -- One decision row per type and day (uq_pricing_decisions_type_day, 00034): several
+  -- windows approved on the same day update that day's row; the full trail stays in
+  -- rate_recommendations and the agent rate rows.
   INSERT INTO pricing_decisions (property_id, apartment_type_id, decision_date, base_rate_gbp, recommended_rate_gbp, applied_rate_gbp, adjustment_reason, demand_score, was_accepted, accepted_by)
   VALUES (v_r.property_id, v_r.apartment_type_id, CURRENT_DATE, v_r.current_rate_gbp, v_r.recommended_rate_gbp, v_r.recommended_rate_gbp,
-          CASE WHEN p_auto THEN 'agent_auto' ELSE 'agent_approved' END, v_r.demand_score, true, p_actor);
+          CASE WHEN p_auto THEN 'agent_auto' ELSE 'agent_approved' END, v_r.demand_score, true, p_actor)
+  ON CONFLICT (apartment_type_id, decision_date) DO UPDATE
+    SET recommended_rate_gbp = EXCLUDED.recommended_rate_gbp, applied_rate_gbp = EXCLUDED.applied_rate_gbp,
+        adjustment_reason = EXCLUDED.adjustment_reason, demand_score = EXCLUDED.demand_score,
+        was_accepted = true, accepted_by = COALESCE(EXCLUDED.accepted_by, pricing_decisions.accepted_by);
 
   UPDATE rate_recommendations SET status = CASE WHEN p_auto THEN 'auto_applied' ELSE 'approved' END, decided_at = now(), decided_by = p_actor, applied_rate_id = v_rate_id
    WHERE id = p_id RETURNING * INTO v_r;
