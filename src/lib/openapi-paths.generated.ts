@@ -1985,6 +1985,45 @@ export const generatedPaths = {
       }
     }
   },
+  "/concierge/chat": {
+    "get": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "{ session_token?, message, locale?, property? } (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Core"
+      ],
+      "summary": "{ session_token?, message, locale?, property? } (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/cron/automations": {
     "get": {
       "tags": [
@@ -4144,6 +4183,25 @@ export const generatedPaths = {
       }
     }
   },
+  "/sales/concierge/sessions": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(front desk and above) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/sales/pricing-bands": {
     "get": {
       "tags": [
@@ -4480,6 +4538,45 @@ export const generatedPaths = {
         "Online booking"
       ],
       "summary": "POST /webhooks/stripe",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/webhooks/whatsapp": {
+    "get": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "WhatsApp Business (Meta Cloud API) seam for the concierge. (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "WhatsApp Business (Meta Cloud API) seam for the concierge. (POST)",
       "responses": {
         "200": {
           "description": "OK"
