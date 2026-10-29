@@ -3674,6 +3674,69 @@ export const generatedPaths = {
       "security": []
     }
   },
+  "/portal/{token}/review": {
+    "get": {
+      "tags": [
+        "Guests"
+      ],
+      "summary": "can this stay be reviewed? (after check-out, once) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "security": []
+    },
+    "post": {
+      "tags": [
+        "Guests"
+      ],
+      "summary": "can this stay be reviewed? (after check-out, once) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "security": []
+    }
+  },
   "/portal/{token}": {
     "get": {
       "tags": [
@@ -4183,6 +4246,262 @@ export const generatedPaths = {
       }
     }
   },
+  "/sales/accounts/{id}/activities": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "GET /sales/accounts/{id}/activities",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "POST /sales/accounts/{id}/activities",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/sales/accounts/{id}/contacts": {
+    "delete": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "DELETE /sales/accounts/{id}/contacts",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "POST /sales/accounts/{id}/contacts",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/sales/accounts/{id}": {
+    "delete": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "DELETE /sales/accounts/{id}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "GET /sales/accounts/{id}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "patch": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "PATCH /sales/accounts/{id}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/sales/accounts": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(front desk+) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(front desk+) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/sales/concierge/sessions": {
     "get": {
       "tags": [
@@ -4336,6 +4655,148 @@ export const generatedPaths = {
         "Sales"
       ],
       "summary": "(all staff) the agent's queue (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/sales/report": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "live proof metrics for a period (default: this week so far) + stored weekly snapshots (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "live proof metrics for a period (default: this week so far) + stored weekly snapshots (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/sales/reviews/{id}": {
+    "patch": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "draft a reply (Claude, template fallback)   (front desk+) (PATCH)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "draft a reply (Claude, template fallback)   (front desk+) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/sales/reviews": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) (POST)",
       "responses": {
         "200": {
           "description": "OK"

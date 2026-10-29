@@ -601,6 +601,20 @@ registerHandler("energy.waste_detected", async (event, _supabase) => {
 import { createNotification } from "@/lib/notifications";
 
 // booking.checked_out → Notification: cleaning dispatched
+// Sales module: every departing guest is asked for a review (slice 6). The
+// request is queued as a draft communication until an email provider is wired.
+registerHandler("booking.checked_out", async (event, supabase) => {
+  const { booking_id } = event.payload as { booking_id?: string };
+  if (!booking_id) return [];
+  try {
+    const { requestReview } = await import("@/lib/sales-ops");
+    const r = await requestReview(supabase, booking_id, process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+    return [{ handler: "review_request", target_system: "sales", action: r.queued ? "review_request_queued" : "skipped", description: r.queued ? `Review request queued for booking ${booking_id}` : `Review request skipped: ${r.reason}`, success: true, timestamp: new Date().toISOString() }];
+  } catch (err) {
+    return [{ handler: "review_request", target_system: "sales", action: "failed", description: String(err), success: false, timestamp: new Date().toISOString() }];
+  }
+});
+
 registerHandler("booking.checked_out", async (event, supabase) => {
   const { apartment_id } = event.payload as { apartment_id?: string };
   if (!apartment_id) return [];

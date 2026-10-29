@@ -56,3 +56,13 @@ test("an unknown booking token shows the invalid-link screen", async ({ page }) 
   await page.goto("/book/not-a-real-token");
   await expect(page.getByTestId("book-invalid")).toBeVisible({ timeout: 10_000 });
 });
+
+test("an unknown review token shows the invalid-link screen", async ({ page }) => {
+  await page.goto("/review/not-a-real-token");
+  await expect(page.getByTestId("review-invalid")).toBeVisible({ timeout: 10_000 });
+});
+
+test("the sales dashboard page redirects to login when signed out", async ({ page }) => {
+  await page.goto("/dashboard/sales");
+  await expect(page).toHaveURL(/\/login/);
+});

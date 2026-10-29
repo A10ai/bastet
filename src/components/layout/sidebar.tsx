@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/constants";
@@ -68,6 +69,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Timer,
   TrendingUp,
   Zap,
+  Megaphone,
 };
 
 interface SidebarProps {

@@ -6,6 +6,7 @@ import { trainModel } from "@/lib/prediction-model";
 import { expireOnlineHolds } from "@/lib/online-booking";
 import { pushAllConnections } from "@/lib/channel-manager";
 import { runPricingAgentForAllProperties } from "@/lib/pricing-agent";
+import { runWeeklyProofReports } from "@/lib/sales-ops";
 import { logger } from "@/lib/logger";
 
 export interface CycleResults {
@@ -15,6 +16,7 @@ export interface CycleResults {
   online_holds: unknown;
   channel_push: unknown;
   pricing_agent: unknown;
+  weekly_report: unknown;
   duration_ms: number;
   timestamp: string;
   error?: string;
@@ -34,6 +36,7 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
     online_holds: null,
     channel_push: null,
     pricing_agent: null,
+    weekly_report: null,
     duration_ms: 0,
     timestamp: new Date().toISOString(),
   };
@@ -92,6 +95,13 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
       results.pricing_agent = await runPricingAgentForAllProperties(supabase);
     } catch (e) {
       results.pricing_agent = { error: e instanceof Error ? e.message : "Pricing agent failed" };
+    }
+
+    // Last week's proof report, stored once per property (idempotent).
+    try {
+      results.weekly_report = await runWeeklyProofReports(supabase);
+    } catch (e) {
+      results.weekly_report = { error: e instanceof Error ? e.message : "Weekly report failed" };
     }
 
     // Availability and rates to every active OTA connection.
