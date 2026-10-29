@@ -80,6 +80,11 @@ const en = {
   poweredBy: "Booking engine by HospitAI",
   arrivalBeforeDeparture: "Check-out must be after check-in.",
   tooManyGuests: "Too many guests for one booking.",
+  conciergeTitle: "Ask us anything",
+  conciergeIntro: "Hi! I can check availability, quote prices and reserve an apartment for you. What dates are you thinking of?",
+  conciergePlaceholder: "Type your message…",
+  send: "Send",
+  conciergePrivacy: "Do not share card details here. Conversations are stored to help the property serve you.",
 } as const;
 
 export type BookStrings = { [K in keyof typeof en]: string };
@@ -157,6 +162,11 @@ const de: BookStrings = {
   poweredBy: "Buchungssystem von HospitAI",
   arrivalBeforeDeparture: "Die Abreise muss nach der Anreise liegen.",
   tooManyGuests: "Zu viele Gäste für eine Buchung.",
+  conciergeTitle: "Fragen Sie uns",
+  conciergeIntro: "Hallo! Ich prüfe Verfügbarkeit, nenne Preise und reserviere ein Apartment für Sie. An welche Daten denken Sie?",
+  conciergePlaceholder: "Nachricht eingeben…",
+  send: "Senden",
+  conciergePrivacy: "Bitte keine Kartendaten hier eingeben. Gespräche werden gespeichert, damit die Unterkunft Ihnen helfen kann.",
 };
 
 const pl: BookStrings = {
@@ -232,6 +242,11 @@ const pl: BookStrings = {
   poweredBy: "System rezerwacji HospitAI",
   arrivalBeforeDeparture: "Wyjazd musi być po przyjeździe.",
   tooManyGuests: "Za dużo gości na jedną rezerwację.",
+  conciergeTitle: "Zapytaj nas",
+  conciergeIntro: "Cześć! Sprawdzę dostępność, podam ceny i zarezerwuję apartament. O jakich datach myślisz?",
+  conciergePlaceholder: "Napisz wiadomość…",
+  send: "Wyślij",
+  conciergePrivacy: "Nie podawaj tu danych karty. Rozmowy są zapisywane, aby obiekt mógł Ci pomóc.",
 };
 
 const ru: BookStrings = {
@@ -307,6 +322,11 @@ const ru: BookStrings = {
   poweredBy: "Система бронирования HospitAI",
   arrivalBeforeDeparture: "Выезд должен быть позже заезда.",
   tooManyGuests: "Слишком много гостей для одного бронирования.",
+  conciergeTitle: "Спросите нас",
+  conciergeIntro: "Здравствуйте! Я проверю наличие, назову цены и зарезервирую апартаменты. Какие даты вас интересуют?",
+  conciergePlaceholder: "Введите сообщение…",
+  send: "Отправить",
+  conciergePrivacy: "Не указывайте здесь данные карты. Переписка сохраняется, чтобы отель мог вам помочь.",
 };
 
 const cs: BookStrings = {
@@ -382,6 +402,11 @@ const cs: BookStrings = {
   poweredBy: "Rezervační systém HospitAI",
   arrivalBeforeDeparture: "Odjezd musí být po příjezdu.",
   tooManyGuests: "Příliš mnoho hostů na jednu rezervaci.",
+  conciergeTitle: "Zeptejte se nás",
+  conciergeIntro: "Dobrý den! Ověřím dostupnost, sdělím ceny a zarezervuji apartmán. Jaké termíny máte na mysli?",
+  conciergePlaceholder: "Napište zprávu…",
+  send: "Odeslat",
+  conciergePrivacy: "Nezadávejte zde údaje o kartě. Konverzace se ukládají, aby vám ubytování mohlo pomoci.",
 };
 
 export const BOOK_STRINGS: Record<BookLocale, BookStrings> = { en, de, pl, ru, cs };

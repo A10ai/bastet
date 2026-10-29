@@ -766,7 +766,7 @@ export const adminCreateUserSchema = z.object({
 }).strict();
 
 // ---------------------------------------------------------------------------
-// Online booking (migration 00037) — public, so every field is bounded
+// Online booking (migration 00040) — public, so every field is bounded
 // ---------------------------------------------------------------------------
 export const ONLINE_LOCALES = ["en", "de", "pl", "ru", "cs"] as const;
 
@@ -898,3 +898,14 @@ export const recommendationActionSchema = z.object({
   rate_gbp: z.number().positive().optional(),
 });
 export const recommendationsRunSchema = z.object({ action: z.literal("generate"), property_id: z.string().uuid().optional() });
+
+
+// ---------------------------------------------------------------------------
+// Concierge (migration 00040)
+// ---------------------------------------------------------------------------
+export const conciergeChatSchema = z.object({
+  session_token: z.string().regex(/^[A-Za-z0-9_-]{43}$/).optional().nullable(),
+  message: z.string().trim().min(1).max(2000),
+  locale: z.enum(ONLINE_LOCALES).optional(),
+  property: z.string().min(1).max(60).optional(),
+});

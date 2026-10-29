@@ -4,6 +4,7 @@ import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
 import { resolvePublicProperty, getSalesSettings, listPublicApartmentTypes } from "@/lib/online-booking";
 import { publicJson, publicError } from "@/lib/online-booking-http";
 import { stripeConfigured } from "@/lib/stripe";
+import { conciergeConfigured } from "@/lib/concierge";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
           currencies: settings.currencies,
           terms_url: settings.terms_url,
           card_payments: stripeConfigured(),
+          concierge: conciergeConfigured() && settings.concierge_enabled,
         },
       },
     });
