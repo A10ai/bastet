@@ -321,8 +321,8 @@ GRANT EXECUTE ON FUNCTION online_availability(uuid, date, date) TO authenticated
 GRANT EXECUTE ON FUNCTION create_online_booking(uuid, uuid, date, date, integer, integer, uuid, uuid, text, text, text, text, text, integer, text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION confirm_online_booking(uuid, numeric, text, text, text, numeric, numeric) TO service_role;
 GRANT EXECUTE ON FUNCTION expire_online_holds() TO service_role;
-REVOKE EXECUTE ON FUNCTION sellable_apartments(uuid, uuid, date, date) FROM anon;
-REVOKE EXECUTE ON FUNCTION online_availability(uuid, date, date) FROM anon;
-REVOKE EXECUTE ON FUNCTION create_online_booking(uuid, uuid, date, date, integer, integer, uuid, uuid, text, text, text, text, text, integer, text) FROM anon;
-REVOKE EXECUTE ON FUNCTION confirm_online_booking(uuid, numeric, text, text, text, numeric, numeric) FROM anon;
-REVOKE EXECUTE ON FUNCTION expire_online_holds() FROM anon;
+REVOKE ALL ON FUNCTION sellable_apartments(uuid, uuid, date, date) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION online_availability(uuid, date, date) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION create_online_booking(uuid, uuid, date, date, integer, integer, uuid, uuid, text, text, text, text, text, integer, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION confirm_online_booking(uuid, numeric, text, text, text, numeric, numeric) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION expire_online_holds() FROM PUBLIC, anon;
