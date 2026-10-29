@@ -12,7 +12,7 @@ import {
 import { describeCancellation } from "@/lib/rate-plans";
 import { createNotification } from "@/lib/notifications";
 import { encryptPii } from "@/lib/pii-crypto";
-import { scrubDeep } from "@/lib/pii-anonymizer";
+import { scrubPii } from "@/lib/pii-anonymizer";
 import { logger } from "@/lib/logger";
 
 /**
@@ -216,7 +216,7 @@ export function formatOffers(offers: AvailabilityOffer[], nights: number): strin
 
 export function buildTools(deps: ToolDeps) {
   const { admin, ctx, session, calls } = deps;
-  const record = (name: string, input: unknown, ok: boolean, summary: string) => calls.push({ name, input: scrubDeep(input), ok, summary });
+  const record = (name: string, input: unknown, ok: boolean, summary: string) => calls.push({ name, input: scrubPii(input), ok, summary });
 
   const checkAvailability = betaZodTool({
     name: "check_availability",
@@ -305,6 +305,7 @@ export function buildTools(deps: ToolDeps) {
     run: async (input) => {
       try {
         await createNotification(admin, {
+          property_id: session.property_id,
           title: `Concierge handoff (${session.channel})`,
           message: `${input.reason}${input.guest_contact ? ` · contact: ${input.guest_contact}` : ""}`,
           type: "warning",

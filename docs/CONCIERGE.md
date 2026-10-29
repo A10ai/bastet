@@ -56,7 +56,7 @@ reload. Staff read conversations at `GET /api/v1/sales/concierge/sessions`
   happens only on the `/book/:token` page (Stripe Payment Element).
 - Guest contact details reach Anthropic only as tool inputs when the guest
   asks to book (needed to create the guest record); transcripts and tool-call
-  logs are scrubbed (`scrubText`, `scrubDeep`) before storage, and WhatsApp
+  logs are scrubbed (`scrubText`, `scrubPii`) before storage, and WhatsApp
   numbers are stored encrypted with a hash for lookup. Staff cannot read the
   encrypted number (column privilege revoked).
 - Complaints, large groups, corporate and tour-operator requests go to
