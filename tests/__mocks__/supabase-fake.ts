@@ -187,9 +187,17 @@ export function createFakeSupabase(db: FakeDb, opts: FakeOptions = {}): Supabase
     rpc: (name: string, args: Record<string, unknown> = {}) => {
       calls.push(`rpc:${name}`);
       const fn = opts.rpc?.[name];
-      const result = fn ? fn(args) : null;
+      // A stub that throws behaves like a Postgres RAISE: PostgREST turns it
+      // into { data: null, error: { message } } instead of rejecting.
+      let result: unknown = null;
+      let error: { message: string; code?: string } | null = null;
+      try {
+        result = fn ? fn(args) : null;
+      } catch (e) {
+        error = { message: e instanceof Error ? e.message : String(e), code: "P0001" };
+      }
       const thenable = {
-        then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve({ data: result, error: null }).then(res, rej),
+        then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve({ data: result, error }).then(res, rej),
         single: () => thenable,
         maybeSingle: () => thenable,
       };

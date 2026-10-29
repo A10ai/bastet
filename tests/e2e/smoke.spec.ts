@@ -44,3 +44,15 @@ test("API health or properties endpoint returns expected status", async ({ reque
   const response = await request.get("/api/v1/properties");
   expect(response.status()).toBe(401);
 });
+test("public booking page renders in the visitor's language", async ({ page }) => {
+  await page.goto("/book?lang=de");
+  await expect(page.getByTestId("book-title")).toHaveText("Aufenthalt buchen");
+  // A property that is not yet selling (seed status "construction") shows the
+  // closed notice instead of the search form; both are a healthy page.
+  await expect(page.getByTestId("book-search").or(page.getByTestId("book-closed"))).toBeVisible({ timeout: 10_000 });
+});
+
+test("an unknown booking token shows the invalid-link screen", async ({ page }) => {
+  await page.goto("/book/not-a-real-token");
+  await expect(page.getByTestId("book-invalid")).toBeVisible({ timeout: 10_000 });
+});

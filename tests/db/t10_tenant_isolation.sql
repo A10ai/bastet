@@ -162,7 +162,8 @@ BEGIN;
 UPDATE booking_channels SET api_connection = '{"api_key":"sk_live_secret"}';
 SELECT tst.as_user('recA');
 SELECT tst.raises('api_connection unreadable', $$select api_connection from booking_channels$$, 'permission denied');
-SELECT tst.eq('other columns readable', tst.val($$select code from booking_channels$$), 'direct');
+-- 00037 (online booking) seeds a second channel, 'web'; name the one we assert on.
+SELECT tst.eq('other columns readable', tst.val($$select code from booking_channels where code = 'direct'$$), 'direct');
 ROLLBACK;
 
 -- brain_config: owner only writes.

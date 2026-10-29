@@ -3,12 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { runBrainCycle, getBrainConfig } from "@/lib/ai-brain";
 import { runAllAutomations } from "@/lib/automations-engine";
 import { trainModel } from "@/lib/prediction-model";
+import { expireOnlineHolds } from "@/lib/online-booking";
 import { logger } from "@/lib/logger";
 
 export interface CycleResults {
   brain: unknown;
   automations: unknown;
   predictions: unknown;
+  online_holds: unknown;
   duration_ms: number;
   timestamp: string;
   error?: string;
@@ -25,6 +27,7 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
     brain: null,
     automations: null,
     predictions: null,
+    online_holds: null,
     duration_ms: 0,
     timestamp: new Date().toISOString(),
   };
@@ -68,6 +71,13 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
       };
     } catch (e) {
       results.predictions = { error: e instanceof Error ? e.message : "Prediction training failed" };
+    }
+
+    // Unpaid website holds past their deadline give the inventory back.
+    try {
+      results.online_holds = { expired: await expireOnlineHolds(supabase) };
+    } catch (e) {
+      results.online_holds = { error: e instanceof Error ? e.message : "Hold expiry failed" };
     }
 
     results.duration_ms = Date.now() - startTime;
