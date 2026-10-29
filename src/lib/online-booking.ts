@@ -302,8 +302,9 @@ export interface OnlineGuestInput {
  * Find or create the guest record for an online booking. Email is the key
  * (unique in `guests`). Existing guests keep their record; only blanks are
  * filled in, so a returning guest's profile is never overwritten by a form.
+ * New guests belong to the property they book (guests.property_id, 00019).
  */
-export async function upsertOnlineGuest(admin: SupabaseClient, input: OnlineGuestInput): Promise<{ id: string; created: boolean }> {
+export async function upsertOnlineGuest(admin: SupabaseClient, input: OnlineGuestInput, propertyId: string): Promise<{ id: string; created: boolean }> {
   const email = input.email.trim().toLowerCase();
   const { data: existing } = await admin.from("guests").select("id, phone, country, language, marketing_consent").eq("email", email).maybeSingle();
   if (existing) {
@@ -317,6 +318,7 @@ export async function upsertOnlineGuest(admin: SupabaseClient, input: OnlineGues
   const { data, error } = await admin
     .from("guests")
     .insert({
+      property_id: propertyId,
       first_name: input.first_name.trim(),
       last_name: input.last_name.trim(),
       email,

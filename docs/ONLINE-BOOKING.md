@@ -26,9 +26,11 @@ and manage a stay. Migration `00037_online_booking.sql`.
    (`record_folio_payment`, actor `guest`) and sets the booking to
    `confirmed`. Idempotent on the PaymentIntent id, so Stripe retries are
    safe. Emits `booking.confirmed`, notifies the front desk, writes audit.
-5. **Expire** — the automations cron calls `expire_online_holds()`: unpaid
-   pending holds past their deadline are cancelled with the reason
-   `Hold expired: payment not received`, which frees the apartment.
+5. **Expire** — `expire_online_holds()` cancels unpaid pending holds past
+   their deadline with the reason `Hold expired: payment not received`,
+   which frees the apartment. It runs at the start of every availability
+   search and every `create_online_booking()`, and from the automations
+   cron as a sweep, so a daily cron schedule never leaves inventory locked.
 6. **Manage** `GET /api/v1/book/:token` (status, amounts, hold deadline,
    cancellation terms) and `POST /api/v1/book/:token/cancel` (free while the
    stored rate-plan snapshot allows it, or while nothing has been paid;

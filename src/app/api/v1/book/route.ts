@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     if (!settings.online_enabled) return publicError("ONLINE_SALES_CLOSED", "Online booking is not open yet", 503);
     if (!settings.currencies.includes(input.currency)) return publicError("VALIDATION", `currency must be one of ${settings.currencies.join(", ")}`, 400);
 
-    const guest = await upsertOnlineGuest(admin, { ...input.guest, language: input.locale });
+    const guest = await upsertOnlineGuest(admin, { ...input.guest, language: input.locale }, property.id);
 
     const { booking, quote, error } = await createOnlineBooking(admin, {
       propertyId: property.id,

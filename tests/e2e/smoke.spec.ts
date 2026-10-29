@@ -44,3 +44,14 @@ test("API health or properties endpoint returns expected status", async ({ reque
   const response = await request.get("/api/v1/properties");
   expect(response.status()).toBe(401);
 });
+test("public booking page renders the search form in the visitor's language", async ({ page }) => {
+  await page.goto("/book?lang=de");
+  await expect(page.getByTestId("book-title")).toHaveText("Aufenthalt buchen");
+  await expect(page.getByTestId("book-checkin")).toBeVisible();
+  await expect(page.getByTestId("book-search-submit")).toBeDisabled();
+});
+
+test("an unknown booking token shows the invalid-link screen", async ({ page }) => {
+  await page.goto("/book/not-a-real-token");
+  await expect(page.getByTestId("book-invalid")).toBeVisible({ timeout: 10_000 });
+});

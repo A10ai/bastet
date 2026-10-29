@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
 import { validateBody, formatZodErrors, onlineAvailabilitySchema } from "@/lib/validation";
-import { resolvePublicProperty, getSalesSettings, searchAvailability, daysUntil } from "@/lib/online-booking";
+import { resolvePublicProperty, getSalesSettings, searchAvailability, daysUntil, expireOnlineHolds } from "@/lib/online-booking";
 import { publicJson, publicError } from "@/lib/online-booking-http";
 import { logger } from "@/lib/logger";
 
@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
     if (nights > settings.max_nights) return publicError("MAX_NIGHTS", `Online bookings are limited to ${settings.max_nights} nights`, 400);
     if (input.adults + input.children > settings.max_guests_per_booking) return publicError("TOO_MANY_GUESTS", `At most ${settings.max_guests_per_booking} guests per booking`, 400);
 
+    // Expired holds free their apartments before we count (the cron is daily on the hosted plan).
+    await expireOnlineHolds(admin).catch(() => 0);
     const offers = await searchAvailability(admin, { propertyId: property.id, checkIn: input.check_in, checkOut: input.check_out, adults: input.adults, children: input.children, ratePlanId: input.rate_plan_id ?? null }, settings);
     return publicJson({ data: { property: { id: property.id, name: property.name, slug: property.slug }, check_in: input.check_in, check_out: input.check_out, nights, adults: input.adults, children: input.children, offers } });
   } catch (err) {

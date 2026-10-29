@@ -127,14 +127,14 @@ describe("availability search", () => {
 describe("guest upsert", () => {
   it("creates a guest once per email and never overwrites an existing profile", async () => {
     const supabase = createFakeSupabase({ guests: [] });
-    const a = await upsertOnlineGuest(supabase, { first_name: "Anna", last_name: "Nowak", email: "Anna@Example.com", phone: null, country: "PL", marketing_consent: false });
+    const a = await upsertOnlineGuest(supabase, { first_name: "Anna", last_name: "Nowak", email: "Anna@Example.com", phone: null, country: "PL", marketing_consent: false }, "p1");
     expect(a.created).toBe(true);
-    const b = await upsertOnlineGuest(supabase, { first_name: "A.", last_name: "N.", email: "anna@example.com", phone: "+48 600 000 000", country: "DE", marketing_consent: true });
+    const b = await upsertOnlineGuest(supabase, { first_name: "A.", last_name: "N.", email: "anna@example.com", phone: "+48 600 000 000", country: "DE", marketing_consent: true }, "p1");
     expect(b.created).toBe(false);
     expect(b.id).toBe(a.id);
     const { data: rows } = await supabase.from("guests").select("*");
     expect(rows).toHaveLength(1);
-    expect(rows![0]).toMatchObject({ first_name: "Anna", email: "anna@example.com", phone: "+48 600 000 000", country: "PL", marketing_consent: true });
+    expect(rows![0]).toMatchObject({ property_id: "p1", first_name: "Anna", email: "anna@example.com", phone: "+48 600 000 000", country: "PL", marketing_consent: true });
   });
 });
 

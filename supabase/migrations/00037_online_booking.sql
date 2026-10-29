@@ -186,6 +186,10 @@ BEGIN
     RAISE EXCEPTION 'OCCUPANCY: % sleeps at most % guests', v_type.name, v_type.max_occupancy USING ERRCODE = 'P0001';
   END IF;
 
+  -- Holds whose deadline has passed give their apartment back right now,
+  -- not at the next cron run (the hosted plan only runs the cron daily).
+  PERFORM expire_online_holds();
+
   SELECT * INTO v_channel FROM booking_channels WHERE code = COALESCE(p_channel_code, 'web') AND is_active;
   IF NOT FOUND THEN RAISE EXCEPTION 'CHANNEL_NOT_FOUND: channel % is not configured', p_channel_code USING ERRCODE = 'P0002'; END IF;
 
