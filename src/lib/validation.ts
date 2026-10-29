@@ -909,3 +909,75 @@ export const conciergeChatSchema = z.object({
   locale: z.enum(ONLINE_LOCALES).optional(),
   property: z.string().min(1).max(60).optional(),
 });
+
+
+// ---------------------------------------------------------------------------
+// Sales operations (migration 00041)
+// ---------------------------------------------------------------------------
+/** Ratings are stored on the 1-5 scale of the reviews table; OTA 1-10 scores are halved on import. */
+const rating = z.number().int().min(1).max(5);
+export const publicReviewSchema = z.object({
+  overall_rating: rating,
+  cleanliness_rating: rating.optional().nullable(),
+  location_rating: rating.optional().nullable(),
+  service_rating: rating.optional().nullable(),
+  value_rating: rating.optional().nullable(),
+  title: z.string().trim().max(120).optional().nullable(),
+  body: z.string().trim().max(3000).optional().nullable(),
+  reviewer_name: z.string().trim().max(80).optional().nullable(),
+  language: z.string().trim().max(5).optional().nullable(),
+  consent_public: z.boolean().default(false),
+});
+
+export const importReviewsSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  reviews: z.array(z.object({
+    source: z.enum(["direct", "booking_com", "expedia", "airbnb", "google", "tripadvisor", "agoda", "other"]),
+    external_id: z.string().trim().min(1).max(80),
+    reviewer_name: z.string().trim().max(80).optional().nullable(),
+    overall_rating: rating,
+    title: z.string().trim().max(120).optional().nullable(),
+    body: z.string().trim().max(5000).optional().nullable(),
+    language: z.string().trim().max(5).optional().nullable(),
+    created_at: z.string().datetime().optional(),
+    response: z.string().max(3000).optional().nullable(),
+  })).min(1).max(500),
+});
+
+export const reviewRespondSchema = z.object({ response: z.string().trim().min(5).max(3000) });
+
+export const salesReportQuerySchema = z.object({ from: isoDate.optional(), to: isoDate.optional() }).refine((v) => !v.from || !v.to || v.to > v.from, { message: "to must be after from", path: ["to"] });
+export const salesReportSnapshotSchema = z.object({ action: z.literal("snapshot"), week_start: isoDate.optional() });
+
+export const SALES_STAGES = ["identified", "researched", "contacted", "replied", "meeting", "rates_sent", "negotiating", "contracted", "declined", "dormant"] as const;
+export const salesAccountSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  name: z.string().trim().min(2).max(120),
+  kind: z.enum(["tour_operator", "bed_bank", "ota", "travel_agent", "corporate", "airline", "other"]).default("tour_operator"),
+  market: z.string().trim().length(2).toUpperCase().optional().nullable(),
+  website: z.string().trim().max(200).optional().nullable(),
+  stage: z.enum(SALES_STAGES).default("identified"),
+  priority: z.number().int().min(1).max(5).default(3),
+  source: z.enum(["inbound", "research", "referral", "event", "other"]).default("inbound"),
+  next_action: z.string().trim().max(300).optional().nullable(),
+  next_action_at: isoDate.optional().nullable(),
+  notes: z.string().max(5000).optional().nullable(),
+  lawful_basis: z.string().trim().max(40).optional().nullable(),
+});
+export const updateSalesAccountSchema = salesAccountSchema.omit({ property_id: true }).partial();
+export const salesContactSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  role: z.string().trim().max(100).optional().nullable(),
+  email: z.string().trim().email().max(100).optional().nullable(),
+  phone: z.string().trim().max(30).optional().nullable(),
+  language: z.string().trim().max(5).optional().nullable(),
+  is_primary: z.boolean().default(false),
+  notes: z.string().max(2000).optional().nullable(),
+});
+export const salesActivitySchema = z.object({
+  kind: z.enum(["note", "email_in", "email_out", "call", "meeting", "proposal"]),
+  summary: z.string().trim().min(3).max(300),
+  body: z.string().max(10000).optional().nullable(),
+  contact_id: z.string().uuid().optional().nullable(),
+  happened_at: z.string().datetime().optional(),
+});
