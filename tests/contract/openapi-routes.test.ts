@@ -11,7 +11,7 @@ import { openApiSpec } from "@/lib/openapi";
  * Route files are inspected as text so no server-only module is imported.
  */
 const API_ROOT = join(process.cwd(), "src/app/api/v1");
-const INTERNAL = new Set(["/cron/night-audit", "/cron/automations", "/cron/fx", "/admin/migrate", "/admin/encrypt-pii", "/openapi"]);
+const INTERNAL = new Set(["/cron/night-audit", "/cron/automations", "/cron/fx", "/admin/encrypt-pii", "/openapi"]);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

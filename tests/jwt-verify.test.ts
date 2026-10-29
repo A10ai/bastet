@@ -7,7 +7,7 @@ const sub = "00000000-0000-0000-0000-000000000001";
 
 async function hs(claims: Record<string, unknown>, secret = SECRET, exp = "1h") {
   return new SignJWT({ role: "authenticated", email: "o@x.com", ...claims })
-    .setProtectedHeader({ alg: "HS256" }).setSubject(sub).setAudience("authenticated").setIssuedAt().setExpirationTime(exp)
+    .setProtectedHeader({ alg: "HS256" }).setSubject(sub).setAudience("authenticated").setIssuer("http://sb.local/auth/v1").setIssuedAt().setExpirationTime(exp)
     .sign(new TextEncoder().encode(secret));
 }
 
@@ -30,7 +30,7 @@ describe("verifyAccessToken (HS256, SUPABASE_JWT_SECRET)", () => {
     const { verifyAccessToken } = await import("@/lib/jwt-verify");
     expect(await verifyAccessToken(await hs({}, "another-secret-that-is-also-long-enough-ok"))).toEqual({ ok: false, reason: "invalid" });
     expect(await verifyAccessToken(await hs({}, SECRET, "-2h"))).toEqual({ ok: false, reason: "invalid" });
-    const wrongAud = await new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "HS256" }).setSubject(sub).setAudience("other").setExpirationTime("1h").sign(new TextEncoder().encode(SECRET));
+    const wrongAud = await new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "HS256" }).setSubject(sub).setAudience("other").setIssuer("http://sb.local/auth/v1").setExpirationTime("1h").sign(new TextEncoder().encode(SECRET));
     expect(await verifyAccessToken(wrongAud)).toEqual({ ok: false, reason: "invalid" });
     expect(await verifyAccessToken(await hs({ role: "anon" }))).toEqual({ ok: false, reason: "invalid" });
     const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -53,7 +53,7 @@ describe("verifyAccessToken (ES256, project JWKS)", () => {
     const other = await generateKeyPair("ES256");
     const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "ES256", use: "sig" };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ keys: [jwk] }), { status: 200, headers: { "content-type": "application/json" } })));
-    const sign = (key: CryptoKey, kid = "k1") => new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "ES256", kid }).setSubject(sub).setAudience("authenticated").setExpirationTime("1h").sign(key);
+    const sign = (key: CryptoKey, kid = "k1") => new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "ES256", kid }).setSubject(sub).setAudience("authenticated").setIssuer("http://sb.local/auth/v1").setExpirationTime("1h").sign(key);
     const { verifyAccessToken } = await import("@/lib/jwt-verify");
     expect(await verifyAccessToken(await sign(privateKey))).toMatchObject({ ok: true, claims: { sub } });
     expect(await verifyAccessToken(await sign(other.privateKey))).toEqual({ ok: false, reason: "invalid" });
@@ -63,7 +63,7 @@ describe("verifyAccessToken (ES256, project JWKS)", () => {
     const { privateKey } = await generateKeyPair("ES256");
     const fetchMock = vi.fn(async () => { throw new Error("ECONNREFUSED"); });
     vi.stubGlobal("fetch", fetchMock);
-    const token = await new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "ES256", kid: "k9" }).setSubject(sub).setAudience("authenticated").setExpirationTime("1h").sign(privateKey);
+    const token = await new SignJWT({ role: "authenticated" }).setProtectedHeader({ alg: "ES256", kid: "k9" }).setSubject(sub).setAudience("authenticated").setIssuer("http://sb.local/auth/v1").setExpirationTime("1h").sign(privateKey);
     const { verifyAccessToken } = await import("@/lib/jwt-verify");
     expect(await verifyAccessToken(token)).toEqual({ ok: false, reason: "unavailable" });
     expect(await verifyAccessToken(token)).toEqual({ ok: false, reason: "unavailable" });

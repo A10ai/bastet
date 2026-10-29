@@ -55,7 +55,11 @@ async function j(res) { try { return await res.json(); } catch { return null; } 
 // ---------------------------------------------------------------------------
 async function unauthTests() {
   const ctx = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: EXTRA_HEADERS });
-  const h = await ctx.get("/api/v1/health");
+  // Public health is just { status, timestamp }; the per-check detail is for admins and the cron secret.
+  const h = await ctx.get("/api/v1/health", { headers: process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {} });
+  const hp = await ctx.get("/api/v1/health");
+  const hpb = await j(hp);
+  rec("unauth", "public health hides dependency detail", hpb?.checks ? "FAIL" : "PASS", Object.keys(hpb || {}).join(","));
   rec("unauth", "health endpoint 200", h.status() === 200 ? "PASS" : "FAIL", h.status());
   const hb = await j(h);
   const stale = hb?.timestamp && (Date.now() - Date.parse(hb.timestamp)) > 3600_000;

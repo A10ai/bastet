@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, resolveSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "maintenance.id.resolve");
     }
 
     // Set apartment back to available

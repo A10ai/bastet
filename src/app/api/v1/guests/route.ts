@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { encryptPii } from "@/lib/pii-crypto";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createGuestSchema } from "@/lib/validation";
+import { ilikeAnyFilter } from "@/lib/postgrest-filter";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,11 +29,8 @@ export async function GET(request: NextRequest) {
 
     if (tier) query = query.eq("loyalty_tier", tier);
     if (vip === "true") query = query.eq("vip_status", true);
-    if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
-      );
-    }
+    const searchFilter = ilikeAnyFilter(["first_name", "last_name", "email"], search);
+    if (searchFilter) query = query.or(searchFilter);
 
     const pagination = parsePagination(searchParams);
     query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
@@ -113,9 +111,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) return rpcErrorResponse(error, "guests.create");
 
     // Auto-create preferences row
     await supabase.from("guest_preferences").insert({
@@ -128,8 +124,8 @@ export async function POST(request: NextRequest) {
       category: "guest",
       resource_type: "guest",
       resource_id: guest.id,
-      description: `Created guest ${first_name} ${last_name}`,
-      new_data: body,
+      description: `Created guest ${guest.id}`,
+      new_data: { guest_id: guest.id, vip_status, marketing_consent, language, preferred_currency },
     });
 
     return NextResponse.json({ data: guest }, { status: 201 });

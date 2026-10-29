@@ -232,6 +232,7 @@ export const RATE_LIMITS = {
   LOGIN: { windowMs: 15 * 60 * 1000, max: 5 }, // 5 failed attempts per 15 min per account and network
   LOGIN_ACCOUNT_GLOBAL: { windowMs: 15 * 60 * 1000, max: 50 }, // failed attempts per account from all networks
   LOGIN_PER_IP: { windowMs: 15 * 60 * 1000, max: 60 }, // ceiling per network address
+  MFA_VERIFY: { windowMs: 15 * 60 * 1000, max: 8 }, // six-digit codes: 8 guesses per 15 min per user
   PASSWORD_RESET: { windowMs: 60 * 60 * 1000, max: 3 }, // 3 per hour
   API_DEFAULT: { windowMs: 60 * 1000, max: 100 }, // 100 per min
   AI_ENDPOINT: { windowMs: 60 * 1000, max: 10 }, // 10 per min per user (Anthropic spend)

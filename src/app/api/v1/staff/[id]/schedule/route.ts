@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { validateBody, formatZodErrors, staffScheduleSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "staff.id.schedule");
     }
     return NextResponse.json({ data });
   } catch {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "staff.id.schedule");
     }
     return NextResponse.json({ data }, { status: 201 });
   } catch {
