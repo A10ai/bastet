@@ -857,3 +857,44 @@ export const channelPushSchema = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
 }).refine((v) => !v.from || !v.to || v.to > v.from, { message: "to must be after from", path: ["to"] });
+
+
+// ---------------------------------------------------------------------------
+// Pricing agent (migration 00036)
+// ---------------------------------------------------------------------------
+export const rateShopSchema = z.object({
+  apartment_type_id: z.string().uuid().optional().nullable(),
+  stay_date: isoDate,
+  competitor: z.string().trim().min(2).max(100),
+  competitor_type: z.enum(["hotel", "aparthotel", "apartment", "resort", "other"]).default("hotel"),
+  area: z.string().trim().max(60).optional().nullable(),
+  room_category: z.string().trim().max(80).optional().nullable(),
+  board: z.enum(["ro", "bb", "hb", "fb", "ai"]).default("ro"),
+  rate_gbp: z.number().nonnegative().max(100000),
+  rate_original: z.number().nonnegative().optional().nullable(),
+  currency: z.string().length(3).toUpperCase().default("GBP"),
+  source: z.enum(["manual", "import", "agent"]).default("manual"),
+  url: z.string().url().max(500).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+  shopped_at: z.string().datetime().optional(),
+});
+export const rateShopBatchSchema = z.object({ property_id: z.string().uuid().optional(), shops: z.array(rateShopSchema).min(1).max(500) });
+
+export const pricingBandSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  apartment_type_id: z.string().uuid().optional().nullable(),
+  floor_gbp: z.number().nonnegative(),
+  ceiling_gbp: z.number().positive(),
+  target_premium_percent: z.number().min(-50).max(200).default(15),
+  max_daily_change_percent: z.number().min(1).max(50).default(10),
+  auto_apply: z.boolean().default(false),
+  horizon_weeks: z.number().int().min(1).max(52).default(12),
+  notes: z.string().max(500).optional().nullable(),
+}).refine((v) => v.ceiling_gbp >= v.floor_gbp, { message: "ceiling must be at least the floor", path: ["ceiling_gbp"] });
+
+export const recommendationActionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  /** Approve at a different rate than proposed (still inside the band). */
+  rate_gbp: z.number().positive().optional(),
+});
+export const recommendationsRunSchema = z.object({ action: z.literal("generate"), property_id: z.string().uuid().optional() });

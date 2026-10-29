@@ -5,6 +5,7 @@ import { runAllAutomations } from "@/lib/automations-engine";
 import { trainModel } from "@/lib/prediction-model";
 import { expireOnlineHolds } from "@/lib/online-booking";
 import { pushAllConnections } from "@/lib/channel-manager";
+import { runPricingAgentForAllProperties } from "@/lib/pricing-agent";
 import { logger } from "@/lib/logger";
 
 export interface CycleResults {
@@ -13,6 +14,7 @@ export interface CycleResults {
   predictions: unknown;
   online_holds: unknown;
   channel_push: unknown;
+  pricing_agent: unknown;
   duration_ms: number;
   timestamp: string;
   error?: string;
@@ -31,6 +33,7 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
     predictions: null,
     online_holds: null,
     channel_push: null,
+    pricing_agent: null,
     duration_ms: 0,
     timestamp: new Date().toISOString(),
   };
@@ -81,6 +84,14 @@ export async function runScheduledCycle(supabase: SupabaseClient, actor = "cron"
       results.online_holds = { expired: await expireOnlineHolds(supabase) };
     } catch (e) {
       results.online_holds = { error: e instanceof Error ? e.message : "Hold expiry failed" };
+    }
+
+    // Pricing agent: one recommendation batch per property per day, before
+    // the ARI push so approved or auto-applied rates reach the channels.
+    try {
+      results.pricing_agent = await runPricingAgentForAllProperties(supabase);
+    } catch (e) {
+      results.pricing_agent = { error: e instanceof Error ? e.message : "Pricing agent failed" };
     }
 
     // Availability and rates to every active OTA connection.

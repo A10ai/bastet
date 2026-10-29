@@ -76,6 +76,9 @@ const STATUS_BY_CODE: Record<string, number> = {
   // channel manager (00038)
   MAPPING_NOT_FOUND: 422,
   UNKNOWN_RESERVATION: 404,
+  // pricing agent (00039)
+  RECOMMENDATION_NOT_FOUND: 404,
+  OUT_OF_BAND: 409,
 };
 
 export function rpcErrorResponse(
