@@ -34,23 +34,35 @@ export async function GET(request: NextRequest) {
   if (!auth.authenticated) return auth.error!;
   try {
     const supabase = await createServerSupabaseClient();
-    const [{ data: factors, error: fErr }, { data: aal, error: aErr }, role] = await Promise.all([
-      supabase.auth.mfa.listFactors(),
+    // The factor list must come from the auth server, not from the session
+    // cookie: listFactors() and the nextLevel of getAuthenticatorAssuranceLevel()
+    // read the user object cached in the cookie, which goes stale when a
+    // factor is removed elsewhere (29 Oct 2026: a cookie still listing a
+    // deleted factor reported verification_required and the dashboard looped
+    // page -> /login?step=mfa -> /dashboard until the token refreshed).
+    const [{ data: userData, error: uErr }, { data: aal, error: aErr }, role] = await Promise.all([
+      supabase.auth.getUser(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
       getUserRole(request),
     ]);
-    if (fErr || aErr) {
-      logger.error({ err: (fErr || aErr)?.message }, "[auth/mfa] status failed");
+    if (uErr || aErr || !userData?.user) {
+      logger.error({ err: (uErr || aErr)?.message }, "[auth/mfa] status failed");
       return NextResponse.json({ error: "Could not read MFA status" }, { status: 502 });
     }
-    const verified = (factors?.totp || []).filter((f) => f.status === "verified");
+    const verified = (userData.user.factors || []).filter(
+      (f) => f.status === "verified" && (f.factor_type === undefined || f.factor_type === "totp")
+    );
+    // currentLevel is the aal claim of the verified access token; nextLevel is
+    // derived here from the server-reported factors for the same reason.
+    const currentLevel = aal?.currentLevel ?? null;
+    const nextLevel = verified.length > 0 ? "aal2" : "aal1";
     return NextResponse.json({
       data: {
         factors: verified.map((f) => ({ id: f.id, friendly_name: f.friendly_name, created_at: f.created_at })),
-        current_level: aal?.currentLevel ?? null,
-        next_level: aal?.nextLevel ?? null,
+        current_level: currentLevel,
+        next_level: nextLevel,
         enrolled: verified.length > 0,
-        verification_required: aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2",
+        verification_required: nextLevel === "aal2" && currentLevel !== "aal2",
         // True for owners/admins (MFA_REQUIRED_ROLES) while MFA_ENFORCE is on:
         // the dashboard sends them to Settings > Security until they enrol.
         enrolment_required: mfaRequiredForRole(role ?? undefined),
