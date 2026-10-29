@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ token:
       logger.error({ err: error.message }, "[portal/review] insert failed");
       return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
-    await createNotification(admin, { title: `New review ${input.overall_rating}/5: ${found.booking.reference}`, message: (input.title || input.body || "No text").slice(0, 160), type: input.overall_rating <= 2 ? "warning" : "success", category: "guest", link: "/dashboard/sales?tab=reviews" }).catch(() => 0);
+    await createNotification(admin, { property_id: found.booking.property_id, title: `New review ${input.overall_rating}/5: ${found.booking.reference}`, message: (input.title || input.body || "No text").slice(0, 160), type: input.overall_rating <= 2 ? "warning" : "success", category: "guest", link: "/dashboard/sales?tab=reviews" }).catch(() => 0);
     return NextResponse.json({ data: { id: data.id, thank_you: true } }, { status: 201 });
   } catch (err) {
     logger.error({ err: String(err) }, "[portal/review] failed");

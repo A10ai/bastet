@@ -96,7 +96,7 @@ export async function snapshotProof(admin: SupabaseClient, propertyId: string, w
   const narrative = proofNarrative(metrics, previous);
   const { data, error } = await admin.from("sales_reports").insert({ property_id: propertyId, period_start: weekStart, period_end: weekEnd, kind: "weekly", metrics, narrative }).select("id").single();
   if (error || !data) throw new Error(`sales_reports.insert: ${error?.message}`);
-  await createNotification(admin, { title: `Weekly sales report ${weekStart}`, message: narrative.slice(0, 400), type: "info", category: "system", link: "/dashboard/sales" }).catch(() => 0);
+  await createNotification(admin, { property_id: propertyId, title: `Weekly sales report ${weekStart}`, message: narrative.slice(0, 400), type: "info", category: "system", link: "/dashboard/sales" }).catch(() => 0);
   return { id: data.id as string, metrics, narrative, created: true };
 }
 
