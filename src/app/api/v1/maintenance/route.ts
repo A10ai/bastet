@@ -2,10 +2,12 @@ import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
+import { ilikeAnyFilter } from "@/lib/postgrest-filter";
 import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { emitEvent } from "@/lib/event-bus";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createMaintenanceRequestSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,17 +32,14 @@ export async function GET(request: NextRequest) {
     if (status) query = query.eq("status", status);
     if (category) query = query.eq("category", category);
     if (priority) query = query.eq("priority", priority);
-    if (search) {
-      query = query.or(
-        `title.ilike.%${search}%,description.ilike.%${search}%`
-      );
-    }
+    const searchFilter = ilikeAnyFilter(["title", "description"], search);
+    if (searchFilter) query = query.or(searchFilter);
 
     const pagination = parsePagination(searchParams);
     query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
     const { data, error, count } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "maintenance");
     }
     return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
@@ -113,7 +112,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "maintenance");
     }
 
     // If urgent/emergency, set apartment to maintenance

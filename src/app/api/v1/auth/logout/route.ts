@@ -1,6 +1,7 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { sessionCookieOptions } from "@/lib/supabase/cookie-options";
 import { requireAuth } from "@/lib/api-auth";
 import { apiSuccess } from "@/lib/api-error";
 import { clearCsrfCookie } from "@/lib/csrf";
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        cookieOptions: sessionCookieOptions(),
         cookies: {
           get(name: string) {
             return request.cookies.get(name)?.value;

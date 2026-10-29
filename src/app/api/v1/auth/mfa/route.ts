@@ -7,6 +7,7 @@ import { mfaRequiredForRole } from "@/lib/mfa";
 import { validateBody, formatZodErrors } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Multi-factor authentication (TOTP) through the application's own API so
@@ -87,12 +88,18 @@ export async function POST(request: NextRequest) {
         issuer: "HospitAI",
       });
       if (error || !data) {
-        return NextResponse.json({ error: { code: "MFA_ENROLL_FAILED", message: error?.message || "Enrolment failed" } }, { status: 400 });
+        logger.warn({ err: error?.message }, "[auth/mfa] enrol failed");
+        return NextResponse.json({ error: { code: "MFA_ENROLL_FAILED", message: "Enrolment failed. Try again." } }, { status: 400 });
       }
       return NextResponse.json({ data: { factor_id: data.id, qr_code: data.totp.qr_code, secret: data.totp.secret } });
     }
 
     if (input.action === "verify") {
+      // Six-digit codes: cap guesses per user independently of GoTrue's own throttle.
+      const rl = await rateLimit(`mfa-verify:${auth.userId}`, RATE_LIMITS.MFA_VERIFY);
+      if (!rl.allowed) {
+        return NextResponse.json({ error: { code: "RATE_LIMITED", message: "Too many codes tried. Wait 15 minutes and try again." } }, { status: 429 });
+      }
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: input.factor_id, code: input.code });
       if (error) {
         return NextResponse.json({ error: { code: "MFA_CODE_INVALID", message: "That code was not accepted" } }, { status: 401 });
@@ -114,7 +121,9 @@ export async function POST(request: NextRequest) {
     // unenroll
     const { error } = await supabase.auth.mfa.unenroll({ factorId: input.factor_id });
     if (error) {
-      return NextResponse.json({ error: { code: "MFA_UNENROLL_FAILED", message: error.message } }, { status: 400 });
+      logger.warn({ err: error.message }, "[auth/mfa] unenrol failed");
+      const needsAal2 = /aal2|assurance/i.test(error.message);
+      return NextResponse.json({ error: { code: needsAal2 ? "MFA_REQUIRED" : "MFA_UNENROLL_FAILED", message: needsAal2 ? "Verify your authenticator code before removing it" : "Could not remove the authenticator" } }, { status: needsAal2 ? 403 : 400 });
     }
     await logAudit(supabase, {
       user_id: auth.userId,

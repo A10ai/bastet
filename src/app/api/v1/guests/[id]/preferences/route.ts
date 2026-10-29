@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { validateBody, formatZodErrors, guestPreferencesSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -55,7 +56,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
         .eq("guest_id", params.id)
         .select()
         .single();
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      if (error) return handleDbError(error, "guests.id.preferences");
       result = data;
     } else {
       const { data, error } = await supabase
@@ -63,7 +64,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
         .insert({ ...validated, guest_id: params.id })
         .select()
         .single();
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      if (error) return handleDbError(error, "guests.id.preferences");
       result = data;
     }
 

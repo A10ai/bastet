@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createApartmentTypeSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "apartment-types");
     }
     return NextResponse.json({ data });
   } catch {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "apartment-types");
     }
 
     await logAudit(supabase, {

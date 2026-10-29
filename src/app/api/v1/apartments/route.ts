@@ -5,6 +5,7 @@ import { requireRole, ROLES } from "@/lib/api-auth";
 import { parsePagination, paginationMeta } from "@/lib/pagination";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, createApartmentSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
     const { data, error, count } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "apartments");
     }
     return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return handleDbError(error, "apartments");
     }
 
     await logAudit(supabase, {

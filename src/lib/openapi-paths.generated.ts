@@ -102,25 +102,6 @@ export const generatedPaths = {
       }
     }
   },
-  "/admin/migrate": {
-    "get": {
-      "tags": [
-        "Admin"
-      ],
-      "summary": "Migration status checker. (GET)",
-      "responses": {
-        "200": {
-          "description": "OK"
-        },
-        "401": {
-          "description": "Unauthenticated"
-        },
-        "403": {
-          "description": "Forbidden (role or MFA)"
-        }
-      }
-    }
-  },
   "/admin/users": {
     "delete": {
       "tags": [
@@ -896,7 +877,7 @@ export const generatedPaths = {
       "tags": [
         "Auth"
       ],
-      "summary": "GET /auth/me",
+      "summary": "— the signed-in staff member's own record. (GET)",
       "responses": {
         "200": {
           "description": "OK"

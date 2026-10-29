@@ -13,6 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { quoteStay } from "@/lib/rate-plans";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { validateBody, formatZodErrors, createBookingSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     query = query.range(pagination.offset, pagination.offset + pagination.limit - 1);
     const { data, error, count } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "bookings");
     }
     return NextResponse.json({ data, meta: paginationMeta(pagination, count, (data || []).length) });
   } catch {

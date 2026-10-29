@@ -54,6 +54,16 @@ function createPinoInstance(): PinoLogger {
         env: process.env.NODE_ENV || "development",
       },
       timestamp: () => `,"time":"${new Date().toISOString()}"`,
+      // Personal data and credentials never reach the log sink, whichever
+      // object shape a caller passes (top-level, nested under err/req/body).
+      redact: {
+        paths: [
+          "password", "*.password", "token", "*.token", "access_token", "refresh_token", "*.access_token", "*.refresh_token",
+          "email", "*.email", "phone", "*.phone", "passport_number", "*.passport_number", "date_of_birth", "*.date_of_birth",
+          "err.details", "err.hint", "req.headers.cookie", "req.headers.authorization", "headers.cookie", "headers.authorization",
+        ],
+        censor: "[redacted]",
+      },
       ...(isDev
         ? {
             transport: {

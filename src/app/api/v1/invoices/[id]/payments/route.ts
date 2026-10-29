@@ -5,6 +5,7 @@ import { requireRole, ROLES } from "@/lib/api-auth";
 import { rpcErrorResponse } from "@/lib/rpc-error";
 import { logAudit } from "@/lib/audit";
 import { validateBody, formatZodErrors, paymentSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "invoices.id.payments");
     }
     return NextResponse.json({ data });
   } catch {

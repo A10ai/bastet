@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireRole, ROLES } from "@/lib/api-auth";
 import { emitEvent, getRegisteredEventTypes, type EventType } from "@/lib/event-bus";
 import { validateBody, formatZodErrors, eventSchema } from "@/lib/validation";
+import { handleDbError } from "@/lib/api-error";
 
 /**
  * GET /api/v1/ai/events
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleDbError(error, "ai.events");
     }
 
     // Gather stats
