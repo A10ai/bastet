@@ -27,7 +27,7 @@ const TAG_BY_SEGMENT = {
   guests: "Guests", messaging: "Guests", staff: "Staff", housekeeping: "Operations", maintenance: "Operations", fnb: "Operations",
   invoices: "Finance", expenses: "Finance", finance: "Finance", "currency-rates": "Finance", ai: "AI", admin: "Admin", gdpr: "GDPR",
   dashboard: "Core", briefing: "Core", reports: "Finance", notifications: "Core", audit: "Admin", cron: "Admin", rates: "Finance",
-  "rate-plans": "Finance", groups: "Bookings", portal: "Guests", pos: "Operations",
+  "rate-plans": "Finance", groups: "Bookings", portal: "Guests", pos: "Operations", book: "Online booking", webhooks: "Online booking",
 };
 
 const paths = {};

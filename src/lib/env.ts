@@ -27,6 +27,7 @@ const envSchema = z.object({
   // Integrations (all optional — only needed if feature is active)
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().optional(),

@@ -764,3 +764,54 @@ export const adminCreateUserSchema = z.object({
   role: z.enum(["admin", "manager", "receptionist", "housekeeping", "maintenance", "readonly"]),
   department: z.string().max(100).optional().nullable(),
 }).strict();
+
+// ---------------------------------------------------------------------------
+// Online booking (migration 00037) — public, so every field is bounded
+// ---------------------------------------------------------------------------
+export const ONLINE_LOCALES = ["en", "de", "pl", "ru", "cs"] as const;
+
+export const onlineAvailabilitySchema = z
+  .object({
+    property: z.string().min(1).max(60).optional(),
+    check_in: isoDate,
+    check_out: isoDate,
+    adults: z.coerce.number().int().min(1).max(20).default(2),
+    children: z.coerce.number().int().min(0).max(20).default(0),
+    rate_plan_id: z.string().uuid().optional().nullable(),
+  })
+  .refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });
+
+export const onlineBookingSchema = z
+  .object({
+    property: z.string().min(1).max(60).optional(),
+    apartment_type_id: z.string().uuid(),
+    check_in: isoDate,
+    check_out: isoDate,
+    adults: z.number().int().min(1).max(20),
+    children: z.number().int().min(0).max(20).default(0),
+    rate_plan_id: z.string().uuid().optional().nullable(),
+    /** The total the guest saw; the booking is refused if the price has since changed. */
+    expected_total_gbp: z.number().nonnegative().optional(),
+    guest: z.object({
+      first_name: z.string().trim().min(1).max(50),
+      last_name: z.string().trim().min(1).max(50),
+      email: z.string().trim().email().max(100),
+      phone: z.string().trim().max(20).optional().nullable(),
+      country: z.string().trim().length(2).toUpperCase().optional().nullable(),
+      marketing_consent: z.boolean().default(false),
+    }),
+    locale: z.enum(ONLINE_LOCALES).default("en"),
+    currency: z.string().length(3).toUpperCase().default("GBP"),
+    special_requests: z.string().trim().max(1000).optional().nullable(),
+    accept_terms: z.literal(true, { message: "You must accept the booking terms" }),
+    source: z.enum(["web", "concierge"]).default("web"),
+  })
+  .refine((v) => v.check_out > v.check_in, { message: "check_out must be after check_in", path: ["check_out"] });
+
+export const onlinePaymentIntentSchema = z.object({
+  currency: z.string().length(3).toUpperCase().default("GBP"),
+});
+
+export const onlineCancelSchema = z.object({
+  reason: z.string().trim().max(500).optional().nullable(),
+});

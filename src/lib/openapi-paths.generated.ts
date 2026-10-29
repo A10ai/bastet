@@ -1010,6 +1010,195 @@ export const generatedPaths = {
       }
     }
   },
+  "/book/{token}/cancel": {
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "{ reason? } (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/book/{token}/payment-intent": {
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "{ currency? } (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/book/{token}/request": {
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "POST /book/{token}/request",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/book/{token}": {
+    "get": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "GET /book/{token}",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/book/availability": {
+    "get": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "GET /book/availability",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/book/property": {
+    "get": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "GET /book/property",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/book": {
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "POST /book",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/booking-channels/{id}": {
     "get": {
       "tags": [
@@ -3867,6 +4056,28 @@ export const generatedPaths = {
       "responses": {
         "200": {
           "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/webhooks/stripe": {
+    "post": {
+      "tags": [
+        "Online booking"
+      ],
+      "summary": "POST /webhooks/stripe",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
         },
         "401": {
           "description": "Unauthenticated"

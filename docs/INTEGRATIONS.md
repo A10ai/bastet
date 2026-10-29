@@ -9,6 +9,11 @@ to a live provider; the demo screens that touch these areas carry the
 
 ## Card payments (Stripe)
 
+> **Status (Sales module, slice 1):** the deposit flow for online bookings is
+> built: `POST /api/v1/book/:token/payment-intent` and
+> `POST /api/v1/webhooks/stripe` (see docs/ONLINE-BOOKING.md). Front-desk
+> card capture and portal balance payments still follow the plan below.
+
 | | |
 | --- | --- |
 | Seam | `record_folio_payment()` and `refund_payment()` (migration 00026). A card payment is a folio payment with `method = 'stripe'` and `payments.stripe_payment_id` set; a refund is a folio refund referencing it. The accounting export maps both to **Card clearing 1010**. |

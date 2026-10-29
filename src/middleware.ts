@@ -44,14 +44,18 @@ function buildCsp(nonce: string): string {
   const connect = ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://api.anthropic.com", supabaseOrigin, supabaseWs]
     .filter(Boolean)
     .join(" ");
+  // Stripe's Payment Element (public /book pages) needs its script, its
+  // iframes and its API; only allowed when a publishable key is configured.
+  const stripe = Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
   const directives = [
     "default-src 'self'",
     // strict-dynamic lets nonce'd Next.js scripts load their chunks; dev needs eval for HMR.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}${stripe ? " https://js.stripe.com" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
-    "img-src 'self' data: blob:",
-    `connect-src ${connect}`,
+    "img-src 'self' data: blob: https:",
+    `connect-src ${connect}${stripe ? " https://api.stripe.com https://r.stripe.com" : ""}`,
+    `frame-src ${stripe ? "https://js.stripe.com https://hooks.stripe.com" : "'none'"}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
