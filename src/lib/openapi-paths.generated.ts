@@ -4144,6 +4144,156 @@ export const generatedPaths = {
       }
     }
   },
+  "/sales/pricing-bands": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff)   bands for the property; apartment_type_id null = default (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "put": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff)   bands for the property; apartment_type_id null = default (PUT)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/sales/rate-shops": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
+  "/sales/recommendations/{id}": {
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "{ action: approve | reject, rate_gbp? }   (manager and above) (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "/sales/recommendations": {
+    "get": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) the agent's queue (GET)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "Sales"
+      ],
+      "summary": "(all staff) the agent's queue (POST)",
+      "responses": {
+        "200": {
+          "description": "OK"
+        },
+        "400": {
+          "description": "Validation error"
+        },
+        "401": {
+          "description": "Unauthenticated"
+        },
+        "403": {
+          "description": "Forbidden (role or MFA)"
+        }
+      }
+    }
+  },
   "/staff/{id}": {
     "get": {
       "tags": [

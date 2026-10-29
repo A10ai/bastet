@@ -20,6 +20,7 @@ export async function calculateRate(
     .eq("is_active", true)
     .lte("start_date", checkIn)
     .gte("end_date", checkIn)
+    .order("priority", { ascending: false })
     .order("start_date", { ascending: false })
     .limit(1)
     .single();
